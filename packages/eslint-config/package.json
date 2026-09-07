@@ -1,0 +1,20 @@
+{
+  "name": "@tripforge/eslint-config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./base": "./base.js",
+    "./nestjs": "./nestjs.js",
+    "./nextjs": "./nextjs.js"
+  },
+  "dependencies": {
+    "@eslint/js": "9.39.5",
+    "eslint-config-next": "16.3.4",
+    "globals": "17.12.0",
+    "typescript-eslint": "8.69.0"
+  },
+  "peerDependencies": {
+    "eslint": "^9.0.0"
+  }
+}

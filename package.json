@@ -1,0 +1,21 @@
+{
+  "name": "tripforge",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test"
+  },
+  "devDependencies": {
+    "eslint": "9.39.5",
+    "turbo": "2.10.12",
+    "typescript": "5.9.3"
+  },
+  "engines": {
+    "node": ">=24.0.0 <25"
+  },
+  "packageManager": "pnpm@12.3.4"
+}
