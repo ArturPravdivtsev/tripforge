@@ -1,17 +1,35 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import HomePage from "./page";
 
 describe("HomePage", () => {
-  it("identifies TripForge and confirms that the application is running", () => {
+  it("introduces the product, navigation, and future trip action", () => {
     render(<HomePage />);
 
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "Plan your next adventure",
+    );
+
+    const navigation = screen.getByRole("navigation", {
+      name: "Primary navigation",
+    });
+
     expect(
-      screen.getByRole("heading", { level: 1, name: "TripForge" }),
-    ).toBeInTheDocument();
+      within(navigation).getByRole("link", { name: "Overview" }),
+    ).toBeVisible();
     expect(
-      screen.getByText("The web application is running."),
+      within(navigation).getByRole("link", { name: "Trips" }),
+    ).toBeVisible();
+    expect(
+      within(navigation).getByRole("link", { name: "Explore" }),
+    ).toBeVisible();
+
+    expect(
+      screen.getByRole("button", { name: "Create your first trip" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("heading", { name: "Travel together" }),
     ).toBeVisible();
   });
 });

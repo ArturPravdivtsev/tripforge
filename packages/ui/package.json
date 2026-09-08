@@ -1,38 +1,39 @@
 {
-  "name": "@tripforge/web",
+  "name": "@tripforge/ui",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
   "scripts": {
-    "dev": "next dev --port 3000",
-    "build": "next build --webpack",
-    "start": "next start --port 3000",
+    "build": "tsc -p tsconfig.build.json",
     "lint": "eslint .",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit"
   },
-  "dependencies": {
-    "@tripforge/ui": "workspace:*",
-    "next": "16.3.4",
-    "react": "19.2.8",
-    "react-dom": "19.2.8"
+  "peerDependencies": {
+    "react": "^19.0.0"
   },
   "devDependencies": {
     "@testing-library/dom": "catalog:",
     "@testing-library/jest-dom": "catalog:",
     "@testing-library/react": "catalog:",
     "@testing-library/user-event": "catalog:",
-    "@tailwindcss/postcss": "4.3.3",
     "@tripforge/eslint-config": "workspace:*",
     "@tripforge/typescript-config": "workspace:*",
-    "@types/node": "24.13.3",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.7",
     "@vitejs/plugin-react": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "eslint": "9.39.5",
     "jsdom": "catalog:",
-    "tailwindcss": "4.3.3",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
     "typescript": "5.9.3",
     "vite": "catalog:",
     "vitest": "catalog:"

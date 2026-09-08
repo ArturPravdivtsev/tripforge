@@ -13,6 +13,7 @@ packages/
   contracts/            Shared API contracts (currently empty)
   eslint-config/        Shared ESLint configuration
   typescript-config/    Shared TypeScript configuration
+  ui/                   Reusable presentation primitives
 ```
 
 ## Prerequisites
