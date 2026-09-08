@@ -7,7 +7,8 @@
     "build": "next build --webpack",
     "start": "next start --port 3000",
     "lint": "eslint .",
-    "test": "node --test",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -16,14 +17,23 @@
     "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@testing-library/dom": "10.4.1",
+    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/react": "16.3.3",
+    "@testing-library/user-event": "14.6.7",
     "@tailwindcss/postcss": "4.3.3",
     "@tripforge/eslint-config": "workspace:*",
     "@tripforge/typescript-config": "workspace:*",
     "@types/node": "24.13.3",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.7",
+    "@vitejs/plugin-react": "6.1.1",
+    "@vitest/coverage-v8": "catalog:",
     "eslint": "9.39.5",
+    "jsdom": "30.0.1",
     "tailwindcss": "4.3.3",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vite": "8.2.2",
+    "vitest": "catalog:"
   }
 }

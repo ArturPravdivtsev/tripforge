@@ -1,7 +1,7 @@
 # TripForge
 
 TripForge is a collaborative travel planner. This repository currently contains
-the Stage 1 monorepo foundation only.
+the monorepo and automated testing foundations.
 
 ## Structure
 
@@ -35,9 +35,24 @@ pnpm build      # Build all workspaces
 pnpm lint       # Lint all workspaces
 pnpm typecheck  # Type-check all workspaces
 pnpm test       # Run workspace tests
+pnpm test:coverage # Run tests and generate coverage reports
+pnpm check      # Run lint, typecheck, tests, and build
 ```
 
 Local services:
 
 - Web: <http://localhost:3000>
 - API health: <http://localhost:4000/health>
+
+## Testing and quality
+
+Web component tests use Vitest, jsdom, and React Testing Library. API unit tests
+use Vitest; HTTP integration tests use Nest testing utilities and Supertest.
+Coverage is available in the terminal and as HTML reports under each tested
+application's `coverage/` directory.
+
+Coverage is observed during early development but is not yet used as a global
+quality gate. Thresholds will be introduced when the domain and test architecture
+are sufficiently mature.
+
+Browser E2E tests are intentionally deferred to a later stage.

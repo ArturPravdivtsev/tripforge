@@ -7,7 +7,8 @@
     "build": "nest build",
     "start": "node dist/main.js",
     "lint": "eslint .",
-    "test": "node --test",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -20,10 +21,15 @@
   "devDependencies": {
     "@nestjs/cli": "11.0.24",
     "@nestjs/schematics": "11.1.0",
+    "@nestjs/testing": "11.2.3",
     "@tripforge/eslint-config": "workspace:*",
     "@tripforge/typescript-config": "workspace:*",
     "@types/node": "24.13.3",
+    "@types/supertest": "7.2.1",
+    "@vitest/coverage-v8": "catalog:",
     "eslint": "9.39.5",
-    "typescript": "5.9.3"
+    "supertest": "7.2.2",
+    "typescript": "5.9.3",
+    "vitest": "catalog:"
   }
 }
