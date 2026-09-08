@@ -4,6 +4,7 @@ import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { AppModule } from "../src/app.module";
+import { configureApplication } from "../src/common/configure-application";
 
 describe("Health endpoint", () => {
   let app: INestApplication;
@@ -14,6 +15,7 @@ describe("Health endpoint", () => {
     }).compile();
 
     app = testingModule.createNestApplication();
+    configureApplication(app);
     await app.init();
   });
 

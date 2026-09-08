@@ -45,6 +45,19 @@ Local services:
 - Web: <http://localhost:3000>
 - API health: <http://localhost:4000/health>
 
+## API configuration
+
+The API validates configuration during startup. Its supported variables and
+defaults are:
+
+```dotenv
+NODE_ENV=development
+PORT=4000
+```
+
+An `.env` file is optional for local development. Use `apps/api/.env.example`
+as the starting point when overriding these defaults.
+
 ## Testing and quality
 
 Web component tests use Vitest, jsdom, and React Testing Library. API unit tests
