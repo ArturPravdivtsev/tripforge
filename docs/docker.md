@@ -10,14 +10,15 @@ Normal source development should continue to use `pnpm dev`.
   build required by one TripForge service.
 - **Container:** running instance of an image; TripForge runs one Node.js process
   per container.
-- **Compose service:** declarative configuration for the `web` or `api`
+- **Compose service:** declarative configuration for `web`, `db`, `migrate`, or `api`,
   container, including its build, ports, environment, and healthcheck.
 - **Build context:** repository root sent to Docker so workspace metadata and
   packages are available during each build.
-- **Volume:** persistent or mounted container storage. TripForge does not need
-  one yet because the current applications have no persistent state.
+- **Volume:** persistent container storage. `postgres_data` keeps PostgreSQL 18
+  data across normal container replacement.
 - **Network:** Compose's default project network. It is available to both
-  services, although web and API do not currently depend on each other.
+  services. Web stays independent; API startup follows database readiness and
+  successful migration completion.
 - **Healthcheck:** in-container HTTP readiness probe using Node.js `fetch`.
 
 ## Architecture
@@ -32,16 +33,18 @@ Host
  │     Next.js
  │     :3000
  │
- └── 127.0.0.1:4000
-         │
-         ▼
-     api container
-       NestJS
-       :4000
+ ├── 127.0.0.1:4000 ───────────────► api container
+ │                                      NestJS :4000
+ │                                          ▲
+ │                                          │ migration completed
+ │                                          │
+ └── 127.0.0.1:5433 ─► db container ─► migrate container
+                         PostgreSQL 18       one-shot
+                         :5432
 ```
 
-The services share only the default Compose network. PostgreSQL and persistent
-storage will be introduced separately in Stage 6.
+Services share the default Compose network. Database clients use `db:5432`
+inside it; the host-only PostgreSQL mapping is `127.0.0.1:5433`.
 
 ## Commands
 
@@ -59,6 +62,8 @@ docker compose ps
 docker compose logs -f
 docker compose logs web
 docker compose logs api
+docker compose logs db
+docker compose logs migrate
 docker compose exec web id
 docker compose exec api id
 ```
@@ -73,6 +78,7 @@ Local endpoints:
 
 - Web: <http://127.0.0.1:3100>
 - API health: <http://127.0.0.1:4000/health>
+- PostgreSQL: `127.0.0.1:5433`
 
 Override host ports only when necessary:
 

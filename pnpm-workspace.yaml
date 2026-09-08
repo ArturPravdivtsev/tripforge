@@ -14,4 +14,5 @@ catalog:
   vitest: 5.0.0
 
 allowBuilds:
+  esbuild: true
   unrs-resolver: true

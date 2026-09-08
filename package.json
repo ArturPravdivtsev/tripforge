@@ -5,6 +5,10 @@
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
+    "db:check": "pnpm --filter @tripforge/api db:check",
+    "db:generate": "pnpm --filter @tripforge/api db:generate",
+    "db:migrate": "pnpm --filter @tripforge/api db:migrate",
+    "db:studio": "pnpm --filter @tripforge/api db:studio",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",

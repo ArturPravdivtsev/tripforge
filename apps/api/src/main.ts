@@ -9,6 +9,7 @@ async function bootstrap(): Promise<void> {
   const configService = app.get(ConfigService);
   const port = configService.getOrThrow<number>("PORT");
 
+  app.enableShutdownHooks();
   configureApplication(app);
 
   await app.listen(port);

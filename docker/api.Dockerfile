@@ -22,6 +22,18 @@ COPY packages/ui/package.json ./packages/ui/package.json
 RUN --mount=type=cache,id=tripforge-pnpm,target=/pnpm/store \
   pnpm install --frozen-lockfile
 
+FROM dependencies AS migration
+
+COPY . .
+
+WORKDIR /workspace/apps/api
+
+ENV NODE_ENV=production
+
+USER node
+
+CMD ["./node_modules/.bin/drizzle-kit", "migrate"]
+
 FROM dependencies AS builder
 
 COPY . .

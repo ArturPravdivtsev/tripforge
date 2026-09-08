@@ -26,14 +26,50 @@ services:
       retries: 5
       start_period: 10s
 
+  db:
+    image: postgres:18.6-bookworm
+    environment:
+      POSTGRES_USER: tripforge
+      POSTGRES_PASSWORD: tripforge
+      POSTGRES_DB: tripforge
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tripforge -d tripforge"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  migrate:
+    image: tripforge-api-migrate:local
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+      target: migration
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://tripforge:tripforge@db:5432/tripforge
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
   api:
     image: tripforge-api:local
     build:
       context: .
       dockerfile: docker/api.Dockerfile
+      target: runtime
     environment:
       NODE_ENV: production
       PORT: "4000"
+      DATABASE_URL: postgresql://tripforge:tripforge@db:5432/tripforge
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     ports:
       - "127.0.0.1:${TRIPFORGE_API_PORT:-4000}:4000"
     healthcheck:
@@ -49,3 +85,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+
+volumes:
+  postgres_data:

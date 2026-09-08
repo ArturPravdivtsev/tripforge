@@ -53,10 +53,12 @@ defaults are:
 ```dotenv
 NODE_ENV=development
 PORT=4000
+DATABASE_URL=postgresql://tripforge:tripforge@127.0.0.1:5433/tripforge
 ```
 
-An `.env` file is optional for local development. Use `apps/api/.env.example`
-as the starting point when overriding these defaults.
+These are local development defaults. Production requires an explicit
+`DATABASE_URL`. An `.env` file is optional for local development; use
+`apps/api/.env.example` as the starting point when overriding the defaults.
 
 ## Testing and quality
 
@@ -74,22 +76,27 @@ Browser E2E tests are intentionally deferred to a later stage.
 ## Docker runtime
 
 Docker provides a reproducible production-like runtime. Normal development
-should continue to use the faster native workflow:
+should continue to use the faster native application workflow with PostgreSQL
+provided by Docker:
 
 ```bash
+docker compose up -d db
+pnpm db:migrate
 pnpm dev
 ```
 
 Build and start both production containers with:
 
 ```bash
-docker compose up --build
+docker compose up --build -d
 ```
 
 Local Docker endpoints:
 
 - Web: <http://127.0.0.1:3100>
 - API health: <http://127.0.0.1:4000/health>
+- PostgreSQL: `127.0.0.1:5433` (loopback only)
 
 See [Docker runtime](docs/docker.md) for architecture, inspection, and shutdown
-commands.
+commands, and [Database foundation](docs/database.md) for the schema and
+migration workflow.
