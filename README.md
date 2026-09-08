@@ -70,3 +70,26 @@ quality gate. Thresholds will be introduced when the domain and test architectur
 are sufficiently mature.
 
 Browser E2E tests are intentionally deferred to a later stage.
+
+## Docker runtime
+
+Docker provides a reproducible production-like runtime. Normal development
+should continue to use the faster native workflow:
+
+```bash
+pnpm dev
+```
+
+Build and start both production containers with:
+
+```bash
+docker compose up --build
+```
+
+Local Docker endpoints:
+
+- Web: <http://127.0.0.1:3100>
+- API health: <http://127.0.0.1:4000/health>
+
+See [Docker runtime](docs/docker.md) for architecture, inspection, and shutdown
+commands.
