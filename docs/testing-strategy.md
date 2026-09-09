@@ -22,8 +22,34 @@ component tests, with progressively fewer integration and browser tests.
 - **Component tests:** React components and user interactions without a real
   browser or backend.
 - **Integration/API tests:** Nest modules, routing, validation, and persistence
-  boundaries when those appear.
+  boundaries. Authentication runs against ephemeral PostgreSQL 18.6 through
+  Testcontainers and applies the real committed Drizzle migrations.
 - **Browser E2E tests:** critical user journeys only. They are not implemented yet.
 
 TripForge should avoid testing implementation details and should not rely only
-on expensive browser E2E tests. This document will evolve with the application.
+on expensive browser E2E tests.
+
+## Commands
+
+```text
+pnpm test
+  -> fast unit, component, and non-container HTTP tests
+
+pnpm test:integration
+  -> Docker + Testcontainers persistence tests
+
+pnpm check
+  -> fast developer gate: lint + typecheck + test + build
+
+pnpm check:full
+  -> pnpm check + PostgreSQL integration tests
+```
+
+The regular suite must remain usable without Docker. Integration tests use
+`@testcontainers/postgresql@12.1.0` and `postgres:18.6-bookworm`; each run gets
+an independent database and never touches the developer's Compose volume. The
+suite applies committed migrations rather than manually creating tables or
+using schema push, truncates test data between cases, and does not depend on
+test order. Real PostgreSQL is intentional because transactions, foreign keys,
+checks, timestamps, unique violations, and Drizzle behavior are part of the
+authentication contract.

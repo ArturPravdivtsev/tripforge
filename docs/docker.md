@@ -80,6 +80,11 @@ Local endpoints:
 - API health: <http://127.0.0.1:4000/health>
 - PostgreSQL: `127.0.0.1:5433`
 
+The API image includes the trusted native install step for `argon2@0.45.1` and
+runs password hashing and verification on `node:24-bookworm-slim`. The existing
+large migration image remains known optimization debt; authentication does not
+change its purpose or lifecycle.
+
 Override host ports only when necessary:
 
 ```bash

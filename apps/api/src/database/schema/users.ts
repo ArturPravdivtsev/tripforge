@@ -1,4 +1,12 @@
-import { pgTable, timestamp, unique, uuid, varchar } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import {
+  check,
+  pgTable,
+  timestamp,
+  unique,
+  uuid,
+  varchar,
+} from "drizzle-orm/pg-core";
 
 export const users = pgTable(
   "users",
@@ -13,5 +21,11 @@ export const users = pgTable(
       .defaultNow()
       .notNull(),
   },
-  (table) => [unique("users_email_unique").on(table.email)],
+  (table) => [
+    unique("users_email_unique").on(table.email),
+    check(
+      "users_email_normalized_check",
+      sql`${table.email} = lower(${table.email}) and ${table.email} = btrim(${table.email})`,
+    ),
+  ],
 );

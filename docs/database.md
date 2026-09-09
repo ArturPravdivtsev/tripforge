@@ -20,23 +20,30 @@ token for future services. The pool uses driver defaults, opens connections
 lazily, and closes through Nest's application shutdown lifecycle.
 
 Unit and HTTP foundation tests do not require Docker or a running database.
-Database correctness is currently verified through migrations, PostgreSQL
-schema inspection, and direct constraint QA. Integration tests will be added
-when repositories or database-backed services exist.
+Authentication persistence is additionally verified with an isolated
+Testcontainers PostgreSQL instance that applies the committed migrations.
 
 ## Current schema
 
 ```text
 users
-  │
-  └──< trips
-       owner_id
+  ├── 1 ── 0..1 password_credentials
+  ├── 1 ── *    auth_sessions
+  └── 1 ── *    trips
 ```
 
 Both tables use database-generated UUID primary keys. `users.email` is required,
 bounded to 320 characters, and protected by the `users_email_unique` constraint.
-`display_name` is nullable so persistence does not force a profile name before
-authentication and onboarding behavior exist.
+`display_name` is nullable so persistence does not force a profile name.
+`users_email_normalized_check` requires trimmed lowercase email storage, while
+`users_email_unique` enforces uniqueness of that canonical value.
+
+`password_credentials.user_id` is a cascading foreign-key primary key, so a
+user has at most one current password credential. `auth_sessions` contains only
+the SHA-256 hash of each random browser token. Its token hash is unique and
+format-checked; its expiry must be later than creation. User and expiry indexes
+support future session management and cleanup. Deleting a user cascades to both
+authentication tables.
 
 Every trip requires an owner and a bounded, non-blank name. The owner foreign
 key uses `ON DELETE RESTRICT`, preventing accidental trip deletion with a user.
@@ -70,6 +77,11 @@ files.
 
 Native commands use `DATABASE_URL` when provided and otherwise target the local
 Docker database at `127.0.0.1:5433`. Compose uses `db:5432` internally.
+
+The authentication migration normalizes pre-existing emails before adding the
+database check. If historical addresses collide after normalization, the
+existing unique constraint aborts the migration transaction so the conflict can
+be resolved without silently deleting either account.
 
 ## Docker persistence
 

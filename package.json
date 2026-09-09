@@ -12,8 +12,10 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "test:integration": "pnpm --filter @tripforge/api test:integration",
     "test:coverage": "turbo run test:coverage",
-    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "check:full": "pnpm check && pnpm test:integration"
   },
   "devDependencies": {
     "eslint": "9.39.5",

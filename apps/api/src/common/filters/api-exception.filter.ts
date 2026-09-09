@@ -46,6 +46,13 @@ export class ApiExceptionFilter implements ExceptionFilter {
   ): ApiErrorResponse {
     const statusCode = exception.getStatus();
     const response = exception.getResponse();
+    const responseCode =
+      typeof response === "object" &&
+      response !== null &&
+      "code" in response &&
+      typeof response.code === "string"
+        ? response.code
+        : undefined;
     const responseMessage =
       typeof response === "string"
         ? response
@@ -64,7 +71,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
       statusCode,
       code: isValidationError
         ? "VALIDATION_ERROR"
-        : this.getHttpStatusCode(statusCode),
+        : (responseCode ?? this.getHttpStatusCode(statusCode)),
       message: isValidationError
         ? "Validation failed"
         : typeof responseMessage === "string"
