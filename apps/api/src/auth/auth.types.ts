@@ -1,8 +1,6 @@
-export type AuthenticatedUser = {
-  id: string;
-  email: string;
-  displayName: string | null;
-};
+import type { AuthUser } from "@tripforge/contracts";
+
+export type AuthenticatedUser = AuthUser;
 
 export type AuthenticatedRequest = {
   authenticatedUser?: AuthenticatedUser;

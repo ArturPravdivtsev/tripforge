@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { Container } from "@tripforge/ui";
 
+import { AuthStatus } from "./auth/auth-status";
 import { MobileNavigation } from "./mobile-navigation";
 
 export function Header() {
@@ -25,9 +26,7 @@ export function Header() {
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          <span className="hidden rounded-full bg-[var(--surface-muted)] px-3 py-1.5 text-sm font-medium sm:inline-flex">
-            Guest
-          </span>
+          <AuthStatus />
           <MobileNavigation />
         </div>
       </Container>

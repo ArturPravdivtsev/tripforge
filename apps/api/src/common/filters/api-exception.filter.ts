@@ -8,15 +8,7 @@ import {
   Logger,
 } from "@nestjs/common";
 import { HttpAdapterHost } from "@nestjs/core";
-
-type ApiErrorResponse = {
-  statusCode: number;
-  code: string;
-  message: string;
-  path: string;
-  timestamp: string;
-  errors?: string[];
-};
+import type { ApiErrorResponse } from "@tripforge/contracts";
 
 @Catch()
 @Injectable()

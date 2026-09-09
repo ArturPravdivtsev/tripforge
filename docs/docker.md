@@ -80,6 +80,12 @@ Local endpoints:
 - API health: <http://127.0.0.1:4000/health>
 - PostgreSQL: `127.0.0.1:5433`
 
+The web image compiles `NEXT_PUBLIC_API_URL=http://127.0.0.1:4000` into the
+browser bundle. Compose configures the API with
+`WEB_ORIGIN=http://127.0.0.1:3100`, matching the host-visible web origin rather
+than the internal container hostname. These two values must remain aligned with
+the URLs the browser actually uses.
+
 The API image includes the trusted native install step for `argon2@0.45.1` and
 runs password hashing and verification on `node:24-bookworm-slim`. The existing
 large migration image remains known optimization debt; authentication does not

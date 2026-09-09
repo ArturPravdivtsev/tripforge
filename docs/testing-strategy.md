@@ -26,6 +26,11 @@ component tests, with progressively fewer integration and browser tests.
   Testcontainers and applies the real committed Drizzle migrations.
 - **Browser E2E tests:** critical user journeys only. They are not implemented yet.
 
+Stage 8 covers browser authentication with React Testing Library component
+tests, mocked Fetch client tests, Nest CORS/browser-policy HTTP tests, real
+PostgreSQL authentication integration tests, and manual browser QA. Installing
+Playwright remains intentionally deferred.
+
 TripForge should avoid testing implementation details and should not rely only
 on expensive browser E2E tests.
 

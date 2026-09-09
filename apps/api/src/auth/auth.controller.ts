@@ -9,7 +9,10 @@ import {
   Res,
   UseGuards,
 } from "@nestjs/common";
+import type { AuthResponse } from "@tripforge/contracts";
 
+import { BrowserMutationGuard } from "./browser/browser-mutation.guard";
+import { RequireJsonBody } from "./browser/require-json-body.decorator";
 import { AuthService } from "./auth.service";
 import type {
   AuthenticatedRequest,
@@ -24,11 +27,8 @@ import {
   type SessionCookieResponse,
 } from "./session/session.service";
 
-type AuthResponse = {
-  user: AuthenticatedUser;
-};
-
 @Controller("auth")
+@UseGuards(BrowserMutationGuard)
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
@@ -36,6 +36,7 @@ export class AuthController {
   ) {}
 
   @Post("register")
+  @RequireJsonBody()
   async register(
     @Body() input: RegisterDto,
     @Res({ passthrough: true }) response: SessionCookieResponse,
@@ -49,6 +50,7 @@ export class AuthController {
 
   @Post("login")
   @HttpCode(HttpStatus.OK)
+  @RequireJsonBody()
   async login(
     @Body() input: LoginDto,
     @Res({ passthrough: true }) response: SessionCookieResponse,

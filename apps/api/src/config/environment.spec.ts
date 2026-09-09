@@ -14,6 +14,7 @@ describe("validateEnvironment", () => {
       DATABASE_URL: "postgresql://user:password@database:5432/app",
       NODE_ENV: "test",
       PORT: 4100,
+      WEB_ORIGIN: "http://127.0.0.1:3000",
     });
   });
 
@@ -23,6 +24,7 @@ describe("validateEnvironment", () => {
         "postgresql://tripforge:tripforge@127.0.0.1:5433/tripforge",
       NODE_ENV: "development",
       PORT: 4000,
+      WEB_ORIGIN: "http://127.0.0.1:3000",
     });
   });
 
@@ -48,5 +50,25 @@ describe("validateEnvironment", () => {
     expect(() => validateEnvironment({ NODE_ENV: "production" })).toThrow(
       /DATABASE_URL/,
     );
+  });
+
+  it.each([
+    "http://example.com/path",
+    "http://example.com?query=1",
+    "http://example.com/#fragment",
+    "ftp://example.com",
+  ])("rejects a WEB_ORIGIN that is not an exact HTTP origin: %s", (origin) => {
+    expect(() =>
+      validateEnvironment({ NODE_ENV: "test", WEB_ORIGIN: origin }),
+    ).toThrow(/WEB_ORIGIN/);
+  });
+
+  it("requires WEB_ORIGIN in production", () => {
+    expect(() =>
+      validateEnvironment({
+        DATABASE_URL: "postgresql://user:password@database:5432/app",
+        NODE_ENV: "production",
+      }),
+    ).toThrow(/WEB_ORIGIN/);
   });
 });

@@ -26,8 +26,8 @@ describe("HomePage", () => {
     ).toBeVisible();
 
     expect(
-      screen.getByRole("button", { name: "Create your first trip" }),
-    ).toBeDisabled();
+      screen.getByRole("link", { name: "Create your account" }),
+    ).toHaveAttribute("href", "/register");
     expect(
       screen.getByRole("heading", { name: "Travel together" }),
     ).toBeVisible();

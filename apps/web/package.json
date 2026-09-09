@@ -12,17 +12,21 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@hookform/resolvers": "5.9.1",
+    "@tripforge/contracts": "workspace:*",
     "@tripforge/ui": "workspace:*",
     "next": "16.3.4",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "react-hook-form": "7.87.0",
+    "zod": "4.5.4"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "4.3.3",
     "@testing-library/dom": "catalog:",
     "@testing-library/jest-dom": "catalog:",
     "@testing-library/react": "catalog:",
     "@testing-library/user-event": "catalog:",
-    "@tailwindcss/postcss": "4.3.3",
     "@tripforge/eslint-config": "workspace:*",
     "@tripforge/typescript-config": "workspace:*",
     "@types/node": "24.13.3",

@@ -4,6 +4,7 @@ import { DatabaseModule } from "../database/database.module";
 import { AuthController } from "./auth.controller";
 import { AuthRepository } from "./auth.repository";
 import { AuthService } from "./auth.service";
+import { BrowserMutationGuard } from "./browser/browser-mutation.guard";
 import { SessionAuthGuard } from "./guards/session-auth.guard";
 import { PasswordHasherService } from "./password/password-hasher.service";
 import { SessionService } from "./session/session.service";
@@ -14,6 +15,7 @@ import { SessionService } from "./session/session.service";
   providers: [
     AuthRepository,
     AuthService,
+    BrowserMutationGuard,
     PasswordHasherService,
     SessionAuthGuard,
     SessionService,

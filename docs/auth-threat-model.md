@@ -21,15 +21,18 @@ Neither may be logged or persisted in raw form.
 | Stolen session logout | Server-side row deletion immediately revokes the session |
 | Half-created account | User, credential, and session share one transaction |
 | Credential stuffing / online guessing | Distributed rate limiting deferred; required pre-production |
-| CSRF | Partial `SameSite=Lax` mitigation; full browser policy deferred to Stage 8 |
+| CSRF | `SameSite=Lax`, exact mutation `Origin`, required custom header, and JSON-only credential endpoints |
+| Cross-origin response access | Exact credentialed CORS allowlist; no wildcard origin |
 | Duplicate-register enumeration | Accepted MVP UX/security tradeoff; `409` reveals existence |
 | Credential/session logging | Passwords, hashes, raw tokens, and full Cookie headers are prohibited |
 
 ## Residual and deferred risk
 
-- `SameSite=Lax` is not treated as a complete CSRF strategy. Exact origins,
-  credentialed fetch, production topology, and mutation forms will determine
-  the Stage 8 policy together with CORS.
+- CORS is not treated as CSRF protection by itself: it controls browser response
+  access and preflight, while some cross-site requests can still reach a server.
+  TripForge separately rejects browser mutations unless `Origin` exactly equals
+  `WEB_ORIGIN` and `X-TripForge-Request` equals `1`; credential-bearing register
+  and login requests must also use JSON.
 - No in-memory limiter is presented as brute-force protection. A shared,
   deployment-aware rate limiter must precede public exposure.
 - Account verification, recovery, MFA, password changes, provider login, bulk

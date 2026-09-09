@@ -3,6 +3,21 @@ import Joi from "joi";
 const nodeEnvironments = ["development", "test", "production"] as const;
 const defaultDatabaseUrl =
   "postgresql://tripforge:tripforge@127.0.0.1:5433/tripforge";
+const defaultWebOrigin = "http://127.0.0.1:3000";
+
+const webOriginSchema = Joi.string()
+  .uri({ scheme: ["http", "https"] })
+  .custom((value: string, helpers) => {
+    try {
+      const url = new URL(value);
+
+      return url.origin === value
+        ? value
+        : helpers.message({ custom: "WEB_ORIGIN must be an exact origin" });
+    } catch {
+      return helpers.message({ custom: "WEB_ORIGIN must be a valid URL" });
+    }
+  });
 
 export const environmentSchema = Joi.object({
   NODE_ENV: Joi.string()
@@ -16,6 +31,11 @@ export const environmentSchema = Joi.object({
       then: Joi.required(),
       otherwise: Joi.string().default(defaultDatabaseUrl),
     }),
+  WEB_ORIGIN: webOriginSchema.when("NODE_ENV", {
+    is: "production",
+    then: Joi.required(),
+    otherwise: webOriginSchema.default(defaultWebOrigin),
+  }),
 });
 
 export function validateEnvironment(

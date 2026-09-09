@@ -6,10 +6,13 @@ services:
     build:
       context: .
       dockerfile: docker/web.Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://127.0.0.1:4000
     environment:
       NODE_ENV: production
       HOSTNAME: 0.0.0.0
       PORT: "3000"
+      NEXT_PUBLIC_API_URL: http://127.0.0.1:4000
     ports:
       - "127.0.0.1:${TRIPFORGE_WEB_PORT:-3100}:3000"
     healthcheck:
@@ -52,6 +55,7 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://tripforge:tripforge@db:5432/tripforge
+      WEB_ORIGIN: http://127.0.0.1:3100
     depends_on:
       db:
         condition: service_healthy
@@ -67,6 +71,7 @@ services:
       NODE_ENV: production
       PORT: "4000"
       DATABASE_URL: postgresql://tripforge:tripforge@db:5432/tripforge
+      WEB_ORIGIN: http://127.0.0.1:3100
     depends_on:
       migrate:
         condition: service_completed_successfully

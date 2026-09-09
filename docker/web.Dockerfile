@@ -25,6 +25,8 @@ RUN --mount=type=cache,id=tripforge-pnpm,target=/pnpm/store \
 FROM dependencies AS builder
 
 ENV NEXT_TELEMETRY_DISABLED=1
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
 COPY . .
 

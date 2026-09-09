@@ -6,13 +6,14 @@ import {
   MaxLength,
   MinLength,
 } from "class-validator";
+import type { RegisterRequest } from "@tripforge/contracts";
 
 import { normalizeEmail } from "../email-normalizer";
 
 export const PASSWORD_MIN_LENGTH = 15;
 export const PASSWORD_MAX_LENGTH = 128;
 
-export class RegisterDto {
+export class RegisterDto implements RegisterRequest {
   @Transform(({ value }: { value: unknown }) =>
     typeof value === "string" ? normalizeEmail(value) : value,
   )

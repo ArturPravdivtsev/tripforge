@@ -50,3 +50,24 @@ Request
 Errors leave the normal flow and are normalized by exception filters. Custom
 middleware, guards, and interceptors will be introduced only when real use cases
 appear.
+
+## Browser origin policy
+
+`WEB_ORIGIN` is a required exact HTTP(S) origin in production and defaults to
+`http://127.0.0.1:3000` locally. Credentialed CORS reflects only that exact
+origin, allows `GET`, `POST`, and `OPTIONS`, and allows the `Content-Type` and
+`X-TripForge-Request` request headers. Wildcard origins are intentionally not
+used with credentials.
+
+Authentication mutations require exact `Origin` and `X-TripForge-Request: 1`.
+Missing or mismatched proof returns `403 CSRF_PROTECTION_FAILED`. Register and
+login also require `application/json`, otherwise they return
+`415 UNSUPPORTED_MEDIA_TYPE`. Safe `GET` requests do not require the mutation
+header.
+
+## Shared transport contracts
+
+`@tripforge/contracts` contains only wire types shared by the Nest API and Next
+browser app, such as auth request, response, user, and error envelopes. It does
+not contain React components, Nest controllers, database/ORM models, or business
+services.

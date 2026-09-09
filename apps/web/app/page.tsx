@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import {
   Button,
   Card,
@@ -49,15 +51,12 @@ export default function HomePage() {
               trips with the people travelling with you.
             </p>
             <div className="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
-              <Button disabled aria-describedby="trip-cta-status">
-                Create your first trip
-              </Button>
-              <span
-                id="trip-cta-status"
-                className="text-sm text-[var(--muted-foreground)]"
+              <Link
+                className="inline-flex min-h-11 items-center justify-center rounded-[var(--radius-md)] bg-[var(--primary)] px-5 py-2.5 font-semibold text-[var(--primary-foreground)] shadow-sm transition hover:brightness-95"
+                href="/register"
               >
-                Trip creation arrives in a future stage.
-              </span>
+                Create your account
+              </Link>
             </div>
           </div>
         </section>

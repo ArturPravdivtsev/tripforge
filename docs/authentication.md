@@ -116,10 +116,23 @@ unknown-account path still performs Argon2 verification against a valid dummy
 hash. Missing, unknown, and expired session tokens all return
 `401 UNAUTHENTICATED`.
 
+Browser requests use credentialed Fetch, so the browser accepts and sends the
+HttpOnly session cookie without exposing its value to JavaScript. The web app
+discovers identity with `GET /api/auth/me` after mounting: `200` becomes the
+authenticated header state, while `401` is the normal guest state. Registration
+and login redirect home after success, where identity is always rediscovered
+from the API rather than fabricated from submitted form values. Logout revokes
+the database session, clears the cookie, and transitions the header to guest.
+
+All credentialed browser mutations require both the exact configured `Origin`
+and `X-TripForge-Request: 1`. Register and login additionally require an
+`application/json` media type. The API client adds the mutation header centrally
+and always uses `credentials: include`; frontend code never reads `document.cookie`
+or persists auth state in browser storage.
+
 ## Deferred capabilities
 
-CORS and the complete browser-level CSRF policy will be implemented with the
-real credentialed frontend relationship in Stage 8. Email verification,
+Email verification,
 password reset/change, MFA, OAuth, session-management UI, logout-all-devices,
 remember-me variants, refresh tokens, JWT, API keys, and distributed rate
 limiting are not implemented. Rate limiting is required before public

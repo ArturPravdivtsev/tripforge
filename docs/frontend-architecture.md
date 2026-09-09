@@ -10,6 +10,7 @@ browser-only behavior.
 Server
 AppShell
 ├── Header
+│   ├── AuthStatus [Client]
 │   └── MobileNavigation [Client]
 ├── Sidebar
 └── Page
@@ -25,6 +26,22 @@ This server-first approach sends less client JavaScript, keeps data boundaries
 clear, and matches the Next.js App Router architecture. It is guidance rather
 than dogma: a Client Component is appropriate whenever its responsibility
 genuinely requires client behavior.
+
+The `/register` and `/login` pages and their shell remain Server Components;
+only `RegisterForm` and `LoginForm` are client leaves. They use React Hook Form
+and Zod for UX validation, then call a small app-specific auth API boundary.
+Backend DTO validation remains authoritative.
+
+## Browser API boundary
+
+`lib/api/config.ts` is the only reader of `NEXT_PUBLIC_API_URL` and requires an
+exact HTTP(S) origin. `apiFetch` centralizes JSON decoding, sanitized API errors,
+`credentials: include`, and the mutation marker. `authApi` exposes only the four
+current operations: register, login, current-user discovery, and logout.
+
+`AuthStatus` owns localized loading, guest, authenticated, and recoverable error
+state. The HttpOnly cookie is the sole session source of truth; there is no auth
+context, global store, or local/session storage persistence.
 
 ## Shared UI boundary
 

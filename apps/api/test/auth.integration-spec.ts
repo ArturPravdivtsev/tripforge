@@ -17,6 +17,14 @@ import { hashSessionToken } from "../src/auth/session/session-token";
 import { configureApplication } from "../src/common/configure-application";
 
 const PASSWORD = "a sufficiently long password";
+const WEB_ORIGIN = "http://127.0.0.1:3000";
+
+function browserPost(app: INestApplication, path: string) {
+  return request(app.getHttpServer())
+    .post(path)
+    .set("Origin", WEB_ORIGIN)
+    .set("X-TripForge-Request", "1");
+}
 
 function getSessionCookie(response: Response): string {
   const setCookieHeader = response.headers["set-cookie"] as
@@ -67,6 +75,7 @@ describe("Authentication with PostgreSQL", () => {
 
     process.env.DATABASE_URL = databaseUrl;
     process.env.NODE_ENV = "test";
+    process.env.WEB_ORIGIN = WEB_ORIGIN;
 
     const { AppModule } = await import("../src/app.module");
     const testingModule = await Test.createTestingModule({
@@ -94,13 +103,11 @@ describe("Authentication with PostgreSQL", () => {
   });
 
   it("registers atomically and stores only protected credentials and tokens", async () => {
-    const response = await request(app.getHttpServer())
-      .post("/api/auth/register")
-      .send({
-        displayName: "Arthur",
-        email: "user@example.com",
-        password: PASSWORD,
-      });
+    const response = await browserPost(app, "/api/auth/register").send({
+      displayName: "Arthur",
+      email: "user@example.com",
+      password: PASSWORD,
+    });
 
     expect(response.status).toBe(201);
     expect(response.body).toEqual({
@@ -145,18 +152,14 @@ describe("Authentication with PostgreSQL", () => {
   });
 
   it("normalizes email and rejects an equivalent registration", async () => {
-    const firstResponse = await request(app.getHttpServer())
-      .post("/api/auth/register")
-      .send({
-        email: "  User@Example.COM  ",
-        password: PASSWORD,
-      });
-    const duplicateResponse = await request(app.getHttpServer())
-      .post("/api/auth/register")
-      .send({
-        email: "user@example.com",
-        password: PASSWORD,
-      });
+    const firstResponse = await browserPost(app, "/api/auth/register").send({
+      email: "  User@Example.COM  ",
+      password: PASSWORD,
+    });
+    const duplicateResponse = await browserPost(app, "/api/auth/register").send({
+      email: "user@example.com",
+      password: PASSWORD,
+    });
 
     expect(firstResponse.status).toBe(201);
     expect(firstResponse.body.user.email).toBe("user@example.com");
@@ -191,12 +194,14 @@ describe("Authentication with PostgreSQL", () => {
   });
 
   it("logs in with correct credentials and creates a new session", async () => {
-    const registration = await request(app.getHttpServer())
-      .post("/api/auth/register")
-      .send({ email: "user@example.com", password: PASSWORD });
-    const login = await request(app.getHttpServer())
-      .post("/api/auth/login")
-      .send({ email: " USER@example.com ", password: PASSWORD });
+    const registration = await browserPost(app, "/api/auth/register").send({
+      email: "user@example.com",
+      password: PASSWORD,
+    });
+    const login = await browserPost(app, "/api/auth/login").send({
+      email: " USER@example.com ",
+      password: PASSWORD,
+    });
 
     expect(login.status).toBe(200);
     expect(login.body.user).toEqual(registration.body.user);
@@ -207,17 +212,19 @@ describe("Authentication with PostgreSQL", () => {
   });
 
   it("uses the same public failure for wrong and unknown credentials", async () => {
-    await request(app.getHttpServer()).post("/api/auth/register").send({
+    await browserPost(app, "/api/auth/register").send({
       email: "user@example.com",
       password: PASSWORD,
     });
 
-    const wrongPassword = await request(app.getHttpServer())
-      .post("/api/auth/login")
-      .send({ email: "user@example.com", password: "incorrect" });
-    const unknownEmail = await request(app.getHttpServer())
-      .post("/api/auth/login")
-      .send({ email: "unknown@example.com", password: "incorrect" });
+    const wrongPassword = await browserPost(app, "/api/auth/login").send({
+      email: "user@example.com",
+      password: "incorrect",
+    });
+    const unknownEmail = await browserPost(app, "/api/auth/login").send({
+      email: "unknown@example.com",
+      password: "incorrect",
+    });
 
     expect(wrongPassword.status).toBe(401);
     expect(unknownEmail.status).toBe(401);
@@ -234,9 +241,10 @@ describe("Authentication with PostgreSQL", () => {
   });
 
   it("resolves the current user and revokes the session on logout", async () => {
-    const registration = await request(app.getHttpServer())
-      .post("/api/auth/register")
-      .send({ email: "user@example.com", password: PASSWORD });
+    const registration = await browserPost(app, "/api/auth/register").send({
+      email: "user@example.com",
+      password: PASSWORD,
+    });
     const cookie = getSessionCookie(registration);
 
     const unauthenticated = await request(app.getHttpServer()).get(
@@ -245,9 +253,10 @@ describe("Authentication with PostgreSQL", () => {
     const authenticated = await request(app.getHttpServer())
       .get("/api/auth/me")
       .set("Cookie", cookie);
-    const logout = await request(app.getHttpServer())
-      .post("/api/auth/logout")
-      .set("Cookie", cookie);
+    const logout = await browserPost(app, "/api/auth/logout").set(
+      "Cookie",
+      cookie,
+    );
     const afterLogout = await request(app.getHttpServer())
       .get("/api/auth/me")
       .set("Cookie", cookie);
@@ -266,9 +275,10 @@ describe("Authentication with PostgreSQL", () => {
   });
 
   it("rejects and opportunistically deletes an expired session", async () => {
-    const registration = await request(app.getHttpServer())
-      .post("/api/auth/register")
-      .send({ email: "user@example.com", password: PASSWORD });
+    const registration = await browserPost(app, "/api/auth/register").send({
+      email: "user@example.com",
+      password: PASSWORD,
+    });
     const cookie = getSessionCookie(registration);
 
     await pool.query(
@@ -289,9 +299,7 @@ describe("Authentication with PostgreSQL", () => {
   });
 
   it("keeps logout idempotent when no session exists", async () => {
-    const response = await request(app.getHttpServer()).post(
-      "/api/auth/logout",
-    );
+    const response = await browserPost(app, "/api/auth/logout");
 
     expect(response.status).toBe(204);
   });

@@ -10,7 +10,7 @@ apps/
   web/                  Next.js web application
   api/                  NestJS API
 packages/
-  contracts/            Shared API contracts (currently empty)
+  contracts/            Shared transport contracts
   eslint-config/        Shared ESLint configuration
   typescript-config/    Shared TypeScript configuration
   ui/                   Reusable presentation primitives
@@ -42,8 +42,8 @@ pnpm check      # Run lint, typecheck, tests, and build
 
 Local services:
 
-- Web: <http://localhost:3000>
-- API health: <http://localhost:4000/health>
+- Web: <http://127.0.0.1:3000>
+- API health: <http://127.0.0.1:4000/health>
 
 ## API configuration
 
@@ -54,11 +54,15 @@ defaults are:
 NODE_ENV=development
 PORT=4000
 DATABASE_URL=postgresql://tripforge:tripforge@127.0.0.1:5433/tripforge
+WEB_ORIGIN=http://127.0.0.1:3000
 ```
 
 These are local development defaults. Production requires an explicit
-`DATABASE_URL`. An `.env` file is optional for local development; use
-`apps/api/.env.example` as the starting point when overriding the defaults.
+`DATABASE_URL` and exact `WEB_ORIGIN`. The browser app uses
+`NEXT_PUBLIC_API_URL=http://127.0.0.1:4000`. Environment files are optional for
+local development; use `apps/api/.env.example` and `apps/web/.env.example` as
+starting points when overriding the defaults. Keep the hostname style consistent
+between both applications during cookie testing.
 
 ## Testing and quality
 
