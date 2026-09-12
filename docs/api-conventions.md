@@ -55,15 +55,15 @@ appear.
 
 `WEB_ORIGIN` is a required exact HTTP(S) origin in production and defaults to
 `http://127.0.0.1:3000` locally. Credentialed CORS reflects only that exact
-origin, allows `GET`, `POST`, and `OPTIONS`, and allows the `Content-Type` and
-`X-TripForge-Request` request headers. Wildcard origins are intentionally not
-used with credentials.
+origin, allows `GET`, `POST`, `PATCH`, `DELETE`, and `OPTIONS`, and allows the
+`Content-Type` and `X-TripForge-Request` request headers. Wildcard origins are
+intentionally not used with credentials.
 
-Authentication mutations require exact `Origin` and `X-TripForge-Request: 1`.
-Missing or mismatched proof returns `403 CSRF_PROTECTION_FAILED`. Register and
-login also require `application/json`, otherwise they return
+Browser mutations require exact `Origin` and `X-TripForge-Request: 1`. Missing
+or mismatched proof returns `403 CSRF_PROTECTION_FAILED`. Register, login, Trip
+create, and Trip PATCH also require `application/json`, otherwise they return
 `415 UNSUPPORTED_MEDIA_TYPE`. Safe `GET` requests do not require the mutation
-header.
+header; bodyless logout and Trip DELETE do not require a content type.
 
 ## Shared transport contracts
 
@@ -71,3 +71,26 @@ header.
 browser app, such as auth request, response, user, and error envelopes. It does
 not contain React components, Nest controllers, database/ORM models, or business
 services.
+
+## Resource operations
+
+Trip resources use conventional HTTP semantics:
+
+| Operation | Method and route | Success |
+| --- | --- | --- |
+| list owned trips | `GET /api/trips` | `200` page |
+| read owned trip | `GET /api/trips/:tripId` | `200` trip |
+| create trip | `POST /api/trips` | `201` trip |
+| partially update trip | `PATCH /api/trips/:tripId` | `200` trip |
+| hard-delete trip | `DELETE /api/trips/:tripId` | `204` empty body |
+
+All routes require the existing server session. Trip ownership is derived from
+that session, never from client input. Resource lookups and mutations include
+both trip ID and owner ID in their database predicates. A foreign trip and a
+nonexistent trip both return `404 TRIP_NOT_FOUND`, preventing resource-ID
+enumeration through authorization errors.
+
+Trip collections use one-based offset pagination. `page` defaults to `1`;
+`pageSize` defaults to `20` and is capped at `100`. Responses include `items`,
+`page`, `pageSize`, `total`, and `totalPages`; an empty collection has
+`totalPages: 0`. Ordering is deterministic: `created_at DESC, id DESC`.

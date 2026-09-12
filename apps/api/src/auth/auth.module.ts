@@ -20,6 +20,11 @@ import { SessionService } from "./session/session.service";
     SessionAuthGuard,
     SessionService,
   ],
-  exports: [AuthRepository],
+  exports: [
+    AuthRepository,
+    BrowserMutationGuard,
+    SessionAuthGuard,
+    SessionService,
+  ],
 })
 export class AuthModule {}

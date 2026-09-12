@@ -131,7 +131,7 @@ describe("browser mutation and CORS policy", () => {
     expect(response.headers["access-control-allow-origin"]).toBe(WEB_ORIGIN);
     expect(response.headers["access-control-allow-credentials"]).toBe("true");
     expect(response.headers["access-control-allow-methods"]).toBe(
-      "GET,POST,OPTIONS",
+      "GET,POST,PATCH,DELETE,OPTIONS",
     );
   });
 

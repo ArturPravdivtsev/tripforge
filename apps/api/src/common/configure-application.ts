@@ -14,7 +14,7 @@ export function configureApplication(app: INestApplication): void {
   app.enableCors({
     allowedHeaders: ["Content-Type", "X-TripForge-Request"],
     credentials: true,
-    methods: ["GET", "POST", "OPTIONS"],
+    methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     origin: (
       requestOrigin: string | undefined,
       callback: CorsOriginCallback,
