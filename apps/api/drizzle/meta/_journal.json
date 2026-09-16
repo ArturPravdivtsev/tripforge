@@ -15,6 +15,13 @@
       "when": 1788956978180,
       "tag": "0001_secret_the_spike",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789560600105,
+      "tag": "0002_cute_ma_gnuci",
+      "breakpoints": true
     }
   ]
 }

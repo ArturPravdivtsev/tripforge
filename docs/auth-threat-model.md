@@ -25,11 +25,15 @@ Neither may be logged or persisted in raw form.
 | Cross-origin response access | Exact credentialed CORS allowlist; no wildcard origin |
 | Duplicate-register enumeration | Accepted MVP UX/security tradeoff; `409` reveals existence |
 | Credential/session logging | Passwords, hashes, raw tokens, and full Cookie headers are prohibited |
-| User reads another user's trip | Owner-scoped database query |
-| User updates another user's trip | Owner-scoped database mutation |
-| User deletes another user's trip | Owner-scoped database mutation |
+| Nonmember reads a Trip | Access-scoped SQL; inaccessible IDs return `404` |
+| Viewer edits a Trip | Owner/editor-constrained SQL mutation |
+| Editor deletes a Trip | Owner-constrained SQL mutation |
 | User guesses a trip UUID | Foreign and nonexistent trips both return `404` |
 | Client forges `ownerId` | Owner comes from the session; unknown input fields are rejected |
+| Client forges a membership role | Server resolves current membership from PostgreSQL |
+| Client forges ownership | Owner remains exclusively in `trips.owner_id` |
+| Revoked member keeps access | Permission is read from PostgreSQL on every resource request |
+| Session contains a stale Trip role | Trip IDs and roles are never stored in auth sessions |
 
 ## Residual and deferred risk
 
@@ -44,12 +48,15 @@ Neither may be logged or persisted in raw form.
   session revocation, and security event logging remain future controls.
 - Duplicate registration intentionally has a stable distinct response for MVP
   usability. Email verification should revisit that enumeration tradeoff.
+- Add-member returns `INVITEE_NOT_FOUND` to an authenticated owner when an email
+  has no account. This existing-account MVP flow permits targeted account
+  enumeration; a future invitation flow should remove that dependency.
 - Expired sessions are deleted opportunistically. Scheduled cleanup is not yet
   required for correctness.
 - Automatic Argon2 rehash-on-login is not enabled, but the password abstraction
   can detect hashes that no longer match current parameters.
 - UUID unpredictability is defense in depth, not authorization. Trip access is
-  authorized by owner-scoped SQL predicates.
+  authorized by ownership or current membership in SQL.
 
 ## Operational rules
 

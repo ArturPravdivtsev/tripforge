@@ -1,34 +1,62 @@
 # Trips domain
 
-## Current model
+## Relational model
 
 ```text
-User
-  └── owns many Trips
+User ───── owns ─────> Trip
+  \                    /
+   \── TripMember ───/
+        editor | viewer
 ```
 
-A Trip has a server-generated UUID, owner, name, optional calendar-date bounds,
-and creation/update timestamps. API responses omit `ownerId`: every operation is
-already scoped to the authenticated owner.
+`trips.owner_id` is the single source of truth for ownership. The owner is never
+duplicated in `trip_members`; participants responses synthesize that row from the
+Trip and its user. `trip_members` is a many-to-many join table whose composite
+primary key `(trip_id, user_id)` permits one role per user and Trip. Both foreign
+keys cascade on deletion, and `user_id` has an index for accessible-Trip queries.
 
-## Rules and authorization
+The database enum contains only `editor` and `viewer`. `owner` is an effective
+transport role derived from `trips.owner_id`, not a stored membership value.
 
-- Names are trimmed at the application boundary and contain 1–200 characters.
-- `startsOn` and `endsOn` are independently nullable `YYYY-MM-DD` calendar dates.
-- When both dates exist, `endsOn >= startsOn`. The service validates the resulting
-  state of partial updates; the PostgreSQL check remains defense in depth.
-- Reads and mutations query by trip ID plus current user ID. Foreign and missing
-  trips intentionally share `404 TRIP_NOT_FOUND`.
-- PATCH distinguishes omitted fields from explicit `null`; `null` clears a date.
-- Successful updates explicitly set `updated_at` to the current time.
-- Delete is a hard delete and returns `404` when no owned row existed.
+## Authorization
 
-Lists use PostgreSQL offset pagination with `created_at DESC, id DESC`. The ID is
-the deterministic tie-breaker. Empty lists report `totalPages: 0`. Offset paging
-is appropriate for the expected small per-user collection; cursor paging can be
-revisited for large or high-churn feeds.
+| Capability | Owner | Editor | Viewer |
+| --- | :---: | :---: | :---: |
+| List/read Trip | ✓ | ✓ | ✓ |
+| Update Trip | ✓ | ✓ | — |
+| Delete Trip | ✓ | — | — |
+| View participants | ✓ | ✓ | ✓ |
+| Add/change/remove members | ✓ | — | — |
 
-Each create/update/delete is one atomic SQL statement, so no explicit transaction
-is needed. Optimistic locking is deferred until collaborative or realtime editing
-creates a concrete concurrency requirement. Membership and shared access through
-a future `TripMember` concept are also deferred; Stage 9 is owner-only.
+Authentication establishes the user identity only. Every request resolves the
+current Trip permission from PostgreSQL, so downgrade and revocation take effect
+without a new login. Roles and Trip IDs are not stored in auth sessions.
+
+List/get queries are access-scoped in SQL and return `accessRole`. PATCH itself
+is constrained to owner or editor, and DELETE itself is constrained to owner.
+Known members with insufficient rights receive `403
+INSUFFICIENT_TRIP_PERMISSION`; unrelated users and missing Trips receive `404
+TRIP_NOT_FOUND` to preserve anti-enumeration behavior.
+
+## Membership rules
+
+- Only an owner manages members.
+- Add-member accepts a normalized email (`trim + lowercase`) for an existing
+  TripForge account. It does not create accounts or invitations.
+- An owner cannot be added as a member or removed through member endpoints.
+- POST never overwrites an existing membership; PATCH changes `role` and
+  explicitly updates `updated_at`.
+- Adding a member is one atomic SQL INSERT, so no explicit transaction is needed.
+- Ownership transfer, pending invitations, and role history are deferred.
+
+The existing-account lookup intentionally reveals to an authenticated Trip owner
+whether a specific email is registered. This is a known Stage 11 privacy tradeoff;
+a future invitation lifecycle can remove the prior-account requirement.
+
+## Trip data rules
+
+- Names are trimmed and contain 1–200 characters.
+- `startsOn` and `endsOn` are nullable `YYYY-MM-DD` calendar dates.
+- When both dates exist, `endsOn >= startsOn` in service validation and a
+  PostgreSQL check constraint.
+- Lists use access-scoped offset pagination ordered by `created_at DESC, id DESC`.

@@ -16,6 +16,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 const trip = {
+  accessRole: "owner" as const,
   createdAt: "2027-01-01T00:00:00.000Z",
   endsOn: "2027-04-28",
   id: "11111111-1111-4111-8111-111111111111",
@@ -101,6 +102,23 @@ describe("EditTripScreen", () => {
     await user.click(screen.getByRole("button", { name: "Save trip" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Unable to update trip. Please try again.",
+    );
+  });
+
+  it("shows a permission state instead of a form to viewers", async () => {
+    vi.spyOn(tripsApi, "get").mockResolvedValue({
+      ...trip,
+      accessRole: "viewer",
+    });
+    renderWithQueryClient(<EditTripScreen tripId={trip.id} />);
+
+    expect(
+      await screen.findByText("You have view-only access to this trip."),
+    ).toBeVisible();
+    expect(screen.queryByRole("textbox", { name: "Name" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Members" })).toHaveAttribute(
+      "href",
+      `/trips/${trip.id}/members`,
     );
   });
 });

@@ -1,7 +1,10 @@
 import type {
+  AddTripMemberRequest,
   CreateTripRequest,
   Trip,
+  TripParticipant,
   TripsPage,
+  UpdateTripMemberRequest,
   UpdateTripRequest,
 } from "@tripforge/contracts";
 
@@ -34,12 +37,48 @@ export const tripsApi = {
     });
   },
 
+  listMembers(
+    tripId: string,
+    options: RequestOptions = {},
+  ): Promise<TripParticipant[]> {
+    return apiFetch(`/api/trips/${tripId}/members`, {
+      signal: options.signal,
+    });
+  },
+
+  addMember(
+    tripId: string,
+    input: AddTripMemberRequest,
+  ): Promise<TripParticipant> {
+    return apiFetch(`/api/trips/${tripId}/members`, {
+      json: input,
+      method: "POST",
+    });
+  },
+
   remove(tripId: string): Promise<void> {
     return apiFetch(`/api/trips/${tripId}`, { method: "DELETE" });
   },
 
+  removeMember(tripId: string, userId: string): Promise<void> {
+    return apiFetch(`/api/trips/${tripId}/members/${userId}`, {
+      method: "DELETE",
+    });
+  },
+
   update(tripId: string, input: UpdateTripRequest): Promise<Trip> {
     return apiFetch(`/api/trips/${tripId}`, {
+      json: input,
+      method: "PATCH",
+    });
+  },
+
+  updateMemberRole(
+    tripId: string,
+    userId: string,
+    input: UpdateTripMemberRequest,
+  ): Promise<TripParticipant> {
+    return apiFetch(`/api/trips/${tripId}/members/${userId}`, {
       json: input,
       method: "PATCH",
     });

@@ -61,9 +61,9 @@ intentionally not used with credentials.
 
 Browser mutations require exact `Origin` and `X-TripForge-Request: 1`. Missing
 or mismatched proof returns `403 CSRF_PROTECTION_FAILED`. Register, login, Trip
-create, and Trip PATCH also require `application/json`, otherwise they return
-`415 UNSUPPORTED_MEDIA_TYPE`. Safe `GET` requests do not require the mutation
-header; bodyless logout and Trip DELETE do not require a content type.
+create/PATCH, and member POST/PATCH also require `application/json`, otherwise
+they return `415 UNSUPPORTED_MEDIA_TYPE`. Safe `GET` requests do not require the
+mutation header; bodyless logout and DELETE requests do not require a content type.
 
 ## Shared transport contracts
 
@@ -78,17 +78,22 @@ Trip resources use conventional HTTP semantics:
 
 | Operation | Method and route | Success |
 | --- | --- | --- |
-| list owned trips | `GET /api/trips` | `200` page |
-| read owned trip | `GET /api/trips/:tripId` | `200` trip |
+| list accessible trips | `GET /api/trips` | `200` page |
+| read accessible trip | `GET /api/trips/:tripId` | `200` trip |
 | create trip | `POST /api/trips` | `201` trip |
 | partially update trip | `PATCH /api/trips/:tripId` | `200` trip |
 | hard-delete trip | `DELETE /api/trips/:tripId` | `204` empty body |
+| list participants | `GET /api/trips/:tripId/members` | `200` participants |
+| add existing-account member | `POST /api/trips/:tripId/members` | `201` participant |
+| change member role | `PATCH /api/trips/:tripId/members/:userId` | `200` participant |
+| remove member | `DELETE /api/trips/:tripId/members/:userId` | `204` empty body |
 
-All routes require the existing server session. Trip ownership is derived from
-that session, never from client input. Resource lookups and mutations include
-both trip ID and owner ID in their database predicates. A foreign trip and a
-nonexistent trip both return `404 TRIP_NOT_FOUND`, preventing resource-ID
-enumeration through authorization errors.
+All routes require the existing server session. Ownership is derived from
+`trips.owner_id`, and editor/viewer access from `trip_members`; neither comes from
+client input or session claims. Trip responses include the current user's
+effective `accessRole`. A known member lacking a capability receives `403
+INSUFFICIENT_TRIP_PERMISSION`; an unrelated user or nonexistent Trip receives
+`404 TRIP_NOT_FOUND`. Member management is owner-only.
 
 Trip collections use one-based offset pagination. `page` defaults to `1`;
 `pageSize` defaults to `20` and is capped at `100`. Responses include `items`,

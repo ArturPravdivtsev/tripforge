@@ -28,6 +28,10 @@ export interface ApiErrorResponse {
   errors?: string[];
 }
 
+export type TripAccessRole = "owner" | "editor" | "viewer";
+
+export type TripMemberRole = Exclude<TripAccessRole, "owner">;
+
 export interface Trip {
   id: string;
   name: string;
@@ -35,6 +39,21 @@ export interface Trip {
   endsOn: string | null;
   createdAt: string;
   updatedAt: string;
+  accessRole: TripAccessRole;
+}
+
+export interface TripParticipant {
+  user: AuthUser;
+  role: TripAccessRole;
+}
+
+export interface AddTripMemberRequest {
+  email: string;
+  role: TripMemberRole;
+}
+
+export interface UpdateTripMemberRequest {
+  role: TripMemberRole;
 }
 
 export interface CreateTripRequest {

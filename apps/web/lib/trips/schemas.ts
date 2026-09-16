@@ -26,3 +26,16 @@ export const tripFormSchema = z
   );
 
 export type TripFormValues = z.input<typeof tripFormSchema>;
+
+export const memberFormSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(1, "Enter an email address.")
+    .email("Enter a valid email address.")
+    .max(320, "Email address is too long."),
+  role: z.enum(["editor", "viewer"]),
+});
+
+export type MemberFormValues = z.input<typeof memberFormSchema>;

@@ -19,13 +19,20 @@ export function TripCard({ isDeleting, onDelete, trip }: TripCardProps) {
   return (
     <Card className="flex min-w-0 flex-col">
       <CardHeader className="min-w-0 flex-1">
-        <CardTitle className="break-words">{trip.name}</CardTitle>
+        <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
+          <CardTitle className="min-w-0 break-words">{trip.name}</CardTitle>
+          {trip.accessRole !== "owner" ? (
+            <span className="rounded-full bg-[var(--surface-muted)] px-2.5 py-1 text-xs font-semibold capitalize text-[var(--muted-foreground)]">
+              {trip.accessRole}
+            </span>
+          ) : null}
+        </div>
         <p className="text-sm text-[var(--muted-foreground)]">
           {formatTripDates(trip.startsOn, trip.endsOn)}
         </p>
       </CardHeader>
       <CardContent>
-        {isConfirming ? (
+        {isConfirming && trip.accessRole === "owner" ? (
           <div className="space-y-3">
             <p className="break-words text-sm font-medium">
               Delete “{trip.name}”?
@@ -51,19 +58,29 @@ export function TripCard({ isDeleting, onDelete, trip }: TripCardProps) {
           </div>
         ) : (
           <div className="flex flex-wrap gap-2">
+            {trip.accessRole !== "viewer" ? (
+              <Link
+                className="inline-flex min-h-9 items-center justify-center rounded-[var(--radius-md)] bg-[var(--surface-muted)] px-3 py-1.5 text-sm font-semibold transition hover:bg-[var(--muted)]"
+                href={`/trips/${trip.id}/edit`}
+              >
+                Edit
+              </Link>
+            ) : null}
             <Link
               className="inline-flex min-h-9 items-center justify-center rounded-[var(--radius-md)] bg-[var(--surface-muted)] px-3 py-1.5 text-sm font-semibold transition hover:bg-[var(--muted)]"
-              href={`/trips/${trip.id}/edit`}
+              href={`/trips/${trip.id}/members`}
             >
-              Edit
+              Members
             </Link>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setIsConfirming(true)}
-            >
-              Delete
-            </Button>
+            {trip.accessRole === "owner" ? (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setIsConfirming(true)}
+              >
+                Delete
+              </Button>
+            ) : null}
           </div>
         )}
       </CardContent>

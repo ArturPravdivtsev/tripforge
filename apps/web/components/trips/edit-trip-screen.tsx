@@ -88,6 +88,24 @@ export function EditTripScreen({ tripId }: EditTripScreenProps) {
     );
   }
 
+  if (tripQuery.data.accessRole === "viewer") {
+    return (
+      <MessageCard title="You have view-only access to this trip.">
+        <div className="flex flex-wrap gap-3">
+          <Link className="font-semibold text-[var(--primary)] hover:underline" href="/trips">
+            Back to trips
+          </Link>
+          <Link
+            className="font-semibold text-[var(--primary)] hover:underline"
+            href={`/trips/${tripId}/members`}
+          >
+            Members
+          </Link>
+        </div>
+      </MessageCard>
+    );
+  }
+
   async function submit(values: TripFormValues) {
     setServerError(undefined);
 

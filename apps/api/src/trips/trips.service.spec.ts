@@ -5,6 +5,7 @@ import { TripsRepository } from "./trips.repository";
 import { TripsService } from "./trips.service";
 
 const trip: Trip = {
+  accessRole: "owner",
   createdAt: "2026-09-12T10:00:00.000Z",
   endsOn: "2027-04-20",
   id: "00000000-0000-4000-8000-000000000001",
@@ -15,11 +16,17 @@ const trip: Trip = {
 
 function createSubject() {
   const repository = {
+    addMember: vi.fn(),
     create: vi.fn(),
     deleteOwned: vi.fn(),
-    findOwnedById: vi.fn(),
-    listOwned: vi.fn(),
-    updateOwned: vi.fn(),
+    findAccess: vi.fn(),
+    findAccessibleById: vi.fn(),
+    findUserByEmail: vi.fn(),
+    listAccessible: vi.fn(),
+    listParticipants: vi.fn(),
+    removeMember: vi.fn(),
+    updateAccessible: vi.fn(),
+    updateMemberRole: vi.fn(),
   };
 
   return {
@@ -61,22 +68,22 @@ describe("TripsService", () => {
 
   it("validates a PATCH against the resulting stored date range", async () => {
     const { repository, service } = createSubject();
-    repository.findOwnedById.mockResolvedValue(trip);
+    repository.findAccessibleById.mockResolvedValue(trip);
 
     await expect(
       service.update("user-1", trip.id, { startsOn: "2027-04-25" }),
     ).rejects.toMatchObject({ response: { code: "INVALID_TRIP_DATE_RANGE" } });
-    expect(repository.updateOwned).not.toHaveBeenCalled();
+    expect(repository.updateAccessible).not.toHaveBeenCalled();
   });
 
   it("distinguishes explicit null from an omitted PATCH field", async () => {
     const { repository, service } = createSubject();
-    repository.findOwnedById.mockResolvedValue(trip);
-    repository.updateOwned.mockResolvedValue({ ...trip, startsOn: null });
+    repository.findAccessibleById.mockResolvedValue(trip);
+    repository.updateAccessible.mockResolvedValue({ ...trip, startsOn: null });
 
     await service.update("user-1", trip.id, { startsOn: null });
 
-    expect(repository.updateOwned).toHaveBeenCalledWith("user-1", trip.id, {
+    expect(repository.updateAccessible).toHaveBeenCalledWith("user-1", trip.id, {
       startsOn: null,
     });
   });
@@ -87,13 +94,14 @@ describe("TripsService", () => {
     await expect(service.update("user-1", trip.id, {})).rejects.toMatchObject({
       response: { code: "EMPTY_TRIP_UPDATE" },
     });
-    expect(repository.findOwnedById).not.toHaveBeenCalled();
+    expect(repository.findAccessibleById).not.toHaveBeenCalled();
   });
 
   it("uses the same not-found error for failed reads and mutations", async () => {
     const { repository, service } = createSubject();
-    repository.findOwnedById.mockResolvedValue(undefined);
+    repository.findAccessibleById.mockResolvedValue(undefined);
     repository.deleteOwned.mockResolvedValue(false);
+    repository.findAccess.mockResolvedValue(undefined);
 
     await expect(service.get("user-1", trip.id)).rejects.toMatchObject({
       response: { code: "TRIP_NOT_FOUND" },
@@ -105,7 +113,7 @@ describe("TripsService", () => {
 
   it("calculates consistent empty and populated pagination metadata", async () => {
     const { repository, service } = createSubject();
-    repository.listOwned
+    repository.listAccessible
       .mockResolvedValueOnce({ items: [], total: 0 })
       .mockResolvedValueOnce({ items: [trip], total: 5 });
 
@@ -120,6 +128,83 @@ describe("TripsService", () => {
       pageSize: 2,
       total: 5,
       totalPages: 3,
+    });
+  });
+
+  it("allows editors to update and rejects viewers", async () => {
+    const { repository, service } = createSubject();
+    repository.findAccessibleById
+      .mockResolvedValueOnce({ ...trip, accessRole: "editor" })
+      .mockResolvedValueOnce({ ...trip, accessRole: "viewer" });
+    repository.updateAccessible.mockResolvedValue({
+      ...trip,
+      accessRole: "editor",
+      name: "Edited",
+    });
+
+    await expect(
+      service.update("editor", trip.id, { name: "Edited" }),
+    ).resolves.toMatchObject({ accessRole: "editor", name: "Edited" });
+    await expect(
+      service.update("viewer", trip.id, { name: "Blocked" }),
+    ).rejects.toMatchObject({
+      response: { code: "INSUFFICIENT_TRIP_PERMISSION" },
+    });
+  });
+
+  it("returns forbidden for member deletes and not found for unrelated users", async () => {
+    const { repository, service } = createSubject();
+    repository.deleteOwned.mockResolvedValue(false);
+    repository.findAccess
+      .mockResolvedValueOnce({ ownerId: "owner", role: "editor" })
+      .mockResolvedValueOnce(undefined);
+
+    await expect(service.delete("editor", trip.id)).rejects.toMatchObject({
+      response: { code: "INSUFFICIENT_TRIP_PERMISSION" },
+    });
+    await expect(service.delete("unrelated", trip.id)).rejects.toMatchObject({
+      response: { code: "TRIP_NOT_FOUND" },
+    });
+  });
+
+  it("prevents the owner from becoming a member", async () => {
+    const { repository, service } = createSubject();
+    repository.findAccess.mockResolvedValue({ ownerId: "owner", role: "owner" });
+    repository.findUserByEmail.mockResolvedValue({
+      displayName: null,
+      email: "owner@example.com",
+      id: "owner",
+    });
+
+    await expect(
+      service.addMember("owner", trip.id, {
+        email: " OWNER@example.com ",
+        role: "editor",
+      }),
+    ).rejects.toMatchObject({
+      response: { code: "TRIP_OWNER_CANNOT_BE_MEMBER" },
+    });
+    expect(repository.findUserByEmail).toHaveBeenCalledWith("owner@example.com");
+    expect(repository.addMember).not.toHaveBeenCalled();
+  });
+
+  it("translates duplicate membership into a stable conflict", async () => {
+    const { repository, service } = createSubject();
+    repository.findAccess.mockResolvedValue({ ownerId: "owner", role: "owner" });
+    repository.findUserByEmail.mockResolvedValue({
+      displayName: "Editor",
+      email: "editor@example.com",
+      id: "editor",
+    });
+    repository.addMember.mockResolvedValue(false);
+
+    await expect(
+      service.addMember("owner", trip.id, {
+        email: "editor@example.com",
+        role: "editor",
+      }),
+    ).rejects.toMatchObject({
+      response: { code: "TRIP_MEMBER_ALREADY_EXISTS" },
     });
   });
 });

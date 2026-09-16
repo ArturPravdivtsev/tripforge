@@ -12,16 +12,18 @@ import {
   Query,
   UseGuards,
 } from "@nestjs/common";
-import type { Trip, TripsPage } from "@tripforge/contracts";
+import type { Trip, TripParticipant, TripsPage } from "@tripforge/contracts";
 
 import type { AuthenticatedUser } from "../auth/auth.types";
 import { BrowserMutationGuard } from "../auth/browser/browser-mutation.guard";
 import { RequireJsonBody } from "../auth/browser/require-json-body.decorator";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { SessionAuthGuard } from "../auth/guards/session-auth.guard";
+import { AddTripMemberDto } from "./dto/add-trip-member.dto";
 import { CreateTripDto } from "./dto/create-trip.dto";
 import { ListTripsQueryDto } from "./dto/list-trips-query.dto";
 import { UpdateTripDto } from "./dto/update-trip.dto";
+import { UpdateTripMemberDto } from "./dto/update-trip-member.dto";
 import { TripsService } from "./trips.service";
 
 @Controller("trips")
@@ -71,5 +73,49 @@ export class TripsController {
     @Param("tripId", ParseUUIDPipe) tripId: string,
   ): Promise<void> {
     return this.tripsService.delete(user.id, tripId);
+  }
+
+  @Get(":tripId/members")
+  listMembers(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("tripId", ParseUUIDPipe) tripId: string,
+  ): Promise<TripParticipant[]> {
+    return this.tripsService.listParticipants(user.id, tripId);
+  }
+
+  @Post(":tripId/members")
+  @RequireJsonBody()
+  addMember(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("tripId", ParseUUIDPipe) tripId: string,
+    @Body() input: AddTripMemberDto,
+  ): Promise<TripParticipant> {
+    return this.tripsService.addMember(user.id, tripId, input);
+  }
+
+  @Patch(":tripId/members/:userId")
+  @RequireJsonBody()
+  updateMemberRole(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("tripId", ParseUUIDPipe) tripId: string,
+    @Param("userId", ParseUUIDPipe) memberUserId: string,
+    @Body() input: UpdateTripMemberDto,
+  ): Promise<TripParticipant> {
+    return this.tripsService.updateMemberRole(
+      user.id,
+      tripId,
+      memberUserId,
+      input.role,
+    );
+  }
+
+  @Delete(":tripId/members/:userId")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  removeMember(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("tripId", ParseUUIDPipe) tripId: string,
+    @Param("userId", ParseUUIDPipe) memberUserId: string,
+  ): Promise<void> {
+    return this.tripsService.removeMember(user.id, tripId, memberUserId);
   }
 }

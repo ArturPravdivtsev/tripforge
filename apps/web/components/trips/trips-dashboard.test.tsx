@@ -1,6 +1,6 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { TripsPage } from "@tripforge/contracts";
+import type { Trip, TripsPage } from "@tripforge/contracts";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiClientError } from "@/lib/api/errors";
@@ -15,7 +15,8 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace }),
 }));
 
-const japan = {
+const japan: Trip = {
+  accessRole: "owner",
   createdAt: "2027-01-01T00:00:00.000Z",
   endsOn: "2027-04-28",
   id: "11111111-1111-4111-8111-111111111111",
@@ -52,6 +53,35 @@ describe("TripsDashboard", () => {
     resolveList?.(page());
     expect(await screen.findByRole("heading", { name: "Japan 2027" })).toBeVisible();
     expect(screen.getByText("12 Apr 2027 – 28 Apr 2027")).toBeVisible();
+  });
+
+  it("shows only the actions allowed by each access role", async () => {
+    vi.spyOn(tripsApi, "list").mockResolvedValue(
+      page([
+        japan,
+        { ...japan, accessRole: "editor", id: "editor-id", name: "Editor trip" },
+        { ...japan, accessRole: "viewer", id: "viewer-id", name: "Viewer trip" },
+      ]),
+    );
+    renderWithQueryClient(<TripsDashboard page={1} />);
+
+    await screen.findByRole("heading", { name: "Japan 2027" });
+    const cards = screen.getAllByRole("heading", { level: 3 }).map(
+      (heading) =>
+        heading.closest("div[class*='flex min-w-0 flex-col']") as HTMLElement,
+    );
+
+    expect(within(cards[0]!).getByRole("link", { name: "Edit" })).toBeVisible();
+    expect(within(cards[0]!).getByRole("link", { name: "Members" })).toBeVisible();
+    expect(within(cards[0]!).getByRole("button", { name: "Delete" })).toBeVisible();
+    expect(within(cards[1]!).getByText("editor")).toBeVisible();
+    expect(within(cards[1]!).getByRole("link", { name: "Edit" })).toBeVisible();
+    expect(within(cards[1]!).getByRole("link", { name: "Members" })).toBeVisible();
+    expect(within(cards[1]!).queryByRole("button", { name: "Delete" })).not.toBeInTheDocument();
+    expect(within(cards[2]!).getByText("viewer")).toBeVisible();
+    expect(within(cards[2]!).getByRole("link", { name: "Members" })).toBeVisible();
+    expect(within(cards[2]!).queryByRole("link", { name: "Edit" })).not.toBeInTheDocument();
+    expect(within(cards[2]!).queryByRole("button", { name: "Delete" })).not.toBeInTheDocument();
   });
 
   it("renders empty, authentication, and retryable error states", async () => {
