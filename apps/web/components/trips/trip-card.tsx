@@ -58,6 +58,12 @@ export function TripCard({ isDeleting, onDelete, trip }: TripCardProps) {
           </div>
         ) : (
           <div className="flex flex-wrap gap-2">
+            <Link
+              className="inline-flex min-h-9 items-center justify-center rounded-[var(--radius-md)] bg-[var(--primary)] px-3 py-1.5 text-sm font-semibold text-[var(--primary-foreground)] transition hover:brightness-95"
+              href={`/trips/${trip.id}`}
+            >
+              Open
+            </Link>
             {trip.accessRole !== "viewer" ? (
               <Link
                 className="inline-flex min-h-9 items-center justify-center rounded-[var(--radius-md)] bg-[var(--surface-muted)] px-3 py-1.5 text-sm font-semibold transition hover:bg-[var(--muted)]"

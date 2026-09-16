@@ -10,6 +10,7 @@ import type {
 } from "@tripforge/contracts";
 
 import { normalizeEmail } from "../auth/email-normalizer";
+import { generateTripDates } from "./trip-calendar";
 import { TripsRepository, type TripAccess } from "./trips.repository";
 
 @Injectable()
@@ -25,7 +26,11 @@ export class TripsService {
 
     this.assertDateRange(normalized.startsOn, normalized.endsOn);
 
-    return this.tripsRepository.create(ownerId, normalized);
+    return this.tripsRepository.create(
+      ownerId,
+      normalized,
+      generateTripDates(normalized.startsOn, normalized.endsOn),
+    );
   }
 
   async list(
@@ -105,6 +110,12 @@ export class TripsService {
       userId,
       tripId,
       update,
+      hasStartsOn || hasEndsOn
+        ? generateTripDates(
+            hasStartsOn ? (update.startsOn ?? null) : current.startsOn,
+            hasEndsOn ? (update.endsOn ?? null) : current.endsOn,
+          )
+        : undefined,
     );
 
     if (!updated) {

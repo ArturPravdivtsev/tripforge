@@ -141,4 +141,66 @@ describe("tripsApi", () => {
     expect(options.method).toBe("DELETE");
     expect(headers.get("X-TripForge-Request")).toBe("1");
   });
+
+  it.each([
+    ["destinations", "listDestinations"],
+    ["days", "listDays"],
+  ] as const)("lists nested %s using the Trip URL", async (resource, operation) => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify([])));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await tripsApi[operation](trip.id);
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      `http://127.0.0.1:4000/api/trips/${trip.id}/${resource}`,
+    );
+  });
+
+  it.each([
+    ["createDestination", "POST", "destinations", undefined, { name: "Tokyo" }],
+    ["updateDestination", "PATCH", "destinations", "destination-id", { name: "Kyoto" }],
+    ["reorderDestinations", "PATCH", "destinations/reorder", undefined, { destinationIds: ["destination-id"] }],
+    ["updateDay", "PATCH", "days", "day-id", { destinationId: null }],
+  ] as const)(
+    "sends a secured nested %s request",
+    async (operation, method, resource, nestedId, body) => {
+      const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({})));
+      vi.stubGlobal("fetch", fetchMock);
+
+      if (operation === "createDestination") {
+        await tripsApi.createDestination(trip.id, body);
+      } else if (operation === "updateDestination") {
+        await tripsApi.updateDestination(trip.id, nestedId, body);
+      } else if (operation === "reorderDestinations") {
+        await tripsApi.reorderDestinations(trip.id, {
+          destinationIds: [...body.destinationIds],
+        });
+      } else {
+        await tripsApi.updateDay(trip.id, nestedId, body);
+      }
+
+      const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+      const suffix = nestedId ? `/${nestedId}` : "";
+      expect(url).toBe(
+        `http://127.0.0.1:4000/api/trips/${trip.id}/${resource}${suffix}`,
+      );
+      expect(options.method).toBe(method);
+      expect(new Headers(options.headers).get("X-TripForge-Request")).toBe("1");
+      expect(options.body).toBe(JSON.stringify(body));
+    },
+  );
+
+  it("deletes a destination through the nested URL", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await tripsApi.removeDestination(trip.id, "destination-id");
+
+    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(
+      `http://127.0.0.1:4000/api/trips/${trip.id}/destinations/destination-id`,
+    );
+    expect(options.method).toBe("DELETE");
+    expect(new Headers(options.headers).get("X-TripForge-Request")).toBe("1");
+  });
 });

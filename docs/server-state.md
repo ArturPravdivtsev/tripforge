@@ -22,6 +22,8 @@ failures receive at most one retry.
 ["trips", "detail"]
 ["trips", "detail", tripId]
 ["trips", "detail", tripId, "members"]
+["trips", "detail", tripId, "destinations"]
+["trips", "detail", tripId, "days"]
 ```
 
 Every list-changing parameter is part of its key. The list prefix targets all
@@ -36,6 +38,12 @@ paginated lists without clearing unrelated cache entries.
 - Add/change/remove member: perform the server mutation, then invalidate only the
   affected Trip's members key. No optimistic add is used because canonical user
   ID, display name, and email come from the server.
+- Destination create/update: invalidate destinations. Reorder replaces that
+  exact cache entry with the authoritative normalized list. Delete invalidates
+  destinations and Days because assignments may have been cleared.
+- Day assignment: replace the returned Day in the exact Days cache. Trip date
+  edits update detail, invalidate lists, and invalidate Days so reconciliation is
+  visible on the workspace.
 - Logout, login, registration, or guest discovery: cancel and remove all Trip
   queries so data cannot cross user identities.
 
@@ -44,8 +52,9 @@ through invalidation rather than reshuffled in browser code.
 
 ## Client state vs server state
 
-TanStack Query owns `Trip`, `TripsPage`, `TripParticipant[]`, loading/error state,
-freshness, and mutation lifecycle. Membership and effective access are server
+TanStack Query owns `Trip`, `TripsPage`, `TripParticipant[]`,
+`TripDestination[]`, `TripDay[]`, loading/error state, freshness, and mutation
+lifecycle. Membership and effective access are server
 state: they can change in another session and must not become durable React state
 or session claims. React Hook Form owns editable input. Local React state owns
 inline confirmations and sanitized mutation errors. The current page is stored

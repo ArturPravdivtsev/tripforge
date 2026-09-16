@@ -69,6 +69,7 @@ describe("EditTripScreen", () => {
     const { queryClient } = renderWithQueryClient(
       <EditTripScreen tripId={trip.id} />,
     );
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
 
     const name = await screen.findByRole("textbox", { name: "Name" });
     await user.clear(name);
@@ -88,6 +89,9 @@ describe("EditTripScreen", () => {
     expect(queryClient.getQueryData(tripKeys.detail(trip.id))).toMatchObject({
       endsOn: null,
       name: "Japan 2028",
+    });
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: tripKeys.days(trip.id),
     });
     expect(push).toHaveBeenCalledWith("/trips");
   });

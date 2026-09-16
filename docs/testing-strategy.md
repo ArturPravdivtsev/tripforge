@@ -39,6 +39,14 @@ page data; create/edit forms; optimistic deletion success and rollback; and
 logout cache isolation. Focused client tests cover request URLs, credentials,
 mutation headers, JSON bodies, `AbortSignal`, and `204 No Content` handling.
 
+Stage 12 adds pure calendar/reconciliation, destination ordering, permission,
+and DTO tests; workspace/destination/Day component tests; nested Fetch client and
+cache-isolation regressions; and real PostgreSQL tests for atomic reconciliation,
+stable IDs, role enforcement, reorder rollback, same-Trip composite foreign keys,
+checks, cascades, and destination deletion. A focused migration test applies
+Stages 1–11, inserts pre-existing dated and partial Trips, applies Stage 12, and
+verifies inclusive backfill without changing Trip timestamps.
+
 TripForge should avoid testing implementation details and should not rely only
 on expensive browser E2E tests.
 

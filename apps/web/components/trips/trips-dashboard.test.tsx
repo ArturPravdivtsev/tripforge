@@ -72,6 +72,10 @@ describe("TripsDashboard", () => {
     );
 
     expect(within(cards[0]!).getByRole("link", { name: "Edit" })).toBeVisible();
+    expect(within(cards[0]!).getByRole("link", { name: "Open" })).toHaveAttribute(
+      "href",
+      `/trips/${japan.id}`,
+    );
     expect(within(cards[0]!).getByRole("link", { name: "Members" })).toBeVisible();
     expect(within(cards[0]!).getByRole("button", { name: "Delete" })).toBeVisible();
     expect(within(cards[1]!).getByText("editor")).toBeVisible();
@@ -79,6 +83,10 @@ describe("TripsDashboard", () => {
     expect(within(cards[1]!).getByRole("link", { name: "Members" })).toBeVisible();
     expect(within(cards[1]!).queryByRole("button", { name: "Delete" })).not.toBeInTheDocument();
     expect(within(cards[2]!).getByText("viewer")).toBeVisible();
+    expect(within(cards[2]!).getByRole("link", { name: "Open" })).toHaveAttribute(
+      "href",
+      "/trips/viewer-id",
+    );
     expect(within(cards[2]!).getByRole("link", { name: "Members" })).toBeVisible();
     expect(within(cards[2]!).queryByRole("link", { name: "Edit" })).not.toBeInTheDocument();
     expect(within(cards[2]!).queryByRole("button", { name: "Delete" })).not.toBeInTheDocument();

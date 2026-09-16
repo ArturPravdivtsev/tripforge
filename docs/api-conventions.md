@@ -60,8 +60,8 @@ origin, allows `GET`, `POST`, `PATCH`, `DELETE`, and `OPTIONS`, and allows the
 intentionally not used with credentials.
 
 Browser mutations require exact `Origin` and `X-TripForge-Request: 1`. Missing
-or mismatched proof returns `403 CSRF_PROTECTION_FAILED`. Register, login, Trip
-create/PATCH, and member POST/PATCH also require `application/json`, otherwise
+or mismatched proof returns `403 CSRF_PROTECTION_FAILED`. Register, login, Trip,
+member, destination, and Day JSON mutations require `application/json`, otherwise
 they return `415 UNSUPPORTED_MEDIA_TYPE`. Safe `GET` requests do not require the
 mutation header; bodyless logout and DELETE requests do not require a content type.
 
@@ -87,6 +87,13 @@ Trip resources use conventional HTTP semantics:
 | add existing-account member | `POST /api/trips/:tripId/members` | `201` participant |
 | change member role | `PATCH /api/trips/:tripId/members/:userId` | `200` participant |
 | remove member | `DELETE /api/trips/:tripId/members/:userId` | `204` empty body |
+| list destinations | `GET /api/trips/:tripId/destinations` | `200` destinations |
+| create destination | `POST /api/trips/:tripId/destinations` | `201` destination |
+| rename destination | `PATCH /api/trips/:tripId/destinations/:destinationId` | `200` destination |
+| delete destination | `DELETE /api/trips/:tripId/destinations/:destinationId` | `204` empty body |
+| reorder destinations | `PATCH /api/trips/:tripId/destinations/reorder` | `200` destinations |
+| list Days | `GET /api/trips/:tripId/days` | `200` Days |
+| assign/clear Day destination | `PATCH /api/trips/:tripId/days/:dayId` | `200` Day |
 
 All routes require the existing server session. Ownership is derived from
 `trips.owner_id`, and editor/viewer access from `trip_members`; neither comes from
@@ -94,6 +101,14 @@ client input or session claims. Trip responses include the current user's
 effective `accessRole`. A known member lacking a capability receives `403
 INSUFFICIENT_TRIP_PERMISSION`; an unrelated user or nonexistent Trip receives
 `404 TRIP_NOT_FOUND`. Member management is owner-only.
+
+Destination and Day reads allow every accessible role. Their mutations allow
+owners and editors; viewers receive `403 INSUFFICIENT_TRIP_PERMISSION`. Unknown
+children of an accessible Trip return `DESTINATION_NOT_FOUND` or
+`TRIP_DAY_NOT_FOUND`. Day creation/deletion is not exposed: the Trip date range
+owns that lifecycle. Destination reorder accepts the complete ID set and rejects
+duplicates, omissions, unknown IDs, or foreign IDs with
+`400 INVALID_DESTINATION_ORDER`.
 
 Trip collections use one-based offset pagination. `page` defaults to `1`;
 `pageSize` defaults to `20` and is capped at `100`. Responses include `items`,

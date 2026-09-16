@@ -43,12 +43,20 @@ describe("AuthStatus", () => {
     const user = userEvent.setup();
     const { queryClient } = renderWithQueryClient(<AuthStatus />);
     queryClient.setQueryData(tripKeys.list(1, 6), { items: [] });
+    queryClient.setQueryData(tripKeys.detail("trip-id"), { id: "trip-id" });
+    queryClient.setQueryData(tripKeys.members("trip-id"), []);
+    queryClient.setQueryData(tripKeys.destinations("trip-id"), []);
+    queryClient.setQueryData(tripKeys.days("trip-id"), []);
 
     await user.click(await screen.findByRole("button", { name: "Logout" }));
 
     expect(logout).toHaveBeenCalledOnce();
     expect(await screen.findByRole("link", { name: "Sign in" })).toBeVisible();
     expect(queryClient.getQueryData(tripKeys.list(1, 6))).toBeUndefined();
+    expect(queryClient.getQueryData(tripKeys.detail("trip-id"))).toBeUndefined();
+    expect(queryClient.getQueryData(tripKeys.members("trip-id"))).toBeUndefined();
+    expect(queryClient.getQueryData(tripKeys.destinations("trip-id"))).toBeUndefined();
+    expect(queryClient.getQueryData(tripKeys.days("trip-id"))).toBeUndefined();
   });
 
   it("shows a recoverable state for server or network failures", async () => {

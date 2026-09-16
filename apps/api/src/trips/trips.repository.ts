@@ -14,13 +14,14 @@ import {
   eq,
   exists,
   isNotNull,
+  notInArray,
   or,
   sql,
 } from "drizzle-orm";
 
 import { DATABASE } from "../database/database.constants";
 import type { Database } from "../database/database.provider";
-import { tripMembers, trips, users } from "../database/schema";
+import { tripDays, tripMembers, trips, users } from "../database/schema";
 
 const tripSelection = {
   createdAt: trips.createdAt,
@@ -68,17 +69,29 @@ function toTrip(row: TripRow): Trip {
 export class TripsRepository {
   constructor(@Inject(DATABASE) private readonly database: Database) {}
 
-  async create(ownerId: string, input: Required<TripWrite>): Promise<Trip> {
-    const [row] = await this.database
-      .insert(trips)
-      .values({ ownerId, ...input })
-      .returning(tripSelection);
+  async create(
+    ownerId: string,
+    input: Required<TripWrite>,
+    calendarDates: readonly string[],
+  ): Promise<Trip> {
+    return this.database.transaction(async (transaction) => {
+      const [row] = await transaction
+        .insert(trips)
+        .values({ ownerId, ...input })
+        .returning(tripSelection);
 
-    if (!row) {
-      throw new Error("Trip insert did not return a row");
-    }
+      if (!row) {
+        throw new Error("Trip insert did not return a row");
+      }
 
-    return toTrip({ ...row, accessRole: "owner" });
+      if (calendarDates.length > 0) {
+        await transaction.insert(tripDays).values(
+          calendarDates.map((date) => ({ date, tripId: row.id })),
+        );
+      }
+
+      return toTrip({ ...row, accessRole: "owner" });
+    });
   }
 
   async findAccessibleById(
@@ -186,37 +199,61 @@ export class TripsRepository {
     userId: string,
     tripId: string,
     input: TripWrite,
+    calendarDates?: readonly string[],
   ): Promise<Trip | undefined> {
-    const editorAccess = exists(
-      this.database
-        .select({ value: sql`1` })
-        .from(tripMembers)
+    return this.database.transaction(async (transaction) => {
+      const editorAccess = exists(
+        transaction
+          .select({ value: sql`1` })
+          .from(tripMembers)
+          .where(
+            and(
+              eq(tripMembers.tripId, trips.id),
+              eq(tripMembers.userId, userId),
+              eq(tripMembers.role, "editor"),
+            ),
+          ),
+      );
+      const [row] = await transaction
+        .update(trips)
+        .set({ ...input, updatedAt: new Date() })
         .where(
           and(
-            eq(tripMembers.tripId, trips.id),
-            eq(tripMembers.userId, userId),
-            eq(tripMembers.role, "editor"),
+            eq(trips.id, tripId),
+            or(eq(trips.ownerId, userId), editorAccess),
           ),
-        ),
-    );
-    const [row] = await this.database
-      .update(trips)
-      .set({ ...input, updatedAt: new Date() })
-      .where(
-        and(
-          eq(trips.id, tripId),
-          or(eq(trips.ownerId, userId), editorAccess),
-        ),
-      )
-      .returning({ ...tripSelection, ownerId: trips.ownerId });
+        )
+        .returning({ ...tripSelection, ownerId: trips.ownerId });
 
-    if (!row) {
-      return undefined;
-    }
+      if (!row) {
+        return undefined;
+      }
 
-    return toTrip({
-      ...row,
-      accessRole: row.ownerId === userId ? "owner" : "editor",
+      if (calendarDates !== undefined) {
+        if (calendarDates.length === 0) {
+          await transaction.delete(tripDays).where(eq(tripDays.tripId, tripId));
+        } else {
+          await transaction
+            .delete(tripDays)
+            .where(
+              and(
+                eq(tripDays.tripId, tripId),
+                notInArray(tripDays.date, [...calendarDates]),
+              ),
+            );
+          await transaction
+            .insert(tripDays)
+            .values(calendarDates.map((date) => ({ date, tripId })))
+            .onConflictDoNothing({
+              target: [tripDays.tripId, tripDays.date],
+            });
+        }
+      }
+
+      return toTrip({
+        ...row,
+        accessRole: row.ownerId === userId ? "owner" : "editor",
+      });
     });
   }
 

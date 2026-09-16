@@ -56,6 +56,36 @@ export interface UpdateTripMemberRequest {
   role: TripMemberRole;
 }
 
+export interface TripDestination {
+  id: string;
+  name: string;
+  position: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TripDay {
+  id: string;
+  date: string;
+  destinationId: string | null;
+}
+
+export interface CreateTripDestinationRequest {
+  name: string;
+}
+
+export interface UpdateTripDestinationRequest {
+  name: string;
+}
+
+export interface ReorderTripDestinationsRequest {
+  destinationIds: string[];
+}
+
+export interface UpdateTripDayRequest {
+  destinationId: string | null;
+}
+
 export interface CreateTripRequest {
   name: string;
   startsOn?: string | null;

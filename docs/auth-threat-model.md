@@ -34,6 +34,12 @@ Neither may be logged or persisted in raw form.
 | Client forges ownership | Owner remains exclusively in `trips.owner_id` |
 | Revoked member keeps access | Permission is read from PostgreSQL on every resource request |
 | Session contains a stale Trip role | Trip IDs and roles are never stored in auth sessions |
+| Viewer edits destinations or Days | Role-authorized mutations return `403` |
+| User references another Trip's destination | Scoped lookup plus composite database FK |
+| User accesses unrelated Days | Parent Trip access scope returns `404` |
+| Client forges destination position | Server owns and normalizes positions |
+| Partial reorder corrupts order | Complete-set validation and one transaction |
+| Failed date sync partially mutates Trip | Trip update and Day reconciliation share one transaction |
 
 ## Residual and deferred risk
 

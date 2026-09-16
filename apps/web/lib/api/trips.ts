@@ -1,9 +1,15 @@
 import type {
   AddTripMemberRequest,
+  CreateTripDestinationRequest,
   CreateTripRequest,
+  ReorderTripDestinationsRequest,
   Trip,
+  TripDay,
+  TripDestination,
   TripParticipant,
   TripsPage,
+  UpdateTripDayRequest,
+  UpdateTripDestinationRequest,
   UpdateTripMemberRequest,
   UpdateTripRequest,
 } from "@tripforge/contracts";
@@ -46,11 +52,37 @@ export const tripsApi = {
     });
   },
 
+  listDestinations(
+    tripId: string,
+    options: RequestOptions = {},
+  ): Promise<TripDestination[]> {
+    return apiFetch(`/api/trips/${tripId}/destinations`, {
+      signal: options.signal,
+    });
+  },
+
+  listDays(
+    tripId: string,
+    options: RequestOptions = {},
+  ): Promise<TripDay[]> {
+    return apiFetch(`/api/trips/${tripId}/days`, { signal: options.signal });
+  },
+
   addMember(
     tripId: string,
     input: AddTripMemberRequest,
   ): Promise<TripParticipant> {
     return apiFetch(`/api/trips/${tripId}/members`, {
+      json: input,
+      method: "POST",
+    });
+  },
+
+  createDestination(
+    tripId: string,
+    input: CreateTripDestinationRequest,
+  ): Promise<TripDestination> {
+    return apiFetch(`/api/trips/${tripId}/destinations`, {
       json: input,
       method: "POST",
     });
@@ -63,6 +95,22 @@ export const tripsApi = {
   removeMember(tripId: string, userId: string): Promise<void> {
     return apiFetch(`/api/trips/${tripId}/members/${userId}`, {
       method: "DELETE",
+    });
+  },
+
+  removeDestination(tripId: string, destinationId: string): Promise<void> {
+    return apiFetch(`/api/trips/${tripId}/destinations/${destinationId}`, {
+      method: "DELETE",
+    });
+  },
+
+  reorderDestinations(
+    tripId: string,
+    input: ReorderTripDestinationsRequest,
+  ): Promise<TripDestination[]> {
+    return apiFetch(`/api/trips/${tripId}/destinations/reorder`, {
+      json: input,
+      method: "PATCH",
     });
   },
 
@@ -79,6 +127,28 @@ export const tripsApi = {
     input: UpdateTripMemberRequest,
   ): Promise<TripParticipant> {
     return apiFetch(`/api/trips/${tripId}/members/${userId}`, {
+      json: input,
+      method: "PATCH",
+    });
+  },
+
+  updateDestination(
+    tripId: string,
+    destinationId: string,
+    input: UpdateTripDestinationRequest,
+  ): Promise<TripDestination> {
+    return apiFetch(`/api/trips/${tripId}/destinations/${destinationId}`, {
+      json: input,
+      method: "PATCH",
+    });
+  },
+
+  updateDay(
+    tripId: string,
+    dayId: string,
+    input: UpdateTripDayRequest,
+  ): Promise<TripDay> {
+    return apiFetch(`/api/trips/${tripId}/days/${dayId}`, {
       json: input,
       method: "PATCH",
     });

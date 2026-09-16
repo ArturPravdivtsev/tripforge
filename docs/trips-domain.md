@@ -7,6 +7,13 @@ User ───── owns ─────> Trip
   \                    /
    \── TripMember ───/
         editor | viewer
+
+Trip
+├── owns many TripDestination
+│
+└── owns many TripDay
+               │
+               └── optional primary TripDestination
 ```
 
 `trips.owner_id` is the single source of truth for ownership. The owner is never
@@ -27,6 +34,9 @@ transport role derived from `trips.owner_id`, not a stored membership value.
 | Delete Trip | ✓ | — | — |
 | View participants | ✓ | ✓ | ✓ |
 | Add/change/remove members | ✓ | — | — |
+| Read destinations and Days | ✓ | ✓ | ✓ |
+| Create/update/delete/reorder destinations | ✓ | ✓ | — |
+| Assign a destination to a Day | ✓ | ✓ | — |
 
 Authentication establishes the user identity only. Every request resolves the
 current Trip permission from PostgreSQL, so downgrade and revocation take effect
@@ -60,3 +70,17 @@ a future invitation lifecycle can remove the prior-account requirement.
 - When both dates exist, `endsOn >= startsOn` in service validation and a
   PostgreSQL check constraint.
 - Lists use access-scoped offset pagination ordered by `created_at DESC, id DESC`.
+- A complete inclusive date range owns one persisted `trip_days` row per calendar
+  date. A partial range owns no Days; destinations remain available for planning.
+- Date edits reconcile Days by date. Overlapping dates retain their stable Day
+  IDs and destination assignments; only removed dates are deleted and new dates
+  are inserted.
+- Destinations are ordered by `position ASC, id ASC`. Position collisions are
+  allowed intentionally; mutations normalize the full order and the UUID is a
+  deterministic tie-breaker. Concurrency-perfect ordering is deferred until
+  realtime collaboration exists.
+- A composite foreign key from Day `(trip_id, destination_id)` to destination
+  `(trip_id, id)` makes cross-Trip assignments impossible at the database layer.
+
+The calendar lifecycle and its current destructive-edit caveat are detailed in
+[Trip calendar](./trip-calendar.md).

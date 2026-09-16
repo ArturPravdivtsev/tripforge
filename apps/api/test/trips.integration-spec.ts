@@ -108,6 +108,16 @@ describe("Trips CRUD with PostgreSQL", () => {
       .send({ email, role });
   }
 
+  async function createDestination(
+    identity: TestIdentity,
+    tripId: string,
+    name: string,
+  ): Promise<Response> {
+    return browserPost(app, `/api/trips/${tripId}/destinations`)
+      .set("Cookie", identity.cookie)
+      .send({ name });
+  }
+
   beforeAll(async () => {
     container = await new PostgreSqlContainer("postgres:18.6-bookworm")
       .withDatabase("tripforge")
@@ -141,7 +151,7 @@ describe("Trips CRUD with PostgreSQL", () => {
 
   beforeEach(async () => {
     await pool.query(
-      "TRUNCATE TABLE auth_sessions, password_credentials, trip_members, trips, users CASCADE",
+      "TRUNCATE TABLE auth_sessions, password_credentials, trip_days, trip_destinations, trip_members, trips, users CASCADE",
     );
     userA = await register("user-a@example.com");
     userB = await register("user-b@example.com");
@@ -713,6 +723,382 @@ describe("Trips CRUD with PostgreSQL", () => {
           "SELECT 1 FROM trip_members WHERE trip_id = $1 AND user_id = $2",
           [tripId, userB.id],
         )
+      ).rowCount,
+    ).toBe(0);
+  });
+
+  it("creates the inclusive Day range atomically and skips partial ranges", async () => {
+    const complete = await createTrip(userA, {
+      endsOn: "2027-04-15",
+      name: "Complete",
+      startsOn: "2027-04-12",
+    });
+    const partial = await createTrip(userA, {
+      name: "Partial",
+      startsOn: "2027-05-01",
+    });
+
+    const completeDays = await pool.query<{
+      date: string;
+      trip_id: string;
+    }>(
+      "SELECT trip_id, date::text FROM trip_days WHERE trip_id = $1 ORDER BY date",
+      [complete.body.id],
+    );
+    const partialDays = await pool.query(
+      "SELECT 1 FROM trip_days WHERE trip_id = $1",
+      [partial.body.id],
+    );
+
+    expect(completeDays.rows).toEqual(
+      ["2027-04-12", "2027-04-13", "2027-04-14", "2027-04-15"].map(
+        (date) => ({ date, trip_id: complete.body.id }),
+      ),
+    );
+    expect(partialDays.rowCount).toBe(0);
+  });
+
+  it("reconciles extended, shrunk, shifted, and cleared ranges with stable Day IDs", async () => {
+    const created = await createTrip(userA, {
+      endsOn: "2027-04-14",
+      name: "Reconcile",
+      startsOn: "2027-04-12",
+    });
+    const tripId = created.body.id as string;
+    const tokyo = await createDestination(userA, tripId, "Tokyo");
+    const initial = await pool.query<{ date: string; id: string }>(
+      "SELECT id, date::text FROM trip_days WHERE trip_id = $1 ORDER BY date",
+      [tripId],
+    );
+    const april13 = initial.rows.find(({ date }) => date === "2027-04-13")!;
+    await browserPatch(app, `/api/trips/${tripId}/days/${april13.id}`)
+      .set("Cookie", userA.cookie)
+      .send({ destinationId: tokyo.body.id });
+
+    const extended = await browserPatch(app, `/api/trips/${tripId}`)
+      .set("Cookie", userA.cookie)
+      .send({ endsOn: "2027-04-16" });
+    expect(extended.status).toBe(200);
+    const afterExtend = await pool.query<{
+      date: string;
+      destination_id: string | null;
+      id: string;
+    }>(
+      "SELECT id, date::text, destination_id FROM trip_days WHERE trip_id = $1 ORDER BY date",
+      [tripId],
+    );
+    expect(afterExtend.rows.map(({ date }) => date)).toEqual([
+      "2027-04-12",
+      "2027-04-13",
+      "2027-04-14",
+      "2027-04-15",
+      "2027-04-16",
+    ]);
+    expect(afterExtend.rows.slice(0, 3).map(({ id }) => id)).toEqual(
+      initial.rows.map(({ id }) => id),
+    );
+    expect(
+      afterExtend.rows.find(({ date }) => date === "2027-04-13")
+        ?.destination_id,
+    ).toBe(tokyo.body.id);
+
+    const shifted = await browserPatch(app, `/api/trips/${tripId}`)
+      .set("Cookie", userA.cookie)
+      .send({ startsOn: "2027-04-13", endsOn: "2027-04-15" });
+    expect(shifted.status).toBe(200);
+    const afterShift = await pool.query<{
+      date: string;
+      destination_id: string | null;
+      id: string;
+    }>(
+      "SELECT id, date::text, destination_id FROM trip_days WHERE trip_id = $1 ORDER BY date",
+      [tripId],
+    );
+    expect(afterShift.rows.map(({ date }) => date)).toEqual([
+      "2027-04-13",
+      "2027-04-14",
+      "2027-04-15",
+    ]);
+    for (const day of afterShift.rows) {
+      expect(day.id).toBe(
+        afterExtend.rows.find(({ date }) => date === day.date)?.id,
+      );
+    }
+    expect(afterShift.rows[0]?.destination_id).toBe(tokyo.body.id);
+
+    const cleared = await browserPatch(app, `/api/trips/${tripId}`)
+      .set("Cookie", userA.cookie)
+      .send({ startsOn: null });
+    expect(cleared.status).toBe(200);
+    expect(
+      (await pool.query("SELECT 1 FROM trip_days WHERE trip_id = $1", [tripId]))
+        .rowCount,
+    ).toBe(0);
+    expect(
+      (
+        await pool.query(
+          "SELECT 1 FROM trip_destinations WHERE trip_id = $1",
+          [tripId],
+        )
+      ).rowCount,
+    ).toBe(1);
+  });
+
+  it("rolls back Trip date changes when Day reconciliation fails", async () => {
+    const created = await createTrip(userA, {
+      endsOn: "2027-04-14",
+      name: "Rollback",
+      startsOn: "2027-04-12",
+    });
+    const tripId = created.body.id as string;
+    const before = await pool.query<{ date: string; id: string }>(
+      "SELECT id, date::text FROM trip_days WHERE trip_id = $1 ORDER BY date",
+      [tripId],
+    );
+
+    await pool.query(`
+      CREATE FUNCTION reject_stage12_day() RETURNS trigger AS $$
+      BEGIN
+        IF NEW.date = DATE '2027-04-15' THEN
+          RAISE EXCEPTION 'controlled Stage 12 reconciliation failure';
+        END IF;
+        RETURN NEW;
+      END;
+      $$ LANGUAGE plpgsql;
+      CREATE TRIGGER reject_stage12_day_trigger
+      BEFORE INSERT ON trip_days
+      FOR EACH ROW EXECUTE FUNCTION reject_stage12_day();
+    `);
+
+    try {
+      const failed = await browserPatch(app, `/api/trips/${tripId}`)
+        .set("Cookie", userA.cookie)
+        .send({ endsOn: "2027-04-16" });
+      expect(failed.status).toBe(500);
+
+      const persistedTrip = await pool.query<{ ends_on: string }>(
+        "SELECT ends_on::text FROM trips WHERE id = $1",
+        [tripId],
+      );
+      const persistedDays = await pool.query<{ date: string; id: string }>(
+        "SELECT id, date::text FROM trip_days WHERE trip_id = $1 ORDER BY date",
+        [tripId],
+      );
+      expect(persistedTrip.rows[0]?.ends_on).toBe("2027-04-14");
+      expect(persistedDays.rows).toEqual(before.rows);
+    } finally {
+      await pool.query("DROP TRIGGER reject_stage12_day_trigger ON trip_days");
+      await pool.query("DROP FUNCTION reject_stage12_day()");
+    }
+  });
+
+  it("enforces destination RBAC and atomic normalized reorder", async () => {
+    const created = await createTrip(userA, { name: "Japan" });
+    const tripId = created.body.id as string;
+    await addMember(userA, tripId, "user-b@example.com", "editor");
+    await addMember(userA, tripId, "user-c@example.com", "viewer");
+    const tokyo = await createDestination(userA, tripId, "Tokyo");
+    const kyoto = await createDestination(userB, tripId, "Kyoto");
+    const osaka = await createDestination(userA, tripId, "Osaka");
+
+    expect(tokyo.status).toBe(201);
+    expect(kyoto.status).toBe(201);
+    expect(osaka.body.position).toBe(2);
+    for (const identity of [userA, userB, userC]) {
+      const listed = await request(app.getHttpServer())
+        .get(`/api/trips/${tripId}/destinations`)
+        .set("Cookie", identity.cookie);
+      expect(listed.status).toBe(200);
+      expect(listed.body).toHaveLength(3);
+    }
+    const hidden = await request(app.getHttpServer())
+      .get(`/api/trips/${tripId}/destinations`)
+      .set("Cookie", userD.cookie);
+    expect(hidden.status).toBe(404);
+
+    const viewerCreate = await createDestination(userC, tripId, "Blocked");
+    const unrelatedCreate = await createDestination(userD, tripId, "Hidden");
+    expect(viewerCreate.status).toBe(403);
+    expect(unrelatedCreate.status).toBe(404);
+
+    const renamed = await browserPatch(
+      app,
+      `/api/trips/${tripId}/destinations/${kyoto.body.id}`,
+    )
+      .set("Cookie", userB.cookie)
+      .send({ name: "  Kyoto City  " });
+    expect(renamed.status).toBe(200);
+    expect(renamed.body.name).toBe("Kyoto City");
+
+    const desired = [osaka.body.id, tokyo.body.id, kyoto.body.id];
+    const reordered = await browserPatch(
+      app,
+      `/api/trips/${tripId}/destinations/reorder`,
+    )
+      .set("Cookie", userB.cookie)
+      .send({ destinationIds: desired });
+    expect(reordered.status).toBe(200);
+    expect(
+      reordered.body.map(
+        ({ id, position }: { id: string; position: number }) => [id, position],
+      ),
+    ).toEqual(desired.map((id, position) => [id, position]));
+
+    for (const invalidOrder of [
+      [osaka.body.id, osaka.body.id, kyoto.body.id],
+      [osaka.body.id, tokyo.body.id],
+      [osaka.body.id, tokyo.body.id, UNKNOWN_TRIP_ID],
+    ]) {
+      const invalid = await browserPatch(
+        app,
+        `/api/trips/${tripId}/destinations/reorder`,
+      )
+        .set("Cookie", userA.cookie)
+        .send({ destinationIds: invalidOrder });
+      expect(invalid.status).toBe(400);
+      expect(invalid.body.code).toBe("INVALID_DESTINATION_ORDER");
+    }
+    const positions = await pool.query<{ id: string; position: number }>(
+      "SELECT id, position FROM trip_destinations WHERE trip_id = $1 ORDER BY position, id",
+      [tripId],
+    );
+    expect(positions.rows).toEqual(
+      desired.map((id, position) => ({ id, position })),
+    );
+  });
+
+  it("scopes Day assignments and clears them when deleting a destination", async () => {
+    const tripA = await createTrip(userA, {
+      endsOn: "2027-04-13",
+      name: "Trip A",
+      startsOn: "2027-04-12",
+    });
+    const tripB = await createTrip(userB, {
+      endsOn: "2027-05-02",
+      name: "Trip B",
+      startsOn: "2027-05-01",
+    });
+    const tripAId = tripA.body.id as string;
+    const tokyo = await createDestination(userA, tripAId, "Tokyo");
+    const rome = await createDestination(userB, tripB.body.id, "Rome");
+    await addMember(userA, tripAId, "user-b@example.com", "editor");
+    await addMember(userA, tripAId, "user-c@example.com", "viewer");
+    const days = await request(app.getHttpServer())
+      .get(`/api/trips/${tripAId}/days`)
+      .set("Cookie", userC.cookie);
+    expect(days.status).toBe(200);
+    const [dayOne, dayTwo] = days.body as Array<{ id: string }>;
+
+    const assigned = await browserPatch(
+      app,
+      `/api/trips/${tripAId}/days/${dayOne!.id}`,
+    )
+      .set("Cookie", userB.cookie)
+      .send({ destinationId: tokyo.body.id });
+    const secondAssigned = await browserPatch(
+      app,
+      `/api/trips/${tripAId}/days/${dayTwo!.id}`,
+    )
+      .set("Cookie", userA.cookie)
+      .send({ destinationId: tokyo.body.id });
+    expect(assigned.status).toBe(200);
+    expect(secondAssigned.status).toBe(200);
+
+    const viewerMutation = await browserPatch(
+      app,
+      `/api/trips/${tripAId}/days/${dayOne!.id}`,
+    )
+      .set("Cookie", userC.cookie)
+      .send({ destinationId: null });
+    const unrelatedMutation = await browserPatch(
+      app,
+      `/api/trips/${tripAId}/days/${dayOne!.id}`,
+    )
+      .set("Cookie", userD.cookie)
+      .send({ destinationId: null });
+    const foreignDestination = await browserPatch(
+      app,
+      `/api/trips/${tripAId}/days/${dayOne!.id}`,
+    )
+      .set("Cookie", userA.cookie)
+      .send({ destinationId: rome.body.id });
+    expect(viewerMutation.status).toBe(403);
+    expect(unrelatedMutation.status).toBe(404);
+    expect(foreignDestination.status).toBe(404);
+    expect(foreignDestination.body.code).toBe("DESTINATION_NOT_FOUND");
+
+    const deleted = await browserDelete(
+      app,
+      `/api/trips/${tripAId}/destinations/${tokyo.body.id}`,
+    ).set("Cookie", userB.cookie);
+    expect(deleted.status).toBe(204);
+    const persistedDays = await pool.query<{ destination_id: string | null }>(
+      "SELECT destination_id FROM trip_days WHERE trip_id = $1 ORDER BY date",
+      [tripAId],
+    );
+    expect(persistedDays.rows).toEqual([
+      { destination_id: null },
+      { destination_id: null },
+    ]);
+  });
+
+  it("enforces destination/day constraints and Trip cascades in PostgreSQL", async () => {
+    const tripA = await createTrip(userA, {
+      endsOn: "2027-04-12",
+      name: "Constraint A",
+      startsOn: "2027-04-12",
+    });
+    const tripB = await createTrip(userB, {
+      endsOn: "2027-05-01",
+      name: "Constraint B",
+      startsOn: "2027-05-01",
+    });
+    const destinationA = await createDestination(userA, tripA.body.id, "Tokyo");
+    const destinationB = await createDestination(userB, tripB.body.id, "Rome");
+
+    await expect(
+      pool.query(
+        "INSERT INTO trip_destinations (trip_id, name, position) VALUES ($1, '   ', 1)",
+        [tripA.body.id],
+      ),
+    ).rejects.toMatchObject({ code: "23514" });
+    await expect(
+      pool.query(
+        "INSERT INTO trip_destinations (trip_id, name, position) VALUES ($1, 'Kyoto', -1)",
+        [tripA.body.id],
+      ),
+    ).rejects.toMatchObject({ code: "23514" });
+    await expect(
+      pool.query(
+        "INSERT INTO trip_days (trip_id, date) VALUES ($1, '2027-04-12')",
+        [tripA.body.id],
+      ),
+    ).rejects.toMatchObject({ code: "23505" });
+    await expect(
+      pool.query(
+        "UPDATE trip_days SET destination_id = $1 WHERE trip_id = $2",
+        [destinationB.body.id, tripA.body.id],
+      ),
+    ).rejects.toMatchObject({ code: "23503" });
+
+    await pool.query(
+      "UPDATE trip_days SET destination_id = $1 WHERE trip_id = $2",
+      [destinationA.body.id, tripA.body.id],
+    );
+    await pool.query("DELETE FROM trips WHERE id = $1", [tripA.body.id]);
+    expect(
+      (
+        await pool.query(
+          "SELECT 1 FROM trip_destinations WHERE trip_id = $1",
+          [tripA.body.id],
+        )
+      ).rowCount,
+    ).toBe(0);
+    expect(
+      (
+        await pool.query("SELECT 1 FROM trip_days WHERE trip_id = $1", [
+          tripA.body.id,
+        ])
       ).rowCount,
     ).toBe(0);
   });

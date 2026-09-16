@@ -49,7 +49,10 @@ export function EditTripScreen({ tripId }: EditTripScreenProps) {
     mutationFn: (input: UpdateTripRequest) => tripsApi.update(tripId, input),
     onSuccess: async (trip) => {
       queryClient.setQueryData(tripKeys.detail(tripId), trip);
-      await queryClient.invalidateQueries({ queryKey: tripKeys.lists() });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: tripKeys.lists() }),
+        queryClient.invalidateQueries({ queryKey: tripKeys.days(tripId) }),
+      ]);
       router.push("/trips");
     },
   });

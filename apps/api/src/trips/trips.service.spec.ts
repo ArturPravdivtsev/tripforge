@@ -46,11 +46,15 @@ describe("TripsService", () => {
       startsOn: "2027-04-12",
     });
 
-    expect(repository.create).toHaveBeenCalledWith("user-1", {
-      endsOn: null,
-      name: "Japan 2027",
-      startsOn: "2027-04-12",
-    });
+    expect(repository.create).toHaveBeenCalledWith(
+      "user-1",
+      {
+        endsOn: null,
+        name: "Japan 2027",
+        startsOn: "2027-04-12",
+      },
+      [],
+    );
   });
 
   it("rejects invalid create ranges before persistence", async () => {
@@ -83,9 +87,12 @@ describe("TripsService", () => {
 
     await service.update("user-1", trip.id, { startsOn: null });
 
-    expect(repository.updateAccessible).toHaveBeenCalledWith("user-1", trip.id, {
-      startsOn: null,
-    });
+    expect(repository.updateAccessible).toHaveBeenCalledWith(
+      "user-1",
+      trip.id,
+      { startsOn: null },
+      [],
+    );
   });
 
   it("rejects empty PATCH payloads", async () => {
