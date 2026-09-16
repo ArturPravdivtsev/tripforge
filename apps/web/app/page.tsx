@@ -53,9 +53,9 @@ export default function HomePage() {
             <div className="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
               <Link
                 className="inline-flex min-h-11 items-center justify-center rounded-[var(--radius-md)] bg-[var(--primary)] px-5 py-2.5 font-semibold text-[var(--primary-foreground)] shadow-sm transition hover:brightness-95"
-                href="/register"
+                href="/trips"
               >
-                Create your account
+                Create your first trip
               </Link>
             </div>
           </div>

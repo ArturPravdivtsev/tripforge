@@ -1,9 +1,11 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { authApi } from "@/lib/api/auth";
 import { ApiClientError } from "@/lib/api/errors";
+import { tripKeys } from "@/lib/trips/query-keys";
+import { renderWithQueryClient } from "@/test-utils";
 
 import { AuthStatus } from "./auth-status";
 
@@ -16,7 +18,7 @@ describe("AuthStatus", () => {
     vi.spyOn(authApi, "me").mockResolvedValue({
       user: { displayName: "Arthur", email: "user@example.com", id: "1" },
     });
-    render(<AuthStatus />);
+    renderWithQueryClient(<AuthStatus />);
 
     expect(screen.getByRole("status")).toHaveTextContent("Checking session…");
     expect(await screen.findByText("Arthur")).toBeVisible();
@@ -27,7 +29,7 @@ describe("AuthStatus", () => {
     vi.spyOn(authApi, "me").mockRejectedValue(
       new ApiClientError("Unauthenticated", 401, "UNAUTHENTICATED"),
     );
-    render(<AuthStatus />);
+    renderWithQueryClient(<AuthStatus />);
 
     expect(await screen.findByRole("link", { name: "Sign in" })).toBeVisible();
     expect(screen.getByRole("link", { name: "Create account" })).toBeVisible();
@@ -39,17 +41,19 @@ describe("AuthStatus", () => {
     });
     const logout = vi.spyOn(authApi, "logout").mockResolvedValue();
     const user = userEvent.setup();
-    render(<AuthStatus />);
+    const { queryClient } = renderWithQueryClient(<AuthStatus />);
+    queryClient.setQueryData(tripKeys.list(1, 6), { items: [] });
 
     await user.click(await screen.findByRole("button", { name: "Logout" }));
 
     expect(logout).toHaveBeenCalledOnce();
     expect(await screen.findByRole("link", { name: "Sign in" })).toBeVisible();
+    expect(queryClient.getQueryData(tripKeys.list(1, 6))).toBeUndefined();
   });
 
   it("shows a recoverable state for server or network failures", async () => {
     vi.spyOn(authApi, "me").mockRejectedValue(new TypeError("offline"));
-    render(<AuthStatus />);
+    renderWithQueryClient(<AuthStatus />);
 
     expect(await screen.findByText("Session unavailable")).toBeVisible();
     expect(screen.getByRole("button", { name: "Retry" })).toBeVisible();

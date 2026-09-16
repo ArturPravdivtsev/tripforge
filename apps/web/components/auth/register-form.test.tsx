@@ -1,9 +1,10 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { authApi } from "@/lib/api/auth";
 import { ApiClientError } from "@/lib/api/errors";
+import { renderWithQueryClient } from "@/test-utils";
 
 import { RegisterForm } from "./register-form";
 
@@ -22,7 +23,7 @@ describe("RegisterForm", () => {
   });
 
   it("renders accessible registration fields and navigation", () => {
-    render(<RegisterForm />);
+    renderWithQueryClient(<RegisterForm />);
 
     expect(screen.getByRole("textbox", { name: "Display name" })).toHaveAttribute(
       "autocomplete",
@@ -44,7 +45,7 @@ describe("RegisterForm", () => {
 
   it("shows email and password validation errors", async () => {
     const user = userEvent.setup();
-    render(<RegisterForm />);
+    renderWithQueryClient(<RegisterForm />);
 
     await user.type(screen.getByRole("textbox", { name: "Email" }), "invalid");
     await user.type(screen.getByLabelText("Password"), "short");
@@ -66,7 +67,7 @@ describe("RegisterForm", () => {
         }),
     );
     const user = userEvent.setup();
-    render(<RegisterForm />);
+    renderWithQueryClient(<RegisterForm />);
 
     await user.type(screen.getByRole("textbox", { name: "Email" }), " user@example.com ");
     await user.type(screen.getByLabelText("Password"), " 123456789012345 ");
@@ -90,7 +91,7 @@ describe("RegisterForm", () => {
       new ApiClientError("backend text", 409, "ACCOUNT_ALREADY_EXISTS"),
     );
     const user = userEvent.setup();
-    render(<RegisterForm />);
+    renderWithQueryClient(<RegisterForm />);
 
     await user.type(screen.getByRole("textbox", { name: "Email" }), "user@example.com");
     await user.type(screen.getByLabelText("Password"), "123456789012345");

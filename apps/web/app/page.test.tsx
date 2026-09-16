@@ -1,11 +1,13 @@
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+
+import { renderWithQueryClient } from "@/test-utils";
 
 import HomePage from "./page";
 
 describe("HomePage", () => {
   it("introduces the product, navigation, and future trip action", () => {
-    render(<HomePage />);
+    renderWithQueryClient(<HomePage />);
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
       "Plan your next adventure",
@@ -26,8 +28,8 @@ describe("HomePage", () => {
     ).toBeVisible();
 
     expect(
-      screen.getByRole("link", { name: "Create your account" }),
-    ).toHaveAttribute("href", "/register");
+      screen.getByRole("link", { name: "Create your first trip" }),
+    ).toHaveAttribute("href", "/trips");
     expect(
       screen.getByRole("heading", { name: "Travel together" }),
     ).toBeVisible();

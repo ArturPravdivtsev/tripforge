@@ -1,7 +1,8 @@
 # TripForge
 
-TripForge is a collaborative travel planner. This repository currently contains
-the monorepo and automated testing foundations.
+TripForge is a collaborative travel planner. The current product flow supports
+browser authentication and owner-scoped Trip creation, listing, editing,
+pagination, and deletion.
 
 ## Structure
 
@@ -76,6 +77,16 @@ quality gate. Thresholds will be introduced when the domain and test architectur
 are sufficiently mature.
 
 Browser E2E tests are intentionally deferred to a later stage.
+
+## Trips dashboard
+
+Authenticated users can manage persisted Trips at
+<http://127.0.0.1:3000/trips>. The dashboard uses TanStack Query for remote
+state and URL-driven pagination. Create and edit forms use React Hook Form and
+Zod; PostgreSQL and backend validation remain authoritative.
+
+See [Server state](docs/server-state.md) for query keys, cache rules, and the
+client/server-state boundary.
 
 ## Docker runtime
 

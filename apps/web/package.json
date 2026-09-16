@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "5.9.1",
+    "@tanstack/react-query": "5.102.8",
     "@tripforge/contracts": "workspace:*",
     "@tripforge/ui": "workspace:*",
     "next": "16.3.4",

@@ -8,12 +8,14 @@ browser-only behavior.
 
 ```text
 Server
-AppShell
-├── Header
-│   ├── AuthStatus [Client]
-│   └── MobileNavigation [Client]
-├── Sidebar
-└── Page
+RootLayout
+└── QueryProvider [Client]
+    └── AppShell
+        ├── Header
+        │   ├── AuthStatus [Client]
+        │   └── MobileNavigation [Client]
+        ├── Sidebar
+        └── Page
 ```
 
 ## Client Components
@@ -32,6 +34,11 @@ only `RegisterForm` and `LoginForm` are client leaves. They use React Hook Form
 and Zod for UX validation, then call a small app-specific auth API boundary.
 Backend DTO validation remains authoritative.
 
+The `/trips`, `/trips/new`, and `/trips/[tripId]/edit` route pages also remain
+Server Components. Their interactive leaves (`TripsDashboard`, create form,
+and edit screen) own browser queries, mutations, and form state. Initial data
+is intentionally fetched in the browser; SSR cache hydration is deferred.
+
 ## Browser API boundary
 
 `lib/api/config.ts` is the only reader of `NEXT_PUBLIC_API_URL` and requires an
@@ -42,6 +49,12 @@ current operations: register, login, current-user discovery, and logout.
 `AuthStatus` owns localized loading, guest, authenticated, and recoverable error
 state. The HttpOnly cookie is the sole session source of truth; there is no auth
 context, global store, or local/session storage persistence.
+
+`tripsApi` reuses the same boundary for authenticated CRUD. TanStack Query owns
+the temporary Trip server-state representation. React Hook Form owns form input,
+and component state owns inline delete confirmation and safe error messages.
+Successful login, registration, logout, and guest discovery remove Trip queries
+so cached data cannot cross authentication identities.
 
 ## Shared UI boundary
 

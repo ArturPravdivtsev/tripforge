@@ -1,9 +1,10 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { authApi } from "@/lib/api/auth";
 import { ApiClientError } from "@/lib/api/errors";
+import { renderWithQueryClient } from "@/test-utils";
 
 import { LoginForm } from "./login-form";
 
@@ -23,7 +24,7 @@ describe("LoginForm", () => {
 
   it("renders accessible fields and validates required input", async () => {
     const user = userEvent.setup();
-    render(<LoginForm />);
+    renderWithQueryClient(<LoginForm />);
 
     expect(screen.getByRole("textbox", { name: "Email" })).toHaveAttribute(
       "autocomplete",
@@ -43,7 +44,7 @@ describe("LoginForm", () => {
       user: { displayName: "Arthur", email: "user@example.com", id: "1" },
     });
     const user = userEvent.setup();
-    render(<LoginForm />);
+    renderWithQueryClient(<LoginForm />);
 
     await user.type(screen.getByRole("textbox", { name: "Email" }), " user@example.com ");
     await user.type(screen.getByLabelText("Password"), " password with spaces ");
@@ -63,7 +64,7 @@ describe("LoginForm", () => {
       new ApiClientError("backend text", 401, "INVALID_CREDENTIALS"),
     );
     const user = userEvent.setup();
-    render(<LoginForm />);
+    renderWithQueryClient(<LoginForm />);
 
     await user.type(screen.getByRole("textbox", { name: "Email" }), "user@example.com");
     await user.type(screen.getByLabelText("Password"), "wrong");
@@ -77,7 +78,7 @@ describe("LoginForm", () => {
   it("sanitizes network failures", async () => {
     vi.spyOn(authApi, "login").mockRejectedValue(new TypeError("network detail"));
     const user = userEvent.setup();
-    render(<LoginForm />);
+    renderWithQueryClient(<LoginForm />);
 
     await user.type(screen.getByRole("textbox", { name: "Email" }), "user@example.com");
     await user.type(screen.getByLabelText("Password"), "password");

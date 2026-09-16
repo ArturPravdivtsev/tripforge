@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { AuthUser } from "@tripforge/contracts";
 import { Button } from "@tripforge/ui";
 
 import { authApi } from "@/lib/api/auth";
 import { ApiClientError } from "@/lib/api/errors";
+import { clearTripCache } from "@/lib/trips/cache";
 
 type AuthState =
   | { status: "loading" }
@@ -27,6 +29,7 @@ async function resolveAuthState(): Promise<AuthState> {
 }
 
 export function AuthStatus() {
+  const queryClient = useQueryClient();
   const [authState, setAuthState] = useState<AuthState>({ status: "loading" });
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
@@ -40,6 +43,9 @@ export function AuthStatus() {
 
     void resolveAuthState().then((state) => {
       if (active) {
+        if (state.status === "guest") {
+          void clearTripCache(queryClient);
+        }
         setAuthState(state);
       }
     });
@@ -47,16 +53,18 @@ export function AuthStatus() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [queryClient]);
 
   async function logout() {
     setIsLoggingOut(true);
 
     try {
       await authApi.logout();
+      await clearTripCache(queryClient);
       setAuthState({ status: "guest" });
     } catch (error) {
       if (error instanceof ApiClientError && error.status === 401) {
+        await clearTripCache(queryClient);
         setAuthState({ status: "guest" });
       } else {
         setAuthState({ status: "error" });

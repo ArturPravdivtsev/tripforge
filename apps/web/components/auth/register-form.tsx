@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQueryClient } from "@tanstack/react-query";
 import { Alert, Button, Input, Label } from "@tripforge/ui";
 import { useForm } from "react-hook-form";
 
@@ -13,6 +14,7 @@ import {
   registerSchema,
   type RegisterFormValues,
 } from "@/lib/auth/schemas";
+import { clearTripCache } from "@/lib/trips/cache";
 
 function registerErrorMessage(error: unknown): string {
   if (error instanceof ApiClientError && error.code === "ACCOUNT_ALREADY_EXISTS") {
@@ -24,6 +26,7 @@ function registerErrorMessage(error: unknown): string {
 
 export function RegisterForm() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [serverError, setServerError] = useState<string>();
   const {
     formState: { errors, isSubmitting },
@@ -41,6 +44,7 @@ export function RegisterForm() {
     try {
       const parsed = registerSchema.parse(values);
       await authApi.register(parsed);
+      await clearTripCache(queryClient);
       reset();
       router.replace("/");
       router.refresh();

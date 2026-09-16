@@ -33,6 +33,12 @@ tests, mocked Fetch client tests, Nest CORS/browser-policy HTTP tests, real
 PostgreSQL authentication integration tests, and manual browser QA. Installing
 Playwright remains intentionally deferred.
 
+Stage 10 adds fresh-`QueryClient` component tests for Trips loading, empty,
+authentication-required and retryable-error states; URL pagination and retained
+page data; create/edit forms; optimistic deletion success and rollback; and
+logout cache isolation. Focused client tests cover request URLs, credentials,
+mutation headers, JSON bodies, `AbortSignal`, and `204 No Content` handling.
+
 TripForge should avoid testing implementation details and should not rely only
 on expensive browser E2E tests.
 
