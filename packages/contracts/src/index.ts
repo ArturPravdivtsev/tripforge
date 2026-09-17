@@ -58,6 +58,8 @@ export interface UpdateTripMemberRequest {
 
 export interface TripDestination {
   id: string;
+  latitude: number | null;
+  longitude: number | null;
   name: string;
   position: number;
   createdAt: string;
@@ -75,7 +77,9 @@ export interface CreateTripDestinationRequest {
 }
 
 export interface UpdateTripDestinationRequest {
-  name: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  name?: string;
 }
 
 export interface ReorderTripDestinationsRequest {

@@ -55,6 +55,12 @@ the start date when both values exist.
 defaults. No automatic `updated_at` mechanism exists yet; future write logic
 must update it explicitly.
 
+`trip_destinations.latitude` and `trip_destinations.longitude` are nullable
+`double precision` columns. Checks require a complete pair and enforce latitude
+`[-90, 90]` and longitude `[-180, 180]`; existing text-only destinations remain
+valid with both columns null. Spatial extensions and indexes are intentionally
+deferred until the server performs spatial queries.
+
 ## Migration workflow
 
 ```text

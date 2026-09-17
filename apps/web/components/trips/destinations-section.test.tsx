@@ -9,11 +9,34 @@ import { renderWithQueryClient } from "@/test-utils";
 
 import { DestinationsSection } from "./destinations-section";
 
+vi.mock("../maps/trip-map-panel", () => ({
+  TripMapPanel: ({
+    editingDestinationId,
+    onMapClick,
+  }: {
+    editingDestinationId?: string;
+    onMapClick: (point: { latitude: number; longitude: number }) => void;
+  }) => (
+    <div data-testid="trip-map-panel">
+      {editingDestinationId ? (
+        <button
+          onClick={() => onMapClick({ latitude: 35.6762, longitude: 139.6503 })}
+          type="button"
+        >
+          Pick Tokyo point
+        </button>
+      ) : null}
+    </div>
+  ),
+}));
+
 const tripId = "11111111-1111-4111-8111-111111111111";
 const destinations: TripDestination[] = [
   {
     createdAt: "2027-01-01T00:00:00.000Z",
     id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    latitude: null,
+    longitude: null,
     name: "Tokyo",
     position: 0,
     updatedAt: "2027-01-01T00:00:00.000Z",
@@ -21,6 +44,8 @@ const destinations: TripDestination[] = [
   {
     createdAt: "2027-01-01T00:00:00.000Z",
     id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    latitude: null,
+    longitude: null,
     name: "Kyoto",
     position: 1,
     updatedAt: "2027-01-01T00:00:00.000Z",
@@ -128,5 +153,95 @@ describe("DestinationsSection", () => {
     expect(reorder).toHaveBeenCalledWith(tripId, {
       destinationIds: [destinations[1]!.id, destinations[0]!.id],
     });
+  });
+
+  it("previews and explicitly saves a destination location", async () => {
+    vi.spyOn(tripsApi, "listDestinations").mockResolvedValue(destinations);
+    const update = vi.spyOn(tripsApi, "updateDestination").mockResolvedValue({
+      ...destinations[0]!,
+      latitude: 35.6762,
+      longitude: 139.6503,
+    });
+    const user = userEvent.setup();
+    renderWithQueryClient(<DestinationsSection canEdit tripId={tripId} />);
+
+    await user.click((await screen.findAllByRole("button", { name: "Set location" }))[0]!);
+    expect(screen.getByRole("button", { name: "Save location" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Pick Tokyo point" }));
+    await user.click(screen.getByRole("button", { name: "Save location" }));
+
+    expect(update).toHaveBeenCalledWith(tripId, destinations[0]!.id, {
+      latitude: 35.6762,
+      longitude: 139.6503,
+    });
+    await waitFor(() => expect(screen.getAllByText("Location set")).toHaveLength(1));
+  });
+
+  it("cancels a location preview without persisting", async () => {
+    const located = [
+      { ...destinations[0]!, latitude: 35.6762, longitude: 139.6503 },
+    ];
+    vi.spyOn(tripsApi, "listDestinations").mockResolvedValue(located);
+    const update = vi.spyOn(tripsApi, "updateDestination");
+    const user = userEvent.setup();
+    renderWithQueryClient(<DestinationsSection canEdit tripId={tripId} />);
+
+    await user.click(await screen.findByRole("button", { name: "Change location" }));
+    await user.click(screen.getByRole("button", { name: "Pick Tokyo point" }));
+    await user.click(screen.getByRole("button", { name: "Cancel location" }));
+
+    expect(update).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: "Save location" })).not.toBeInTheDocument();
+    expect(screen.getByText("Location set")).toBeVisible();
+  });
+
+  it("keeps the preview available for retry after a location mutation error", async () => {
+    vi.spyOn(tripsApi, "listDestinations").mockResolvedValue(destinations);
+    vi.spyOn(tripsApi, "updateDestination").mockRejectedValue(new Error("offline"));
+    const user = userEvent.setup();
+    renderWithQueryClient(<DestinationsSection canEdit tripId={tripId} />);
+
+    await user.click((await screen.findAllByRole("button", { name: "Set location" }))[0]!);
+    await user.click(screen.getByRole("button", { name: "Pick Tokyo point" }));
+    await user.click(screen.getByRole("button", { name: "Save location" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Unable to update destinations. Please try again.",
+    );
+    expect(screen.getByRole("button", { name: "Save location" })).toBeEnabled();
+  });
+
+  it("clears a location only after explicit confirmation", async () => {
+    const located = [
+      { ...destinations[0]!, latitude: 35.6762, longitude: 139.6503 },
+    ];
+    vi.spyOn(tripsApi, "listDestinations").mockResolvedValue(located);
+    const update = vi.spyOn(tripsApi, "updateDestination").mockResolvedValue({
+      ...located[0]!,
+      latitude: null,
+      longitude: null,
+    });
+    const user = userEvent.setup();
+    renderWithQueryClient(<DestinationsSection canEdit tripId={tripId} />);
+
+    await user.click(await screen.findByRole("button", { name: "Clear location" }));
+    expect(update).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Confirm clear location" }));
+
+    expect(update).toHaveBeenCalledWith(tripId, destinations[0]!.id, {
+      latitude: null,
+      longitude: null,
+    });
+  });
+
+  it("keeps map editing controls out of the viewer experience", async () => {
+    vi.spyOn(tripsApi, "listDestinations").mockResolvedValue([
+      { ...destinations[0]!, latitude: 35.6762, longitude: 139.6503 },
+    ]);
+    renderWithQueryClient(<DestinationsSection canEdit={false} tripId={tripId} />);
+
+    expect(await screen.findByRole("button", { name: "Show on map" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Change location" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Clear location" })).not.toBeInTheDocument();
   });
 });

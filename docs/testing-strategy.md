@@ -54,6 +54,12 @@ item CRUD/RBAC/scoping, deterministic listing, complete-list reorder, cross-Day
 moves, deletion normalization, forced transactional rollback, date conflicts,
 checks, foreign keys, duplicate positions, and Day/Trip cascades.
 
+Stage 14 adds pure bounds and coordinate validation tests, mocked map-boundary
+component tests, destination location preview/save/cancel/clear coverage, API
+body checks, and PostgreSQL integration coverage for coordinate persistence,
+name-only PATCH preservation, RBAC, and every pair/range CHECK. Automated tests
+never contact MapTiler and do not require WebGL or internet access.
+
 TripForge should avoid testing implementation details and should not rely only
 on expensive browser E2E tests.
 

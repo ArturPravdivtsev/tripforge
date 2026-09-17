@@ -64,7 +64,7 @@ export class TripDestinationsController {
     @Param("destinationId", ParseUUIDPipe) destinationId: string,
     @Body() input: UpdateTripDestinationDto,
   ): Promise<TripDestination> {
-    return this.destinations.update(user.id, tripId, destinationId, input.name);
+    return this.destinations.update(user.id, tripId, destinationId, input);
   }
 
   @Delete(":destinationId")

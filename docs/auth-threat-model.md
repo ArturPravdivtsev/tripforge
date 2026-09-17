@@ -47,6 +47,11 @@ Neither may be logged or persisted in raw form.
 | Date shrink destroys plans | Locked populated-Day check returns `409` before mutation |
 | Client forges item position | Position is not writable in CRUD; reorder normalizes it |
 | Stale user sees cached itinerary | Authentication transitions remove the `['trips']` cache tree |
+| Viewer changes destination coordinates | Existing role authorization returns `403` |
+| Client sends invalid coordinate values | Service finiteness/range validation plus PostgreSQL CHECK constraints |
+| Client sends a partial coordinate pair | PATCH presence validation plus PostgreSQL pair CHECK |
+| Public map key is reused elsewhere | MapTiler allowed-origin restriction, quotas, rotation, and separate environment keys |
+| Map provider is unavailable | Local error isolation; canonical destination and itinerary UI remains usable |
 
 ## Residual and deferred risk
 

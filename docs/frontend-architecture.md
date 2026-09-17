@@ -39,6 +39,12 @@ Server Components. Their interactive leaves (`TripsDashboard`, create form,
 and edit screen) own browser queries, mutations, and form state. Initial data
 is intentionally fetched in the browser; SSR cache hydration is deferred.
 
+The Trip map is a local Client Component island inside `DestinationsSection`.
+`TripPage`, the workspace route, and `RootLayout` remain server-first. The
+MapLibre implementation is loaded with `next/dynamic` and `ssr: false`, so
+browser-only WebGL and worker initialization never execute during SSR and do not
+enter routes that never render a map. Map failures are isolated locally.
+
 ## Browser API boundary
 
 `lib/api/config.ts` is the only reader of `NEXT_PUBLIC_API_URL` and requires an
@@ -55,6 +61,11 @@ the temporary Trip server-state representation. React Hook Form owns form input,
 and component state owns inline delete confirmation and safe error messages.
 Successful login, registration, logout, and guest discovery remove Trip queries
 so cached data cannot cross authentication identities.
+
+`lib/maps/config.ts` is the only reader of `NEXT_PUBLIC_MAPTILER_KEY` and the
+only source of the MapTiler style URL. Missing configuration is represented as
+an unavailable map rather than an application startup failure because the map
+is progressive enhancement. The key is intentionally browser-visible.
 
 ## Shared UI boundary
 

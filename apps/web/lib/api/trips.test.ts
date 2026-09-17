@@ -206,6 +206,22 @@ describe("tripsApi", () => {
   });
 
   it.each([
+    { latitude: 35.6762, longitude: 139.6503 },
+    { latitude: null, longitude: null },
+  ])("sends destination coordinate PATCH body %#", async (body) => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({})));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await tripsApi.updateDestination(trip.id, "destination-id", body);
+
+    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(
+      `http://127.0.0.1:4000/api/trips/${trip.id}/destinations/destination-id`,
+    );
+    expect(options.body).toBe(JSON.stringify(body));
+  });
+
+  it.each([
     ["createItineraryItem", "POST", "/itinerary-items", { dayId: "day-id", kind: "activity", title: "Museum" }],
     ["updateItineraryItem", "PATCH", "/itinerary-items/item-id", { title: "Gallery" }],
     ["reorderItineraryItems", "PATCH", "/itinerary-items/reorder", { days: [{ dayId: "day-id", itemIds: ["item-id"] }] }],

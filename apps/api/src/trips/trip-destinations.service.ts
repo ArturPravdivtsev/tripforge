@@ -1,5 +1,8 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
-import type { TripDestination } from "@tripforge/contracts";
+import type {
+  TripDestination,
+  UpdateTripDestinationRequest,
+} from "@tripforge/contracts";
 
 import {
   DestinationOrderChangedError,
@@ -18,6 +21,32 @@ export function isCompleteDestinationOrder(
   return (
     new Set(desiredIds).size === desiredIds.length &&
     desiredIds.every((id) => currentIds.includes(id))
+  );
+}
+
+export function isValidDestinationCoordinateUpdate(
+  input: UpdateTripDestinationRequest,
+): boolean {
+  const hasLatitude = input.latitude !== undefined;
+  const hasLongitude = input.longitude !== undefined;
+
+  if (hasLatitude !== hasLongitude) return false;
+  if (!hasLatitude) return true;
+
+  const { latitude, longitude } = input;
+  if (latitude === null || longitude === null) {
+    return latitude === null && longitude === null;
+  }
+
+  return (
+    typeof latitude === "number" &&
+    Number.isFinite(latitude) &&
+    latitude >= -90 &&
+    latitude <= 90 &&
+    typeof longitude === "number" &&
+    Number.isFinite(longitude) &&
+    longitude >= -180 &&
+    longitude <= 180
   );
 }
 
@@ -46,13 +75,22 @@ export class TripDestinationsService {
     userId: string,
     tripId: string,
     destinationId: string,
-    name: string,
+    input: UpdateTripDestinationRequest,
   ): Promise<TripDestination> {
     await this.permissions.requireEditable(userId, tripId);
+
+    if (!isValidDestinationCoordinateUpdate(input)) {
+      throw this.invalidCoordinates();
+    }
+
+    const changes: UpdateTripDestinationRequest = {};
+    if (input.name !== undefined) changes.name = input.name.trim();
+    if (input.latitude !== undefined) changes.latitude = input.latitude;
+    if (input.longitude !== undefined) changes.longitude = input.longitude;
     const destination = await this.destinationsRepository.update(
       tripId,
       destinationId,
-      name.trim(),
+      changes,
     );
 
     if (!destination) {
@@ -108,6 +146,16 @@ export class TripDestinationsService {
       {
         code: "INVALID_DESTINATION_ORDER",
         message: "Destination order must include every destination exactly once",
+      },
+      HttpStatus.BAD_REQUEST,
+    );
+  }
+
+  private invalidCoordinates(): HttpException {
+    return new HttpException(
+      {
+        code: "INVALID_DESTINATION_COORDINATES",
+        message: "Latitude and longitude must be supplied as a valid pair",
       },
       HttpStatus.BAD_REQUEST,
     );

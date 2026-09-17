@@ -60,10 +60,16 @@ WEB_ORIGIN=http://127.0.0.1:3000
 
 These are local development defaults. Production requires an explicit
 `DATABASE_URL` and exact `WEB_ORIGIN`. The browser app uses
-`NEXT_PUBLIC_API_URL=http://127.0.0.1:4000`. Environment files are optional for
-local development; use `apps/api/.env.example` and `apps/web/.env.example` as
-starting points when overriding the defaults. Keep the hostname style consistent
-between both applications during cookie testing.
+`NEXT_PUBLIC_API_URL=http://127.0.0.1:4000`. Set `NEXT_PUBLIC_MAPTILER_KEY` to a
+MapTiler browser key to enable Trip maps; without it the workspace keeps working
+and shows a controlled map-unavailable state. Both `NEXT_PUBLIC_*` values are
+embedded into the web build and are not secrets. Restrict MapTiler keys to the
+allowed frontend origin and use separate development and production keys.
+Environment files are optional for local development; use
+`apps/api/.env.example` and `apps/web/.env.example` as starting points when
+overriding the defaults. Keep the hostname style consistent between both
+applications during cookie testing. See [Maps](docs/maps.md) for provider and
+key details.
 
 ## Testing and quality
 

@@ -1,0 +1,5 @@
+ALTER TABLE "trip_destinations" ADD COLUMN "latitude" double precision;--> statement-breakpoint
+ALTER TABLE "trip_destinations" ADD COLUMN "longitude" double precision;--> statement-breakpoint
+ALTER TABLE "trip_destinations" ADD CONSTRAINT "trip_destinations_coordinates_pair_check" CHECK (("trip_destinations"."latitude" IS NULL AND "trip_destinations"."longitude" IS NULL) OR ("trip_destinations"."latitude" IS NOT NULL AND "trip_destinations"."longitude" IS NOT NULL));--> statement-breakpoint
+ALTER TABLE "trip_destinations" ADD CONSTRAINT "trip_destinations_latitude_range_check" CHECK ("trip_destinations"."latitude" IS NULL OR "trip_destinations"."latitude" BETWEEN -90 AND 90);--> statement-breakpoint
+ALTER TABLE "trip_destinations" ADD CONSTRAINT "trip_destinations_longitude_range_check" CHECK ("trip_destinations"."longitude" IS NULL OR "trip_destinations"."longitude" BETWEEN -180 AND 180);

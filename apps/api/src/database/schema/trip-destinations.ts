@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   check,
+  doublePrecision,
   index,
   integer,
   pgTable,
@@ -20,6 +21,8 @@ export const tripDestinations = pgTable(
       .notNull()
       .references(() => trips.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 160 }).notNull(),
+    latitude: doublePrecision("latitude"),
+    longitude: doublePrecision("longitude"),
     position: integer("position").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
@@ -42,6 +45,18 @@ export const tripDestinations = pgTable(
     check(
       "trip_destinations_position_nonnegative_check",
       sql`${table.position} >= 0`,
+    ),
+    check(
+      "trip_destinations_coordinates_pair_check",
+      sql`(${table.latitude} IS NULL AND ${table.longitude} IS NULL) OR (${table.latitude} IS NOT NULL AND ${table.longitude} IS NOT NULL)`,
+    ),
+    check(
+      "trip_destinations_latitude_range_check",
+      sql`${table.latitude} IS NULL OR ${table.latitude} BETWEEN -90 AND 90`,
+    ),
+    check(
+      "trip_destinations_longitude_range_check",
+      sql`${table.longitude} IS NULL OR ${table.longitude} BETWEEN -180 AND 180`,
     ),
   ],
 );

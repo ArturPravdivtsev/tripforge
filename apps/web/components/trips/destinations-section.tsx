@@ -15,7 +15,10 @@ import {
 } from "@tripforge/ui";
 
 import { tripsApi } from "@/lib/api/trips";
+import type { MapPoint } from "@/lib/maps/bounds";
 import { tripKeys } from "@/lib/trips/query-keys";
+
+import { TripMapPanel } from "../maps/trip-map-panel";
 
 type DestinationsSectionProps = Readonly<{
   canEdit: boolean;
@@ -39,6 +42,10 @@ export function DestinationsSection({
   const [editingId, setEditingId] = useState<string>();
   const [editingName, setEditingName] = useState("");
   const [confirmingId, setConfirmingId] = useState<string>();
+  const [confirmingClearId, setConfirmingClearId] = useState<string>();
+  const [locationEditingId, setLocationEditingId] = useState<string>();
+  const [locationPreview, setLocationPreview] = useState<MapPoint>();
+  const [selectedDestinationId, setSelectedDestinationId] = useState<string>();
   const [formError, setFormError] = useState<string>();
   const [mutationError, setMutationError] = useState<string>();
   const key = tripKeys.destinations(tripId);
@@ -58,6 +65,28 @@ export function DestinationsSection({
     onSuccess: async () => {
       setEditingId(undefined);
       await refresh();
+    },
+  });
+  const updateLocation = useMutation({
+    mutationFn: ({
+      id,
+      latitude,
+      longitude,
+    }: {
+      id: string;
+      latitude: number | null;
+      longitude: number | null;
+    }) => tripsApi.updateDestination(tripId, id, { latitude, longitude }),
+    onSuccess: (updated) => {
+      queryClient.setQueryData<TripDestination[]>(key, (current) =>
+        current?.map((destination) =>
+          destination.id === updated.id ? updated : destination,
+        ),
+      );
+      setConfirmingClearId(undefined);
+      setLocationEditingId(undefined);
+      setLocationPreview(undefined);
+      setSelectedDestinationId(updated.id);
     },
   });
   const deleteDestination = useMutation({
@@ -114,6 +143,38 @@ export function DestinationsSection({
     setMutationError(undefined);
     try {
       await deleteDestination.mutateAsync(id);
+      if (selectedDestinationId === id) setSelectedDestinationId(undefined);
+    } catch {
+      safeMutationError();
+    }
+  }
+
+  function startLocationEdit(id: string) {
+    setEditingId(undefined);
+    setConfirmingId(undefined);
+    setConfirmingClearId(undefined);
+    setLocationEditingId(id);
+    setLocationPreview(undefined);
+    setSelectedDestinationId(id);
+    setMutationError(undefined);
+  }
+
+  async function saveLocation() {
+    if (!locationEditingId || !locationPreview) return;
+    setMutationError(undefined);
+
+    try {
+      await updateLocation.mutateAsync({ id: locationEditingId, ...locationPreview });
+    } catch {
+      safeMutationError();
+    }
+  }
+
+  async function clearLocation(id: string) {
+    setMutationError(undefined);
+
+    try {
+      await updateLocation.mutateAsync({ id, latitude: null, longitude: null });
     } catch {
       safeMutationError();
     }
@@ -165,6 +226,7 @@ export function DestinationsSection({
                   <DestinationRow
                     canEdit={canEdit}
                     confirming={confirmingId === destination.id}
+                    confirmingClear={confirmingClearId === destination.id}
                     destination={destination}
                     editing={editingId === destination.id}
                     editingName={editingName}
@@ -175,24 +237,40 @@ export function DestinationsSection({
                       createDestination.isPending ||
                       updateDestination.isPending ||
                       deleteDestination.isPending ||
+                      updateLocation.isPending ||
                       reorderDestinations.isPending
                     }
                     key={destination.id}
                     onCancelDelete={() => setConfirmingId(undefined)}
+                    onCancelClear={() => setConfirmingClearId(undefined)}
                     onCancelEdit={() => {
                       setEditingId(undefined);
                       setFormError(undefined);
                     }}
                     onChangeName={setEditingName}
+                    onClearLocation={() => setConfirmingClearId(destination.id)}
+                    onConfirmClear={() => void clearLocation(destination.id)}
                     onConfirmDelete={() => void removeDestination(destination.id)}
                     onDelete={() => setConfirmingId(destination.id)}
                     onEdit={() => {
+                      setLocationEditingId(undefined);
+                      setLocationPreview(undefined);
                       setEditingId(destination.id);
                       setEditingName(destination.name);
                       setFormError(undefined);
                     }}
                     onMove={(offset) => void moveDestination(index, offset)}
+                    onSelect={() => setSelectedDestinationId(destination.id)}
                     onSave={() => void saveDestination(destination.id)}
+                    onSaveLocation={() => void saveLocation()}
+                    onStartLocation={() => startLocationEdit(destination.id)}
+                    onCancelLocation={() => {
+                      setLocationEditingId(undefined);
+                      setLocationPreview(undefined);
+                    }}
+                    locationEditing={locationEditingId === destination.id}
+                    locationPreviewReady={Boolean(locationPreview)}
+                    selected={selectedDestinationId === destination.id}
                   />
                 ))}
               </ul>
@@ -222,6 +300,17 @@ export function DestinationsSection({
                 {formError ? <p className="text-sm text-[var(--danger)]">{formError}</p> : null}
               </form>
             ) : null}
+
+            <TripMapPanel
+              canEdit={canEdit}
+              destinations={destinationsQuery.data}
+              editingDestinationId={locationEditingId}
+              onEditLocation={startLocationEdit}
+              onMapClick={setLocationPreview}
+              onSelectDestination={setSelectedDestinationId}
+              preview={locationPreview}
+              selectedDestinationId={selectedDestinationId}
+            />
           </>
         )}
       </CardContent>
@@ -232,6 +321,7 @@ export function DestinationsSection({
 function DestinationRow({
   canEdit,
   confirming,
+  confirmingClear,
   destination,
   editing,
   editingName,
@@ -239,17 +329,28 @@ function DestinationRow({
   isFirst,
   isLast,
   isPending,
+  locationEditing,
+  locationPreviewReady,
+  selected,
+  onCancelClear,
   onCancelDelete,
   onCancelEdit,
+  onCancelLocation,
   onChangeName,
+  onClearLocation,
+  onConfirmClear,
   onConfirmDelete,
   onDelete,
   onEdit,
   onMove,
+  onSelect,
   onSave,
+  onSaveLocation,
+  onStartLocation,
 }: Readonly<{
   canEdit: boolean;
   confirming: boolean;
+  confirmingClear: boolean;
   destination: TripDestination;
   editing: boolean;
   editingName: string;
@@ -257,17 +358,33 @@ function DestinationRow({
   isFirst: boolean;
   isLast: boolean;
   isPending: boolean;
+  locationEditing: boolean;
+  locationPreviewReady: boolean;
+  selected: boolean;
+  onCancelClear: () => void;
   onCancelDelete: () => void;
   onCancelEdit: () => void;
+  onCancelLocation: () => void;
   onChangeName: (name: string) => void;
+  onClearLocation: () => void;
+  onConfirmClear: () => void;
   onConfirmDelete: () => void;
   onDelete: () => void;
   onEdit: () => void;
   onMove: (offset: -1 | 1) => void;
+  onSelect: () => void;
   onSave: () => void;
+  onSaveLocation: () => void;
+  onStartLocation: () => void;
 }>) {
+  const hasLocation = destination.latitude !== null && destination.longitude !== null;
+
   return (
-    <li className="min-w-0 py-4 first:pt-0 last:pb-0">
+    <li
+      className={`min-w-0 rounded-[var(--radius-sm)] px-2 py-4 first:pt-2 last:pb-2 ${
+        selected ? "bg-[var(--surface-muted)]" : ""
+      }`}
+    >
       {editing ? (
         <div className="space-y-3">
           <Label htmlFor={`destination-${destination.id}`}>Destination name</Label>
@@ -301,11 +418,50 @@ function DestinationRow({
             </Button>
           </div>
         </div>
+      ) : confirmingClear ? (
+        <div className="space-y-3">
+          <p className="break-words font-semibold">Clear location for “{destination.name}”?</p>
+          <p className="text-sm text-[var(--muted-foreground)]">
+            The destination stays in the trip, but its marker will be removed.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" disabled={isPending} onClick={onConfirmClear}>
+              {isPending ? "Clearing…" : "Confirm clear location"}
+            </Button>
+            <Button size="sm" variant="secondary" disabled={isPending} onClick={onCancelClear}>
+              Cancel
+            </Button>
+          </div>
+        </div>
       ) : (
-        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="min-w-0 break-words font-semibold">{destination.name}</p>
-          {canEdit ? (
+        <div className="space-y-3">
+          <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="break-words font-semibold">{destination.name}</p>
+              <p className="text-xs text-[var(--muted-foreground)]">
+                {hasLocation ? "Location set" : "Location not set"}
+              </p>
+            </div>
             <div className="flex flex-wrap gap-2">
+              {hasLocation ? (
+                <Button size="sm" variant="secondary" onClick={onSelect}>
+                  Show on map
+                </Button>
+              ) : null}
+              {canEdit ? (
+                <>
+                  <Button size="sm" variant="secondary" disabled={isPending} onClick={onStartLocation}>
+                    {hasLocation ? "Change location" : "Set location"}
+                  </Button>
+                  {hasLocation ? (
+                    <Button size="sm" variant="ghost" disabled={isPending} onClick={onClearLocation}>
+                      Clear location
+                    </Button>
+                  ) : null}
+                </>
+              ) : null}
+              {canEdit ? (
+                <>
               <Button size="sm" variant="secondary" disabled={isFirst || isPending} onClick={() => onMove(-1)}>
                 Move up
               </Button>
@@ -314,6 +470,23 @@ function DestinationRow({
               </Button>
               <Button size="sm" variant="ghost" disabled={isPending} onClick={onEdit}>Edit</Button>
               <Button size="sm" variant="ghost" disabled={isPending} onClick={onDelete}>Delete</Button>
+                </>
+              ) : null}
+            </div>
+          </div>
+          {locationEditing ? (
+            <div className="rounded-[var(--radius-sm)] border border-[var(--border)] p-3">
+              <p className="mb-3 text-sm text-[var(--muted-foreground)]">
+                Select a point on the map. Changes are saved only after confirmation.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" disabled={isPending || !locationPreviewReady} onClick={onSaveLocation}>
+                  {isPending ? "Saving location…" : "Save location"}
+                </Button>
+                <Button size="sm" variant="secondary" disabled={isPending} onClick={onCancelLocation}>
+                  Cancel location
+                </Button>
+              </div>
             </div>
           ) : null}
         </div>

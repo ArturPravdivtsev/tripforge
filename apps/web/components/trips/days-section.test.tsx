@@ -12,6 +12,8 @@ const tripId = "11111111-1111-4111-8111-111111111111";
 const tokyo: TripDestination = {
   createdAt: "2027-01-01T00:00:00.000Z",
   id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  latitude: null,
+  longitude: null,
   name: "Tokyo",
   position: 0,
   updatedAt: "2027-01-01T00:00:00.000Z",

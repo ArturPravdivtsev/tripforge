@@ -983,6 +983,88 @@ describe("Trips CRUD with PostgreSQL", () => {
     );
   });
 
+  it("persists coordinate PATCH semantics with existing destination RBAC", async () => {
+    const created = await createTrip(userA, { name: "Japan" });
+    const tripId = created.body.id as string;
+    await addMember(userA, tripId, "user-b@example.com", "editor");
+    await addMember(userA, tripId, "user-c@example.com", "viewer");
+    const tokyo = await createDestination(userA, tripId, "Tokyo");
+    const path = `/api/trips/${tripId}/destinations/${tokyo.body.id}`;
+
+    expect(tokyo.body).toMatchObject({ latitude: null, longitude: null });
+
+    const setLocation = await browserPatch(app, path)
+      .set("Cookie", userB.cookie)
+      .send({ latitude: 35.6762, longitude: 139.6503 });
+    expect(setLocation.status).toBe(200);
+    expect(setLocation.body).toMatchObject({
+      latitude: 35.6762,
+      longitude: 139.6503,
+      name: "Tokyo",
+    });
+
+    const rename = await browserPatch(app, path)
+      .set("Cookie", userA.cookie)
+      .send({ name: "Tokyo City" });
+    expect(rename.status).toBe(200);
+    expect(rename.body).toMatchObject({
+      latitude: 35.6762,
+      longitude: 139.6503,
+      name: "Tokyo City",
+    });
+
+    const moved = await browserPatch(app, path)
+      .set("Cookie", userA.cookie)
+      .send({ latitude: 35.7, longitude: 139.7 });
+    expect(moved.status).toBe(200);
+    expect(moved.body).toMatchObject({ latitude: 35.7, longitude: 139.7 });
+
+    for (const invalidBody of [
+      { latitude: 35.6762 },
+      { longitude: 139.6503 },
+      { latitude: null, longitude: 139.6503 },
+      { latitude: 91, longitude: 139.6503 },
+      { latitude: 35.6762, longitude: -181 },
+      { latitude: "35.6762", longitude: 139.6503 },
+    ]) {
+      const invalid = await browserPatch(app, path)
+        .set("Cookie", userA.cookie)
+        .send(invalidBody);
+      expect(invalid.status).toBe(400);
+      expect(invalid.body.code).toBe("INVALID_DESTINATION_COORDINATES");
+    }
+
+    const viewer = await browserPatch(app, path)
+      .set("Cookie", userC.cookie)
+      .send({ latitude: 35.6762, longitude: 139.6503 });
+    const unrelated = await browserPatch(app, path)
+      .set("Cookie", userD.cookie)
+      .send({ latitude: 35.6762, longitude: 139.6503 });
+    expect(viewer.status).toBe(403);
+    expect(viewer.body.code).toBe("INSUFFICIENT_TRIP_PERMISSION");
+    expect(unrelated.status).toBe(404);
+    expect(unrelated.body.code).toBe("TRIP_NOT_FOUND");
+
+    const cleared = await browserPatch(app, path)
+      .set("Cookie", userB.cookie)
+      .send({ latitude: null, longitude: null });
+    expect(cleared.status).toBe(200);
+    expect(cleared.body).toMatchObject({ latitude: null, longitude: null });
+
+    const listed = await request(app.getHttpServer())
+      .get(`/api/trips/${tripId}/destinations`)
+      .set("Cookie", userA.cookie);
+    expect(listed.status).toBe(200);
+    expect(listed.body).toContainEqual(
+      expect.objectContaining({
+        id: tokyo.body.id,
+        latitude: null,
+        longitude: null,
+        name: "Tokyo City",
+      }),
+    );
+  });
+
   it("scopes Day assignments and clears them when deleting a destination", async () => {
     const tripA = await createTrip(userA, {
       endsOn: "2027-04-13",
@@ -1665,6 +1747,29 @@ describe("Trips CRUD with PostgreSQL", () => {
         [tripA.body.id],
       ),
     ).rejects.toMatchObject({ code: "23514" });
+    for (const [name, latitude, longitude] of [
+      ["Latitude only", 35.6762, null],
+      ["Longitude only", null, 139.6503],
+      ["Latitude high", 91, 139.6503],
+      ["Latitude low", -91, 139.6503],
+      ["Longitude high", 35.6762, 181],
+      ["Longitude low", 35.6762, -181],
+    ] as const) {
+      await expect(
+        pool.query(
+          "INSERT INTO trip_destinations (trip_id, name, position, latitude, longitude) VALUES ($1, $2, 10, $3, $4)",
+          [tripA.body.id, name, latitude, longitude],
+        ),
+      ).rejects.toMatchObject({ code: "23514" });
+    }
+    await pool.query(
+      "INSERT INTO trip_destinations (trip_id, name, position, latitude, longitude) VALUES ($1, 'Null Island text', 10, NULL, NULL)",
+      [tripA.body.id],
+    );
+    await pool.query(
+      "INSERT INTO trip_destinations (trip_id, name, position, latitude, longitude) VALUES ($1, 'Valid point', 11, 35.6762, 139.6503)",
+      [tripA.body.id],
+    );
     await expect(
       pool.query(
         "INSERT INTO trip_days (trip_id, date) VALUES ($1, '2027-04-12')",

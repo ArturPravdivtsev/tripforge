@@ -1,5 +1,5 @@
 import { Transform } from "class-transformer";
-import { IsString, MaxLength, MinLength } from "class-validator";
+import { IsOptional, IsString, MaxLength, MinLength } from "class-validator";
 import type { UpdateTripDestinationRequest } from "@tripforge/contracts";
 
 export class UpdateTripDestinationDto
@@ -8,8 +8,15 @@ export class UpdateTripDestinationDto
   @Transform(({ value }: { value: unknown }) =>
     typeof value === "string" ? value.trim() : value,
   )
+  @IsOptional()
   @IsString()
   @MinLength(1)
   @MaxLength(160)
-  name!: string;
+  name?: string;
+
+  @IsOptional()
+  latitude?: number | null;
+
+  @IsOptional()
+  longitude?: number | null;
 }

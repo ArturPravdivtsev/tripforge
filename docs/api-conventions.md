@@ -89,7 +89,7 @@ Trip resources use conventional HTTP semantics:
 | remove member | `DELETE /api/trips/:tripId/members/:userId` | `204` empty body |
 | list destinations | `GET /api/trips/:tripId/destinations` | `200` destinations |
 | create destination | `POST /api/trips/:tripId/destinations` | `201` destination |
-| rename destination | `PATCH /api/trips/:tripId/destinations/:destinationId` | `200` destination |
+| update destination name and/or coordinate pair | `PATCH /api/trips/:tripId/destinations/:destinationId` | `200` destination |
 | delete destination | `DELETE /api/trips/:tripId/destinations/:destinationId` | `204` empty body |
 | reorder destinations | `PATCH /api/trips/:tripId/destinations/reorder` | `200` destinations |
 | list Days | `GET /api/trips/:tripId/days` | `200` Days |

@@ -83,6 +83,11 @@ a future invitation lifecycle can remove the prior-account requirement.
   allowed intentionally; mutations normalize the full order and the UUID is a
   deterministic tie-breaker. Concurrency-perfect ordering is deferred until
   realtime collaboration exists.
+- Destinations optionally store a `double precision` latitude/longitude pair.
+  Both values are null for a text-only destination or both are present;
+  PostgreSQL enforces the pair and latitude/longitude ranges. Name-only PATCH
+  leaves coordinates unchanged, a numeric pair sets them, and a null pair
+  clears only the location.
 - A composite foreign key from Day `(trip_id, destination_id)` to destination
   `(trip_id, id)` makes cross-Trip assignments impossible at the database layer.
 
@@ -91,3 +96,6 @@ The calendar lifecycle and its current destructive-edit caveat are detailed in
 
 Itinerary persistence, wall-clock time, and ordering are detailed in
 [Itinerary](./itinerary.md).
+
+Map rendering and browser-only interaction state are detailed in
+[Maps](./maps.md).

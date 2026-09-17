@@ -39,9 +39,11 @@ paginated lists without clearing unrelated cache entries.
 - Add/change/remove member: perform the server mutation, then invalidate only the
   affected Trip's members key. No optimistic add is used because canonical user
   ID, display name, and email come from the server.
-- Destination create/update: invalidate destinations. Reorder replaces that
-  exact cache entry with the authoritative normalized list. Delete invalidates
-  destinations and Days because assignments may have been cleared.
+- Destination create/rename: invalidate destinations. A coordinate PATCH
+  replaces only the returned destination in the exact destinations cache;
+  reorder replaces that exact cache entry with the authoritative normalized
+  list. Delete invalidates destinations and Days because assignments may have
+  been cleared.
 - Day assignment: replace the returned Day in the exact Days cache. Trip date
   edits update detail, invalidate lists, Days, and itinerary so reconciliation is
   visible on the workspace.
@@ -65,3 +67,8 @@ or session claims. React Hook Form owns editable input. Local React state owns
 inline confirmations, transient sortable groups, and sanitized mutation errors. Query data
 does not overwrite those groups during an active drag. The current page is stored
 in the URL so refresh and browser history preserve navigation.
+
+Destination coordinates are durable server state. Map camera position, selected
+marker, active location-pick destination, and preview point are local React
+interaction state. They are deliberately absent from TanStack Query and
+PostgreSQL until the user explicitly saves a coordinate pair.

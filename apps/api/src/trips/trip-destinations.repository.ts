@@ -1,5 +1,8 @@
 import { Inject, Injectable } from "@nestjs/common";
-import type { TripDestination } from "@tripforge/contracts";
+import type {
+  TripDestination,
+  UpdateTripDestinationRequest,
+} from "@tripforge/contracts";
 import { and, asc, eq, max } from "drizzle-orm";
 
 import { DATABASE } from "../database/database.constants";
@@ -9,6 +12,8 @@ import { tripDays, tripDestinations } from "../database/schema";
 const destinationSelection = {
   createdAt: tripDestinations.createdAt,
   id: tripDestinations.id,
+  latitude: tripDestinations.latitude,
+  longitude: tripDestinations.longitude,
   name: tripDestinations.name,
   position: tripDestinations.position,
   updatedAt: tripDestinations.updatedAt,
@@ -17,6 +22,8 @@ const destinationSelection = {
 function toDestination(row: {
   createdAt: Date;
   id: string;
+  latitude: number | null;
+  longitude: number | null;
   name: string;
   position: number;
   updatedAt: Date;
@@ -83,11 +90,19 @@ export class TripDestinationsRepository {
   async update(
     tripId: string,
     destinationId: string,
-    name: string,
+    input: UpdateTripDestinationRequest,
   ): Promise<TripDestination | undefined> {
+    const changes: Partial<typeof tripDestinations.$inferInsert> = {
+      updatedAt: new Date(),
+    };
+
+    if (input.name !== undefined) changes.name = input.name;
+    if (input.latitude !== undefined) changes.latitude = input.latitude;
+    if (input.longitude !== undefined) changes.longitude = input.longitude;
+
     const [row] = await this.database
       .update(tripDestinations)
-      .set({ name, updatedAt: new Date() })
+      .set(changes)
       .where(
         and(
           eq(tripDestinations.tripId, tripId),

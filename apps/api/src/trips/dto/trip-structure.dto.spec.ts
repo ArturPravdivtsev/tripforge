@@ -12,9 +12,8 @@ async function validateDto<T extends object>(dto: T) {
 }
 
 describe("Trip structure DTOs", () => {
-  it.each([CreateTripDestinationDto, UpdateTripDestinationDto])(
-    "trims and validates destination names for %s",
-    async (Dto) => {
+  it("trims and validates destination names on create", async () => {
+      const Dto = CreateTripDestinationDto;
       const valid = plainToInstance(Dto, { name: "  Tokyo  " });
       const blank = plainToInstance(Dto, { name: "   " });
       const tooLong = plainToInstance(Dto, { name: "x".repeat(161) });
@@ -23,8 +22,23 @@ describe("Trip structure DTOs", () => {
       expect(valid.name).toBe("Tokyo");
       await expect(validateDto(blank)).resolves.not.toEqual([]);
       await expect(validateDto(tooLong)).resolves.not.toEqual([]);
-    },
-  );
+  });
+
+  it("allows partial destination updates while validating a supplied name", async () => {
+    const coordinates = plainToInstance(UpdateTripDestinationDto, {
+      latitude: 35.6762,
+      longitude: 139.6503,
+    });
+    const validName = plainToInstance(UpdateTripDestinationDto, {
+      name: "  Tokyo  ",
+    });
+    const blankName = plainToInstance(UpdateTripDestinationDto, { name: "   " });
+
+    await expect(validateDto(coordinates)).resolves.toEqual([]);
+    await expect(validateDto(validName)).resolves.toEqual([]);
+    expect(validName.name).toBe("Tokyo");
+    await expect(validateDto(blankName)).resolves.not.toEqual([]);
+  });
 
   it("requires an array of v4 destination IDs for reorder", async () => {
     const valid = plainToInstance(ReorderTripDestinationsDto, {
