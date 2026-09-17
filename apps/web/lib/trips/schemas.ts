@@ -39,3 +39,24 @@ export const memberFormSchema = z.object({
 });
 
 export type MemberFormValues = z.input<typeof memberFormSchema>;
+
+const optionalWallClockTime = z.string().refine(
+  (value) => value === "" || /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value),
+  "Enter a valid time in HH:mm format.",
+);
+
+export const itineraryItemFormSchema = z.object({
+  kind: z.enum(["activity", "food", "transport", "accommodation", "other"]),
+  notes: z
+    .string()
+    .trim()
+    .max(5000, "Notes must be 5000 characters or fewer."),
+  startTime: optionalWallClockTime,
+  title: z
+    .string()
+    .trim()
+    .min(1, "Enter a title.")
+    .max(200, "Title must be 200 characters or fewer."),
+});
+
+export type ItineraryItemFormValues = z.input<typeof itineraryItemFormSchema>;

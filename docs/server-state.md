@@ -24,6 +24,7 @@ failures receive at most one retry.
 ["trips", "detail", tripId, "members"]
 ["trips", "detail", tripId, "destinations"]
 ["trips", "detail", tripId, "days"]
+["trips", "detail", tripId, "itinerary"]
 ```
 
 Every list-changing parameter is part of its key. The list prefix targets all
@@ -42,8 +43,12 @@ paginated lists without clearing unrelated cache entries.
   exact cache entry with the authoritative normalized list. Delete invalidates
   destinations and Days because assignments may have been cleared.
 - Day assignment: replace the returned Day in the exact Days cache. Trip date
-  edits update detail, invalidate lists, and invalidate Days so reconciliation is
+  edits update detail, invalidate lists, Days, and itinerary so reconciliation is
   visible on the workspace.
+- Itinerary create/update/delete invalidates the exact itinerary key. Reorder
+  cancels the query, snapshots the complete item array, writes normalized Day IDs
+  and positions optimistically, restores the full snapshot on error, and always
+  invalidates after settlement. No request is sent during drag-over.
 - Logout, login, registration, or guest discovery: cancel and remove all Trip
   queries so data cannot cross user identities.
 
@@ -53,9 +58,10 @@ through invalidation rather than reshuffled in browser code.
 ## Client state vs server state
 
 TanStack Query owns `Trip`, `TripsPage`, `TripParticipant[]`,
-`TripDestination[]`, `TripDay[]`, loading/error state, freshness, and mutation
+`TripDestination[]`, `TripDay[]`, `ItineraryItem[]`, loading/error state, freshness, and mutation
 lifecycle. Membership and effective access are server
 state: they can change in another session and must not become durable React state
 or session claims. React Hook Form owns editable input. Local React state owns
-inline confirmations and sanitized mutation errors. The current page is stored
+inline confirmations, transient sortable groups, and sanitized mutation errors. Query data
+does not overwrite those groups during an active drag. The current page is stored
 in the URL so refresh and browser history preserve navigation.

@@ -1,7 +1,7 @@
 import type { Trip } from "@tripforge/contracts";
 import { describe, expect, it, vi } from "vitest";
 
-import { TripsRepository } from "./trips.repository";
+import { TripDateChangeConflictError, TripsRepository } from "./trips.repository";
 import { TripsService } from "./trips.service";
 
 const trip: Trip = {
@@ -93,6 +93,21 @@ describe("TripsService", () => {
       { startsOn: null },
       [],
     );
+  });
+
+  it("translates populated-Day date protection into a stable conflict", async () => {
+    const { repository, service } = createSubject();
+    repository.findAccessibleById.mockResolvedValue(trip);
+    repository.updateAccessible.mockRejectedValue(
+      new TripDateChangeConflictError(),
+    );
+
+    await expect(
+      service.update("user-1", trip.id, { startsOn: "2027-04-11" }),
+    ).rejects.toMatchObject({
+      status: 409,
+      response: { code: "TRIP_DATE_CHANGE_WOULD_REMOVE_ITINERARY" },
+    });
   });
 
   it("rejects empty PATCH payloads", async () => {

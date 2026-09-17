@@ -23,6 +23,7 @@ describe("TripWorkspace", () => {
     vi.restoreAllMocks();
     vi.spyOn(tripsApi, "listDestinations").mockResolvedValue([]);
     vi.spyOn(tripsApi, "listDays").mockResolvedValue([]);
+    vi.spyOn(tripsApi, "listItineraryItems").mockResolvedValue([]);
   });
 
   it("renders loading then the complete Trip workspace", async () => {
@@ -40,7 +41,7 @@ describe("TripWorkspace", () => {
     expect(await screen.findByRole("heading", { name: "Japan 2027" })).toBeVisible();
     expect(screen.getByText("12 Apr 2027 – 13 Apr 2027")).toBeVisible();
     expect(screen.getByRole("heading", { name: "Destinations" })).toBeVisible();
-    expect(screen.getByRole("heading", { name: "Days" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Itinerary" })).toBeVisible();
     expect(screen.getByRole("link", { name: "Edit" })).toHaveAttribute(
       "href",
       `/trips/${trip.id}/edit`,

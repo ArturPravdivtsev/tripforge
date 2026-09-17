@@ -13,7 +13,8 @@ Trip
 │
 └── owns many TripDay
                │
-               └── optional primary TripDestination
+               ├── optional primary TripDestination
+               └── owns many ordered ItineraryItem
 ```
 
 `trips.owner_id` is the single source of truth for ownership. The owner is never
@@ -37,6 +38,8 @@ transport role derived from `trips.owner_id`, not a stored membership value.
 | Read destinations and Days | ✓ | ✓ | ✓ |
 | Create/update/delete/reorder destinations | ✓ | ✓ | — |
 | Assign a destination to a Day | ✓ | ✓ | — |
+| Read itinerary items | ✓ | ✓ | ✓ |
+| Create/update/delete/reorder itinerary items | ✓ | ✓ | — |
 
 Authentication establishes the user identity only. Every request resolves the
 current Trip permission from PostgreSQL, so downgrade and revocation take effect
@@ -74,7 +77,8 @@ a future invitation lifecycle can remove the prior-account requirement.
   date. A partial range owns no Days; destinations remain available for planning.
 - Date edits reconcile Days by date. Overlapping dates retain their stable Day
   IDs and destination assignments; only removed dates are deleted and new dates
-  are inserted.
+  are inserted. A removed Day containing itinerary items instead blocks the
+  update with `409 TRIP_DATE_CHANGE_WOULD_REMOVE_ITINERARY`.
 - Destinations are ordered by `position ASC, id ASC`. Position collisions are
   allowed intentionally; mutations normalize the full order and the UUID is a
   deterministic tie-breaker. Concurrency-perfect ordering is deferred until
@@ -84,3 +88,6 @@ a future invitation lifecycle can remove the prior-account requirement.
 
 The calendar lifecycle and its current destructive-edit caveat are detailed in
 [Trip calendar](./trip-calendar.md).
+
+Itinerary persistence, wall-clock time, and ordering are detailed in
+[Itinerary](./itinerary.md).

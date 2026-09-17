@@ -93,6 +93,9 @@ describe("EditTripScreen", () => {
     expect(invalidate).toHaveBeenCalledWith({
       queryKey: tripKeys.days(trip.id),
     });
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: tripKeys.itinerary(trip.id),
+    });
     expect(push).toHaveBeenCalledWith("/trips");
   });
 
@@ -107,6 +110,26 @@ describe("EditTripScreen", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Unable to update trip. Please try again.",
     );
+  });
+
+  it("explains when a date change would remove planned items", async () => {
+    vi.spyOn(tripsApi, "get").mockResolvedValue(trip);
+    vi.spyOn(tripsApi, "update").mockRejectedValue(
+      new ApiClientError(
+        "database detail",
+        409,
+        "TRIP_DATE_CHANGE_WOULD_REMOVE_ITINERARY",
+      ),
+    );
+    const user = userEvent.setup();
+    renderWithQueryClient(<EditTripScreen tripId={trip.id} />);
+
+    await screen.findByRole("textbox", { name: "Name" });
+    await user.click(screen.getByRole("button", { name: "Save trip" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "These dates would remove days that already contain plans.",
+    );
+    expect(screen.queryByText("database detail")).not.toBeInTheDocument();
   });
 
   it("shows a permission state instead of a form to viewers", async () => {

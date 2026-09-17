@@ -6,7 +6,8 @@
 Trip
 ├── TripDestination (ordered planning place)
 └── TripDay (stable identity for one calendar date)
-      └── optional primary TripDestination from the same Trip
+      ├── optional primary TripDestination from the same Trip
+      └── ordered ItineraryItems
 ```
 
 Trip dates are the source of the calendar range. `TripDay` rows persist that
@@ -24,10 +25,13 @@ in one transaction.
 Date update is a set reconciliation inside the authorized Trip-update
 transaction:
 
-1. Update the owner/editor-accessible Trip.
-2. Delete Days whose dates are outside the desired range.
-3. Insert missing desired dates with conflict protection.
-4. Commit all changes together.
+1. Lock and authorize the owner/editor-accessible Trip.
+2. Lock Days outside the desired range and efficiently check whether any owns
+   itinerary items.
+3. If a removed Day is populated, abort with `409
+   TRIP_DATE_CHANGE_WOULD_REMOVE_ITINERARY`.
+4. Update the Trip, delete only safe removed Days, and insert missing dates.
+5. Commit all changes together.
 
 Rows whose dates overlap retain their IDs and destination assignments. Name-only
 Trip updates do not touch Days. Any failure rolls back both Trip dates and Day
@@ -47,10 +51,14 @@ the composite foreign key provides defense in depth. Destination deletion first
 clears all affected Day assignments and then deletes the destination in one
 transaction; the restrictive FK prevents dangling references.
 
-## Current date-change caveat
+## Date-change invariant
 
-Removing dates deletes their corresponding Day rows. Clearing either boundary
-deletes all Days but leaves destinations intact. This is acceptable while Days
-contain only a nullable destination assignment. Before Stage 13 or later permits
-valuable itinerary children, product semantics for destructive range edits must
-be reconsidered rather than silently deleting that content.
+Empty removed dates may delete their corresponding Day rows. Clearing either
+boundary deletes all Days only when every removed Day is empty; destinations are
+still retained. Once a Day owns itinerary data, shortening or clearing the range
+must not silently destroy plans. The conflict check and reconciliation share the
+same transaction and Day locks, closing the create-item race window.
+
+Explicit owner-only deletion of the whole Trip remains destructive and cascades
+through Days to itinerary items. That deliberate operation is distinct from a
+routine date edit.

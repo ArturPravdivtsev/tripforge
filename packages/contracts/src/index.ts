@@ -86,6 +86,47 @@ export interface UpdateTripDayRequest {
   destinationId: string | null;
 }
 
+export type ItineraryItemKind =
+  | "activity"
+  | "food"
+  | "transport"
+  | "accommodation"
+  | "other";
+
+export interface ItineraryItem {
+  id: string;
+  dayId: string;
+  kind: ItineraryItemKind;
+  title: string;
+  startTime: string | null;
+  notes: string | null;
+  position: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateItineraryItemRequest {
+  dayId: string;
+  kind: ItineraryItemKind;
+  title: string;
+  startTime?: string | null;
+  notes?: string | null;
+}
+
+export interface UpdateItineraryItemRequest {
+  kind?: ItineraryItemKind;
+  title?: string;
+  startTime?: string | null;
+  notes?: string | null;
+}
+
+export interface ReorderItineraryItemsRequest {
+  days: Array<{
+    dayId: string;
+    itemIds: string[];
+  }>;
+}
+
 export interface CreateTripRequest {
   name: string;
   startsOn?: string | null;

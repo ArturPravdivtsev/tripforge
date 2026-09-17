@@ -145,6 +145,7 @@ describe("tripsApi", () => {
   it.each([
     ["destinations", "listDestinations"],
     ["days", "listDays"],
+    ["itinerary-items", "listItineraryItems"],
   ] as const)("lists nested %s using the Trip URL", async (resource, operation) => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify([])));
     vi.stubGlobal("fetch", fetchMock);
@@ -202,5 +203,46 @@ describe("tripsApi", () => {
     );
     expect(options.method).toBe("DELETE");
     expect(new Headers(options.headers).get("X-TripForge-Request")).toBe("1");
+  });
+
+  it.each([
+    ["createItineraryItem", "POST", "/itinerary-items", { dayId: "day-id", kind: "activity", title: "Museum" }],
+    ["updateItineraryItem", "PATCH", "/itinerary-items/item-id", { title: "Gallery" }],
+    ["reorderItineraryItems", "PATCH", "/itinerary-items/reorder", { days: [{ dayId: "day-id", itemIds: ["item-id"] }] }],
+  ] as const)("sends a secured %s request", async (operation, method, suffix, body) => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({})));
+    vi.stubGlobal("fetch", fetchMock);
+
+    if (operation === "createItineraryItem") {
+      await tripsApi.createItineraryItem(trip.id, body);
+    } else if (operation === "updateItineraryItem") {
+      await tripsApi.updateItineraryItem(trip.id, "item-id", body);
+    } else {
+      await tripsApi.reorderItineraryItems(trip.id, {
+        days: body.days.map(({ dayId, itemIds }) => ({
+          dayId,
+          itemIds: [...itemIds],
+        })),
+      });
+    }
+
+    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(`http://127.0.0.1:4000/api/trips/${trip.id}${suffix}`);
+    expect(options.method).toBe(method);
+    expect(new Headers(options.headers).get("X-TripForge-Request")).toBe("1");
+    expect(options.body).toBe(JSON.stringify(body));
+  });
+
+  it("deletes an itinerary item through the nested URL", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await tripsApi.removeItineraryItem(trip.id, "item-id");
+
+    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(
+      `http://127.0.0.1:4000/api/trips/${trip.id}/itinerary-items/item-id`,
+    );
+    expect(options.method).toBe("DELETE");
   });
 });

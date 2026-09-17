@@ -40,6 +40,13 @@ Neither may be logged or persisted in raw form.
 | Client forges destination position | Server owns and normalizes positions |
 | Partial reorder corrupts order | Complete-set validation and one transaction |
 | Failed date sync partially mutates Trip | Trip update and Day reconciliation share one transaction |
+| Viewer mutates itinerary | Current database-backed role authorization returns `403` |
+| Item moves to another Trip's Day | Trip-scoped Day and complete-set validation |
+| Foreign item enters reorder | Affected-Day union must exactly equal supplied item IDs |
+| Failed reorder partially persists | Validation and every position/Day update share one transaction |
+| Date shrink destroys plans | Locked populated-Day check returns `409` before mutation |
+| Client forges item position | Position is not writable in CRUD; reorder normalizes it |
+| Stale user sees cached itinerary | Authentication transitions remove the `['trips']` cache tree |
 
 ## Residual and deferred risk
 

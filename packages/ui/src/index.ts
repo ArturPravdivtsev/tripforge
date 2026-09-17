@@ -11,3 +11,4 @@ export {
 export { Container } from "./container";
 export { Input } from "./input";
 export { Label } from "./label";
+export { Textarea } from "./textarea";

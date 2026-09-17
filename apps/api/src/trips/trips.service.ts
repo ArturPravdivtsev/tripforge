@@ -11,7 +11,11 @@ import type {
 
 import { normalizeEmail } from "../auth/email-normalizer";
 import { generateTripDates } from "./trip-calendar";
-import { TripsRepository, type TripAccess } from "./trips.repository";
+import {
+  TripDateChangeConflictError,
+  TripsRepository,
+  type TripAccess,
+} from "./trips.repository";
 
 @Injectable()
 export class TripsService {
@@ -106,17 +110,33 @@ export class TripsService {
       hasEndsOn ? (update.endsOn ?? null) : current.endsOn,
     );
 
-    const updated = await this.tripsRepository.updateAccessible(
-      userId,
-      tripId,
-      update,
-      hasStartsOn || hasEndsOn
-        ? generateTripDates(
-            hasStartsOn ? (update.startsOn ?? null) : current.startsOn,
-            hasEndsOn ? (update.endsOn ?? null) : current.endsOn,
-          )
-        : undefined,
-    );
+    let updated: Trip | undefined;
+
+    try {
+      updated = await this.tripsRepository.updateAccessible(
+        userId,
+        tripId,
+        update,
+        hasStartsOn || hasEndsOn
+          ? generateTripDates(
+              hasStartsOn ? (update.startsOn ?? null) : current.startsOn,
+              hasEndsOn ? (update.endsOn ?? null) : current.endsOn,
+            )
+          : undefined,
+      );
+    } catch (error) {
+      if (error instanceof TripDateChangeConflictError) {
+        throw new HttpException(
+          {
+            code: "TRIP_DATE_CHANGE_WOULD_REMOVE_ITINERARY",
+            message:
+              "This date change would remove planned itinerary items. Move or delete those items first.",
+          },
+          HttpStatus.CONFLICT,
+        );
+      }
+      throw error;
+    }
 
     if (!updated) {
       const access = await this.tripsRepository.findAccess(userId, tripId);

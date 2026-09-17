@@ -13,6 +13,7 @@ import {
   desc,
   eq,
   exists,
+  inArray,
   isNotNull,
   notInArray,
   or,
@@ -21,7 +22,13 @@ import {
 
 import { DATABASE } from "../database/database.constants";
 import type { Database } from "../database/database.provider";
-import { tripDays, tripMembers, trips, users } from "../database/schema";
+import {
+  itineraryItems,
+  tripDays,
+  tripMembers,
+  trips,
+  users,
+} from "../database/schema";
 
 const tripSelection = {
   createdAt: trips.createdAt,
@@ -52,6 +59,8 @@ export type TripAccess = Readonly<{
   ownerId: string;
   role: TripAccessRole;
 }>;
+
+export class TripDateChangeConflictError extends Error {}
 
 function toTrip(row: TripRow): Trip {
   return {
@@ -214,6 +223,50 @@ export class TripsRepository {
             ),
           ),
       );
+      const [authorized] = await transaction
+        .select({ id: trips.id })
+        .from(trips)
+        .where(
+          and(
+            eq(trips.id, tripId),
+            or(eq(trips.ownerId, userId), editorAccess),
+          ),
+        )
+        .for("update")
+        .limit(1);
+
+      if (!authorized) return undefined;
+
+      if (calendarDates !== undefined) {
+        const removedDays = await transaction
+          .select({ id: tripDays.id })
+          .from(tripDays)
+          .where(
+            calendarDates.length === 0
+              ? eq(tripDays.tripId, tripId)
+              : and(
+                  eq(tripDays.tripId, tripId),
+                  notInArray(tripDays.date, [...calendarDates]),
+                ),
+          )
+          .for("update");
+
+        if (removedDays.length > 0) {
+          const [populatedDay] = await transaction
+            .select({ id: itineraryItems.id })
+            .from(itineraryItems)
+            .where(
+              inArray(
+                itineraryItems.tripDayId,
+                removedDays.map(({ id }) => id),
+              ),
+            )
+            .limit(1);
+
+          if (populatedDay) throw new TripDateChangeConflictError();
+        }
+      }
+
       const [row] = await transaction
         .update(trips)
         .set({ ...input, updatedAt: new Date() })
@@ -225,9 +278,7 @@ export class TripsRepository {
         )
         .returning({ ...tripSelection, ownerId: trips.ownerId });
 
-      if (!row) {
-        return undefined;
-      }
+      if (!row) return undefined;
 
       if (calendarDates !== undefined) {
         if (calendarDates.length === 0) {

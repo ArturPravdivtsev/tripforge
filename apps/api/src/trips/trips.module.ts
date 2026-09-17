@@ -2,6 +2,9 @@ import { Module } from "@nestjs/common";
 
 import { AuthModule } from "../auth/auth.module";
 import { DatabaseModule } from "../database/database.module";
+import { ItineraryItemsController } from "./itinerary-items.controller";
+import { ItineraryItemsRepository } from "./itinerary-items.repository";
+import { ItineraryItemsService } from "./itinerary-items.service";
 import { TripDaysController } from "./trip-days.controller";
 import { TripDaysRepository } from "./trip-days.repository";
 import { TripDaysService } from "./trip-days.service";
@@ -19,6 +22,7 @@ import { TripsService } from "./trips.service";
     TripsController,
     TripDestinationsController,
     TripDaysController,
+    ItineraryItemsController,
   ],
   providers: [
     TripsRepository,
@@ -28,6 +32,8 @@ import { TripsService } from "./trips.service";
     TripDestinationsService,
     TripDaysRepository,
     TripDaysService,
+    ItineraryItemsRepository,
+    ItineraryItemsService,
   ],
 })
 export class TripsModule {}

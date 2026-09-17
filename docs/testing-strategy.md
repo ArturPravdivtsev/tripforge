@@ -47,6 +47,13 @@ checks, cascades, and destination deletion. A focused migration test applies
 Stages 1–11, inserts pre-existing dated and partial Trips, applies Stage 12, and
 verifies inclusive backfill without changing Trip timestamps.
 
+Stage 13 adds strict wall-clock/DTO and service tests; pure same-Day/cross-Day
+ordering helpers; item form, role, handle, cache-isolation, API-client, and full
+optimistic rollback component coverage. PostgreSQL integration tests exercise
+item CRUD/RBAC/scoping, deterministic listing, complete-list reorder, cross-Day
+moves, deletion normalization, forced transactional rollback, date conflicts,
+checks, foreign keys, duplicate positions, and Day/Trip cascades.
+
 TripForge should avoid testing implementation details and should not rely only
 on expensive browser E2E tests.
 

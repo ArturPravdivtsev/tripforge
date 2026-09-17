@@ -19,6 +19,13 @@ type EditTripScreenProps = Readonly<{ tripId: string }>;
 function updateErrorMessage(error: unknown) {
   if (
     error instanceof ApiClientError &&
+    error.code === "TRIP_DATE_CHANGE_WOULD_REMOVE_ITINERARY"
+  ) {
+    return "These dates would remove days that already contain plans. Move or delete those plans before changing the trip dates.";
+  }
+
+  if (
+    error instanceof ApiClientError &&
     (error.code === "INVALID_TRIP_DATE_RANGE" || error.status === 400)
   ) {
     return "Check the trip name and dates, then try again.";
@@ -52,6 +59,7 @@ export function EditTripScreen({ tripId }: EditTripScreenProps) {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: tripKeys.lists() }),
         queryClient.invalidateQueries({ queryKey: tripKeys.days(tripId) }),
+        queryClient.invalidateQueries({ queryKey: tripKeys.itinerary(tripId) }),
       ]);
       router.push("/trips");
     },

@@ -1,7 +1,10 @@
 import type {
   AddTripMemberRequest,
+  CreateItineraryItemRequest,
   CreateTripDestinationRequest,
   CreateTripRequest,
+  ItineraryItem,
+  ReorderItineraryItemsRequest,
   ReorderTripDestinationsRequest,
   Trip,
   TripDay,
@@ -12,6 +15,7 @@ import type {
   UpdateTripDestinationRequest,
   UpdateTripMemberRequest,
   UpdateTripRequest,
+  UpdateItineraryItemRequest,
 } from "@tripforge/contracts";
 
 import { apiFetch } from "./client";
@@ -68,6 +72,15 @@ export const tripsApi = {
     return apiFetch(`/api/trips/${tripId}/days`, { signal: options.signal });
   },
 
+  listItineraryItems(
+    tripId: string,
+    options: RequestOptions = {},
+  ): Promise<ItineraryItem[]> {
+    return apiFetch(`/api/trips/${tripId}/itinerary-items`, {
+      signal: options.signal,
+    });
+  },
+
   addMember(
     tripId: string,
     input: AddTripMemberRequest,
@@ -83,6 +96,16 @@ export const tripsApi = {
     input: CreateTripDestinationRequest,
   ): Promise<TripDestination> {
     return apiFetch(`/api/trips/${tripId}/destinations`, {
+      json: input,
+      method: "POST",
+    });
+  },
+
+  createItineraryItem(
+    tripId: string,
+    input: CreateItineraryItemRequest,
+  ): Promise<ItineraryItem> {
+    return apiFetch(`/api/trips/${tripId}/itinerary-items`, {
       json: input,
       method: "POST",
     });
@@ -104,11 +127,27 @@ export const tripsApi = {
     });
   },
 
+  removeItineraryItem(tripId: string, itemId: string): Promise<void> {
+    return apiFetch(`/api/trips/${tripId}/itinerary-items/${itemId}`, {
+      method: "DELETE",
+    });
+  },
+
   reorderDestinations(
     tripId: string,
     input: ReorderTripDestinationsRequest,
   ): Promise<TripDestination[]> {
     return apiFetch(`/api/trips/${tripId}/destinations/reorder`, {
+      json: input,
+      method: "PATCH",
+    });
+  },
+
+  reorderItineraryItems(
+    tripId: string,
+    input: ReorderItineraryItemsRequest,
+  ): Promise<ItineraryItem[]> {
+    return apiFetch(`/api/trips/${tripId}/itinerary-items/reorder`, {
       json: input,
       method: "PATCH",
     });
@@ -149,6 +188,17 @@ export const tripsApi = {
     input: UpdateTripDayRequest,
   ): Promise<TripDay> {
     return apiFetch(`/api/trips/${tripId}/days/${dayId}`, {
+      json: input,
+      method: "PATCH",
+    });
+  },
+
+  updateItineraryItem(
+    tripId: string,
+    itemId: string,
+    input: UpdateItineraryItemRequest,
+  ): Promise<ItineraryItem> {
+    return apiFetch(`/api/trips/${tripId}/itinerary-items/${itemId}`, {
       json: input,
       method: "PATCH",
     });

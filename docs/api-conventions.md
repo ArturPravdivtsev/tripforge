@@ -61,8 +61,8 @@ intentionally not used with credentials.
 
 Browser mutations require exact `Origin` and `X-TripForge-Request: 1`. Missing
 or mismatched proof returns `403 CSRF_PROTECTION_FAILED`. Register, login, Trip,
-member, destination, and Day JSON mutations require `application/json`, otherwise
-they return `415 UNSUPPORTED_MEDIA_TYPE`. Safe `GET` requests do not require the
+member, destination, Day, and itinerary JSON mutations require `application/json`,
+otherwise they return `415 UNSUPPORTED_MEDIA_TYPE`. Safe `GET` requests do not require the
 mutation header; bodyless logout and DELETE requests do not require a content type.
 
 ## Shared transport contracts
@@ -94,6 +94,11 @@ Trip resources use conventional HTTP semantics:
 | reorder destinations | `PATCH /api/trips/:tripId/destinations/reorder` | `200` destinations |
 | list Days | `GET /api/trips/:tripId/days` | `200` Days |
 | assign/clear Day destination | `PATCH /api/trips/:tripId/days/:dayId` | `200` Day |
+| list itinerary | `GET /api/trips/:tripId/itinerary-items` | `200` items |
+| append itinerary item | `POST /api/trips/:tripId/itinerary-items` | `201` item |
+| update itinerary item | `PATCH /api/trips/:tripId/itinerary-items/:itemId` | `200` item |
+| delete itinerary item | `DELETE /api/trips/:tripId/itinerary-items/:itemId` | `204` empty body |
+| reorder/move itinerary items | `PATCH /api/trips/:tripId/itinerary-items/reorder` | `200` items |
 
 All routes require the existing server session. Ownership is derived from
 `trips.owner_id`, and editor/viewer access from `trip_members`; neither comes from
@@ -109,6 +114,14 @@ children of an accessible Trip return `DESTINATION_NOT_FOUND` or
 owns that lifecycle. Destination reorder accepts the complete ID set and rejects
 duplicates, omissions, unknown IDs, or foreign IDs with
 `400 INVALID_DESTINATION_ORDER`.
+
+Itinerary reads allow every accessible role; writes allow owners and editors.
+Items are scoped through their Day to the parent Trip. Reorder accepts the
+complete desired contents of every affected Day and rejects duplicates,
+omissions, unknown/foreign IDs, and cross-Trip moves with `400
+INVALID_ITINERARY_ORDER`. Empty item PATCH requests return `400
+EMPTY_ITINERARY_ITEM_UPDATE`. A date update that would remove a populated Day
+returns `409 TRIP_DATE_CHANGE_WOULD_REMOVE_ITINERARY` without changing state.
 
 Trip collections use one-based offset pagination. `page` defaults to `1`;
 `pageSize` defaults to `20` and is capped at `100`. Responses include `items`,
