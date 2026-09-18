@@ -13,6 +13,12 @@ export const tripKeys = {
     [...tripKeys.detail(tripId), "reservations"] as const,
   reservation: (tripId: string, reservationId: string) =>
     [...tripKeys.reservations(tripId), reservationId] as const,
+  expenses: (tripId: string) =>
+    [...tripKeys.detail(tripId), "expenses"] as const,
+  expense: (tripId: string, expenseId: string) =>
+    [...tripKeys.expenses(tripId), "detail", expenseId] as const,
+  expenseBalances: (tripId: string) =>
+    [...tripKeys.expenses(tripId), "balances"] as const,
   lists: () => [...tripKeys.all, "list"] as const,
   list: (page: number, pageSize: number) =>
     [...tripKeys.lists(), { page, pageSize }] as const,

@@ -28,6 +28,9 @@ failures receive at most one retry.
 ["trips", "detail", tripId, "routes"]
 ["trips", "detail", tripId, "reservations"]
 ["trips", "detail", tripId, "reservations", reservationId]
+["trips", "detail", tripId, "expenses"]
+["trips", "detail", tripId, "expenses", "detail", expenseId]
+["trips", "detail", tripId, "expenses", "balances"]
 ["place-search", "maptiler", { query, proximity }]
 ```
 
@@ -64,6 +67,14 @@ paginated lists without clearing unrelated cache entries.
   Delete removes the detail and invalidates the exact list. Server ordering is
   authoritative, so these mutations are not optimistic. Reservation mutations
   never invalidate routes, itinerary, Days, or unrelated Trip caches.
+- Expense create invalidates the exact expense list and balances. Update sets
+  the returned expense detail, invalidates the exact list and balances, then
+  navigates back. Delete removes its detail and invalidates list plus balances.
+  No optimistic payer/share objects are invented. Exact invalidation prevents
+  a list refresh from overwriting detail state. Reservation deletion does not
+  remove expense queries because the server preserves the expense and clears
+  its link. Authentication transitions remove all expense and balance keys
+  through the root `['trips']` cache tree.
 - Logout, login, registration, or guest discovery: cancel and remove all Trip
   queries so data cannot cross user identities.
 - MapTiler autocomplete uses a separate public external-state tree, a 60-second
@@ -103,3 +114,8 @@ state; neither belongs in TanStack Query or PostgreSQL.
 `TripReservation[]` and reservation detail are server state. Form values and
 delete/cancellation confirmations are local state. Root `['trips']` removal on
 authentication transitions clears both reservation list and detail keys.
+
+`TripExpense[]`, expense detail, balances, and suggested settlements are server
+state. Major-unit strings, selected split participants, custom-share strings,
+confirmation UI, and mutation errors are local form/UI state. The server remains
+authoritative for currency validation and exact share allocation.

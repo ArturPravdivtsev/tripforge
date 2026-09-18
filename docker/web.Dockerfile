@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1
-
 FROM node:24-bookworm-slim AS base
 
 ENV PNPM_HOME=/pnpm
@@ -32,7 +30,7 @@ ENV NEXT_PUBLIC_MAPTILER_KEY=$NEXT_PUBLIC_MAPTILER_KEY
 
 COPY . .
 
-RUN pnpm --filter @tripforge/web build
+RUN pnpm --filter @tripforge/web... build
 
 FROM node:24-bookworm-slim AS runtime
 

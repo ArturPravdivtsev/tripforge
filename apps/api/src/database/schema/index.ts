@@ -11,5 +11,11 @@ export {
 } from "./trip-reservations";
 export { tripDestinations } from "./trip-destinations";
 export { tripDays } from "./trip-days";
+export {
+  tripExpenseCategory,
+  tripExpenses,
+  tripExpenseSplitMethod,
+  tripExpenseSplits,
+} from "./trip-expenses";
 export { trips } from "./trips";
 export { users } from "./users";

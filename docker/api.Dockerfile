@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1
-
 FROM node:24-bookworm-slim AS base
 
 ENV PNPM_HOME=/pnpm
@@ -38,7 +36,7 @@ FROM dependencies AS builder
 
 COPY . .
 
-RUN pnpm --filter @tripforge/api build
+RUN pnpm --filter @tripforge/api... build
 
 FROM base AS production-dependencies
 
@@ -63,6 +61,8 @@ ENV PORT=4000
 COPY --from=production-dependencies --chown=node:node /workspace/node_modules /app/node_modules
 COPY --from=production-dependencies --chown=node:node /workspace/apps/api/node_modules ./node_modules
 COPY --from=builder --chown=node:node /workspace/apps/api/dist ./dist
+COPY --from=builder --chown=node:node /workspace/packages/contracts/package.json /app/packages/contracts/package.json
+COPY --from=builder --chown=node:node /workspace/packages/contracts/dist /app/packages/contracts/dist
 
 USER node
 

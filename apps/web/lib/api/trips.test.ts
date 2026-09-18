@@ -330,4 +330,53 @@ describe("tripsApi", () => {
     );
     expect(options.method).toBe("DELETE");
   });
+
+  it("lists expense detail and balances through scoped URLs", async () => {
+    const fetchMock = vi.fn().mockImplementation(() =>
+      Promise.resolve(new Response("[]")),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    await tripsApi.listExpenses(trip.id);
+    await tripsApi.getExpense(trip.id, "expense-id");
+    await tripsApi.getExpenseBalances(trip.id);
+    expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
+      `http://127.0.0.1:4000/api/trips/${trip.id}/expenses`,
+      `http://127.0.0.1:4000/api/trips/${trip.id}/expenses/expense-id`,
+      `http://127.0.0.1:4000/api/trips/${trip.id}/expenses/balances`,
+    ]);
+  });
+
+  it.each([
+    ["create", "POST", ""],
+    ["update", "PATCH", "/expense-id"],
+  ] as const)("sends secured expense %s request", async (operation, method, suffix) => {
+    const body = {
+      amountMinor: 1250,
+      category: "food" as const,
+      currency: "EUR",
+      paidByUserId: participant.user.id,
+      spentOn: "2027-04-14",
+      split: { method: "equal" as const, participantUserIds: [participant.user.id] },
+      title: "Dinner",
+    };
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({})));
+    vi.stubGlobal("fetch", fetchMock);
+    if (operation === "create") await tripsApi.createExpense(trip.id, body);
+    else await tripsApi.updateExpense(trip.id, "expense-id", body);
+    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(`http://127.0.0.1:4000/api/trips/${trip.id}/expenses${suffix}`);
+    expect(options.method).toBe(method);
+    expect(options.body).toBe(JSON.stringify(body));
+  });
+
+  it("deletes an expense with 204 support", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await tripsApi.removeExpense(trip.id, "expense-id");
+    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(
+      `http://127.0.0.1:4000/api/trips/${trip.id}/expenses/expense-id`,
+    );
+    expect(options.method).toBe("DELETE");
+  });
 });

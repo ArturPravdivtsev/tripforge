@@ -1,6 +1,7 @@
 import type {
   AddTripMemberRequest,
   CreateItineraryItemRequest,
+  CreateTripExpenseRequest,
   CreateTripRouteRequest,
   CreateTripReservationRequest,
   CreateTripDestinationRequest,
@@ -11,11 +12,14 @@ import type {
   Trip,
   TripDay,
   TripDestination,
+  TripExpense,
+  TripExpenseBalances,
   TripParticipant,
   TripRouteSegment,
   TripReservation,
   TripsPage,
   UpdateTripDayRequest,
+  UpdateTripExpenseRequest,
   UpdateTripDestinationRequest,
   UpdateTripMemberRequest,
   UpdateTripRequest,
@@ -105,6 +109,34 @@ export const tripsApi = {
     });
   },
 
+  listExpenses(
+    tripId: string,
+    options: RequestOptions = {},
+  ): Promise<TripExpense[]> {
+    return apiFetch(`/api/trips/${tripId}/expenses`, {
+      signal: options.signal,
+    });
+  },
+
+  getExpense(
+    tripId: string,
+    expenseId: string,
+    options: RequestOptions = {},
+  ): Promise<TripExpense> {
+    return apiFetch(`/api/trips/${tripId}/expenses/${expenseId}`, {
+      signal: options.signal,
+    });
+  },
+
+  getExpenseBalances(
+    tripId: string,
+    options: RequestOptions = {},
+  ): Promise<TripExpenseBalances> {
+    return apiFetch(`/api/trips/${tripId}/expenses/balances`, {
+      signal: options.signal,
+    });
+  },
+
   getReservation(
     tripId: string,
     reservationId: string,
@@ -165,6 +197,16 @@ export const tripsApi = {
     });
   },
 
+  createExpense(
+    tripId: string,
+    input: CreateTripExpenseRequest,
+  ): Promise<TripExpense> {
+    return apiFetch(`/api/trips/${tripId}/expenses`, {
+      json: input,
+      method: "POST",
+    });
+  },
+
   remove(tripId: string): Promise<void> {
     return apiFetch(`/api/trips/${tripId}`, { method: "DELETE" });
   },
@@ -195,6 +237,12 @@ export const tripsApi = {
 
   removeReservation(tripId: string, reservationId: string): Promise<void> {
     return apiFetch(`/api/trips/${tripId}/reservations/${reservationId}`, {
+      method: "DELETE",
+    });
+  },
+
+  removeExpense(tripId: string, expenseId: string): Promise<void> {
+    return apiFetch(`/api/trips/${tripId}/expenses/${expenseId}`, {
       method: "DELETE",
     });
   },
@@ -287,6 +335,17 @@ export const tripsApi = {
     input: UpdateTripReservationRequest,
   ): Promise<TripReservation> {
     return apiFetch(`/api/trips/${tripId}/reservations/${reservationId}`, {
+      json: input,
+      method: "PATCH",
+    });
+  },
+
+  updateExpense(
+    tripId: string,
+    expenseId: string,
+    input: UpdateTripExpenseRequest,
+  ): Promise<TripExpense> {
+    return apiFetch(`/api/trips/${tripId}/expenses/${expenseId}`, {
       json: input,
       method: "PATCH",
     });

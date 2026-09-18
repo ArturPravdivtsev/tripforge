@@ -86,6 +86,17 @@ kind switching, optional links, refetch-safe edits, API URLs, and logout cache
 isolation. No test contacts a booking provider because Stage 17 stores manual
 structured data only.
 
+Stage 18 adds pure currency-exponent, strict decimal parser, formatter, equal
+remainder, balance, and deterministic settlement tests. RTL covers exact amount
+input, JPY/KWD validation, equal/custom previews, mismatch blocking, historical
+participant hydration, viewer mode, multi-currency totals, settlements,
+reservation labels, deletion, and list/balance cache invalidation. PostgreSQL
+integration covers transactional equal/custom creation, invalid-total rollback,
+RBAC, custom amount-change semantics, removed-member history and revoked access,
+foreign participant rejection, reservation `SET NULL`, Trip/split cascades,
+per-currency balance invariants, and direct money CHECK constraints. No test
+contacts an FX, booking, banking, or payment provider.
+
 TripForge should avoid testing implementation details and should not rely only
 on expensive browser E2E tests.
 

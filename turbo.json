@@ -16,10 +16,10 @@
       "dependsOn": ["^typecheck"]
     },
     "test": {
-      "dependsOn": ["^test"]
+      "dependsOn": ["^build", "^test"]
     },
     "test:coverage": {
-      "dependsOn": ["^test:coverage"],
+      "dependsOn": ["^build", "^test:coverage"],
       "outputs": ["coverage/**"]
     }
   }

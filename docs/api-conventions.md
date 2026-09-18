@@ -61,14 +61,14 @@ intentionally not used with credentials.
 
 Browser mutations require exact `Origin` and `X-TripForge-Request: 1`. Missing
 or mismatched proof returns `403 CSRF_PROTECTION_FAILED`. Register, login, Trip,
-member, destination, Day, itinerary, route, and reservation JSON mutations require `application/json`,
+member, destination, Day, itinerary, route, reservation, and expense JSON mutations require `application/json`,
 otherwise they return `415 UNSUPPORTED_MEDIA_TYPE`. Safe `GET` requests do not require the
 mutation header; bodyless logout and DELETE requests do not require a content type.
 
 ## Shared transport contracts
 
-`@tripforge/contracts` contains only wire types shared by the Nest API and Next
-browser app, such as auth request, response, user, and error envelopes. It does
+`@tripforge/contracts` contains wire types and focused pure cross-runtime money
+helpers shared by the Nest API and Next browser app. It does
 not contain React components, Nest controllers, database/ORM models, or business
 services.
 
@@ -104,6 +104,12 @@ Trip resources use conventional HTTP semantics:
 | read reservation | `GET /api/trips/:tripId/reservations/:reservationId` | `200` reservation |
 | update reservation | `PATCH /api/trips/:tripId/reservations/:reservationId` | `200` reservation |
 | delete reservation record | `DELETE /api/trips/:tripId/reservations/:reservationId` | `204` empty body |
+| list expenses | `GET /api/trips/:tripId/expenses` | `200` expenses |
+| create expense | `POST /api/trips/:tripId/expenses` | `201` expense |
+| read expense balances | `GET /api/trips/:tripId/expenses/balances` | `200` currency groups |
+| read expense | `GET /api/trips/:tripId/expenses/:expenseId` | `200` expense |
+| update expense | `PATCH /api/trips/:tripId/expenses/:expenseId` | `200` expense |
+| delete expense | `DELETE /api/trips/:tripId/expenses/:expenseId` | `204` empty body |
 
 All routes require the existing server session. Ownership is derived from
 `trips.owner_id`, and editor/viewer access from `trip_members`; neither comes from
@@ -139,3 +145,12 @@ editors. Lists order by `start_date ASC`, `start_time ASC NULLS LAST`,
 `RESERVATION_NOT_FOUND`. PATCH validates the complete merged state so subtype or
 schedule changes cannot leave a partial model. `cancelled` is a status update,
 not provider-side cancellation or record deletion.
+
+Expense reads and balances allow every accessible role; mutations allow owners
+and editors. Lists order by `spent_on DESC`, `created_at DESC`, then `id DESC`.
+Unknown/foreign expense IDs return scoped `EXPENSE_NOT_FOUND`; foreign
+participants and reservations are rejected without exposing another Trip.
+Amounts and shares are safe integers in minor units. Split-total and participant
+lifecycle rules are validated over the final aggregate before a transaction
+commits. Balances and deterministic settlements are derived per currency and
+never perform FX conversion.

@@ -19,6 +19,11 @@ Trip
 └── owns many TripReservation
                ├── optionally references ItineraryItem
                └── optionally owns one TransportReservationDetails
+│
+└── owns many TripExpense
+               ├── optionally references TripReservation
+               ├── references one payer User
+               └── owns one or more TripExpenseSplit → User
 ```
 
 `trips.owner_id` is the single source of truth for ownership. The owner is never
@@ -46,6 +51,8 @@ transport role derived from `trips.owner_id`, not a stored membership value.
 | Create/update/delete/reorder itinerary items | ✓ | ✓ | — |
 | Read reservations and confirmation codes | ✓ | ✓ | ✓ |
 | Create/update/delete reservations | ✓ | ✓ | — |
+| Read expenses, balances, and settlements | ✓ | ✓ | ✓ |
+| Create/update/delete expenses | ✓ | ✓ | — |
 
 Authentication establishes the user identity only. Every request resolves the
 current Trip permission from PostgreSQL, so downgrade and revocation take effect
@@ -109,3 +116,8 @@ Map rendering and browser-only interaction state are detailed in
 Booking lifecycle, typed transport details, local wall-clock schedules, and the
 intentional itinerary `SET NULL` relationship are detailed in
 [Reservations](./reservations.md).
+
+Exact money, split invariants, balances, settlements, and historical financial
+participation are detailed in [Expenses](./expenses.md). Membership removal does
+not delete or rewrite payer/share history, and reservation deletion only clears
+the optional expense link.

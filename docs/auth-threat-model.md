@@ -70,6 +70,13 @@ Neither may be logged or persisted in raw form.
 | Invalid transport subtype | Complete-state validation plus atomic core/subtype transaction |
 | Cancelled provider booking implied | UI states that TripForge does not contact providers |
 | Unrelated user reads confirmation code | Trip-scoped authorization and anti-enumerating `404` |
+| Client sends fractional or unsafe money | Integer minor-unit DTO validation and database range checks |
+| Expense shares do not equal total | Exact transactional aggregate validation |
+| Foreign participant enters an expense | Current/historical Trip participant validation |
+| Removed member history disappears | Expense payer/share FKs are independent of membership rows |
+| Foreign reservation linked to expense | Trip-scoped reservation lookup |
+| Viewer edits financial data | Database-backed Trip RBAC returns `403` |
+| Cross-currency total misleads users | No implicit FX conversion or combined grand total |
 
 ## Residual and deferred risk
 
