@@ -75,6 +75,17 @@ reorder preservation. A deferred mock provider response proves that coordinates
 changed during external I/O produce `ROUTE_ENDPOINT_CHANGED` and no stale row.
 Automated tests never consume live ORS quota or require external network.
 
+Stage 17 adds fast DTO/service normalization, local schedule, merged PATCH,
+conditional subtype, and RBAC tests. PostgreSQL integration covers common and
+transport persistence, deterministic ordering, atomic kind switches, invalid
+result rollback, scoped itinerary links, `SET NULL`, Trip/subtype cascades, and
+direct enum/FK/CHECK enforcement. RTL covers list states, viewer mode,
+cancelled/outside-range presentation, local-only cancellation copy, delete
+confirmation/failure, conditional transport fields, create/edit hydration,
+kind switching, optional links, refetch-safe edits, API URLs, and logout cache
+isolation. No test contacts a booking provider because Stage 17 stores manual
+structured data only.
+
 TripForge should avoid testing implementation details and should not rely only
 on expensive browser E2E tests.
 

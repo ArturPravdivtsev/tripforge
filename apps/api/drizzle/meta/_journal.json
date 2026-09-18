@@ -57,6 +57,13 @@
       "when": 1789713831516,
       "tag": "0007_outgoing_bromley",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1789721680352,
+      "tag": "0008_shiny_true_believers",
+      "breakpoints": true
     }
   ]
 }

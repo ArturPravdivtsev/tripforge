@@ -64,6 +64,12 @@ Neither may be logged or persisted in raw form.
 | Provider sends malformed route geometry | Focused runtime validation before persistence |
 | Routing outage breaks Trip viewing | Saved snapshots remain readable; mutation failure is isolated |
 | Viewer calculates or deletes routes | Database-backed role authorization returns `403` |
+| Viewer mutates reservation | Trip RBAC returns `403` |
+| Foreign itinerary item linked | Trip-scoped item validation returns `ITINERARY_ITEM_NOT_FOUND` |
+| Item deletion destroys booking | Reservation FK uses `ON DELETE SET NULL` |
+| Invalid transport subtype | Complete-state validation plus atomic core/subtype transaction |
+| Cancelled provider booking implied | UI states that TripForge does not contact providers |
+| Unrelated user reads confirmation code | Trip-scoped authorization and anti-enumerating `404` |
 
 ## Residual and deferred risk
 

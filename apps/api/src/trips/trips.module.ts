@@ -16,6 +16,9 @@ import { TripPermissionsService } from "./trip-permissions.service";
 import { TripRoutesController } from "./trip-routes.controller";
 import { TripRoutesRepository } from "./trip-routes.repository";
 import { TripRoutesService } from "./trip-routes.service";
+import { TripReservationsController } from "./trip-reservations.controller";
+import { TripReservationsRepository } from "./trip-reservations.repository";
+import { TripReservationsService } from "./trip-reservations.service";
 import { TripsController } from "./trips.controller";
 import { TripsRepository } from "./trips.repository";
 import { TripsService } from "./trips.service";
@@ -28,6 +31,7 @@ import { TripsService } from "./trips.service";
     TripDaysController,
     ItineraryItemsController,
     TripRoutesController,
+    TripReservationsController,
   ],
   providers: [
     TripsRepository,
@@ -41,6 +45,8 @@ import { TripsService } from "./trips.service";
     ItineraryItemsService,
     TripRoutesRepository,
     TripRoutesService,
+    TripReservationsRepository,
+    TripReservationsService,
     OpenRouteServiceClient,
   ],
 })

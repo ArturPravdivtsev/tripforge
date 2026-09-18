@@ -287,4 +287,47 @@ describe("tripsApi", () => {
     expect(fetchMock.mock.calls[0]?.[0]).toBe(`http://127.0.0.1:4000/api/trips/${trip.id}/routes`);
     expect(fetchMock.mock.calls[1]?.[0]).toBe(`http://127.0.0.1:4000/api/trips/${trip.id}/routes/route-id`);
   });
+
+  it("lists and gets reservations through scoped Trip URLs", async () => {
+    const fetchMock = vi.fn().mockImplementation(() =>
+      Promise.resolve(new Response("[]")),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    await tripsApi.listReservations(trip.id);
+    await tripsApi.getReservation(trip.id, "reservation-id");
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      `http://127.0.0.1:4000/api/trips/${trip.id}/reservations`,
+    );
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(
+      `http://127.0.0.1:4000/api/trips/${trip.id}/reservations/reservation-id`,
+    );
+  });
+
+  it.each([
+    ["create", "POST", "", { kind: "activity", startDate: "2027-04-12", status: "pending", title: "Museum" }],
+    ["update", "PATCH", "/reservation-id", { status: "cancelled" }],
+  ] as const)("sends secured reservation %s request", async (operation, method, suffix, body) => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({})));
+    vi.stubGlobal("fetch", fetchMock);
+    if (operation === "create") await tripsApi.createReservation(trip.id, body);
+    else await tripsApi.updateReservation(trip.id, "reservation-id", body);
+    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(
+      `http://127.0.0.1:4000/api/trips/${trip.id}/reservations${suffix}`,
+    );
+    expect(options.method).toBe(method);
+    expect(options.body).toBe(JSON.stringify(body));
+    expect(new Headers(options.headers).get("X-TripForge-Request")).toBe("1");
+  });
+
+  it("deletes a reservation with 204 support", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await tripsApi.removeReservation(trip.id, "reservation-id");
+    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(
+      `http://127.0.0.1:4000/api/trips/${trip.id}/reservations/reservation-id`,
+    );
+    expect(options.method).toBe("DELETE");
+  });
 });

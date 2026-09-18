@@ -48,6 +48,11 @@ describe("AuthStatus", () => {
     queryClient.setQueryData(tripKeys.destinations("trip-id"), []);
     queryClient.setQueryData(tripKeys.days("trip-id"), []);
     queryClient.setQueryData(tripKeys.itinerary("trip-id"), []);
+    queryClient.setQueryData(tripKeys.reservations("trip-id"), []);
+    queryClient.setQueryData(
+      tripKeys.reservation("trip-id", "reservation-id"),
+      { id: "reservation-id" },
+    );
 
     await user.click(await screen.findByRole("button", { name: "Logout" }));
 
@@ -59,6 +64,12 @@ describe("AuthStatus", () => {
     expect(queryClient.getQueryData(tripKeys.destinations("trip-id"))).toBeUndefined();
     expect(queryClient.getQueryData(tripKeys.days("trip-id"))).toBeUndefined();
     expect(queryClient.getQueryData(tripKeys.itinerary("trip-id"))).toBeUndefined();
+    expect(queryClient.getQueryData(tripKeys.reservations("trip-id"))).toBeUndefined();
+    expect(
+      queryClient.getQueryData(
+        tripKeys.reservation("trip-id", "reservation-id"),
+      ),
+    ).toBeUndefined();
   });
 
   it("shows a recoverable state for server or network failures", async () => {

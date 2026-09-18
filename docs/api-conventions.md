@@ -61,7 +61,7 @@ intentionally not used with credentials.
 
 Browser mutations require exact `Origin` and `X-TripForge-Request: 1`. Missing
 or mismatched proof returns `403 CSRF_PROTECTION_FAILED`. Register, login, Trip,
-member, destination, Day, and itinerary JSON mutations require `application/json`,
+member, destination, Day, itinerary, route, and reservation JSON mutations require `application/json`,
 otherwise they return `415 UNSUPPORTED_MEDIA_TYPE`. Safe `GET` requests do not require the
 mutation header; bodyless logout and DELETE requests do not require a content type.
 
@@ -99,6 +99,11 @@ Trip resources use conventional HTTP semantics:
 | update itinerary item | `PATCH /api/trips/:tripId/itinerary-items/:itemId` | `200` item |
 | delete itinerary item | `DELETE /api/trips/:tripId/itinerary-items/:itemId` | `204` empty body |
 | reorder/move itinerary items | `PATCH /api/trips/:tripId/itinerary-items/reorder` | `200` items |
+| list reservations | `GET /api/trips/:tripId/reservations` | `200` reservations |
+| create reservation | `POST /api/trips/:tripId/reservations` | `201` reservation |
+| read reservation | `GET /api/trips/:tripId/reservations/:reservationId` | `200` reservation |
+| update reservation | `PATCH /api/trips/:tripId/reservations/:reservationId` | `200` reservation |
+| delete reservation record | `DELETE /api/trips/:tripId/reservations/:reservationId` | `204` empty body |
 
 All routes require the existing server session. Ownership is derived from
 `trips.owner_id`, and editor/viewer access from `trip_members`; neither comes from
@@ -127,3 +132,10 @@ Trip collections use one-based offset pagination. `page` defaults to `1`;
 `pageSize` defaults to `20` and is capped at `100`. Responses include `items`,
 `page`, `pageSize`, `total`, and `totalPages`; an empty collection has
 `totalPages: 0`. Ordering is deterministic: `created_at DESC, id DESC`.
+
+Reservation reads allow every accessible role; mutations allow owners and
+editors. Lists order by `start_date ASC`, `start_time ASC NULLS LAST`,
+`created_at ASC`, then `id ASC`. Unknown/foreign reservation IDs return scoped
+`RESERVATION_NOT_FOUND`. PATCH validates the complete merged state so subtype or
+schedule changes cannot leave a partial model. `cancelled` is a status update,
+not provider-side cancellation or record deletion.

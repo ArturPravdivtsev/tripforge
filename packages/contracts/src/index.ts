@@ -183,6 +183,81 @@ export interface UpdateTripRouteRequest {
   mode: TripRouteMode;
 }
 
+export type TripReservationKind =
+  | "accommodation"
+  | "transport"
+  | "restaurant"
+  | "activity"
+  | "other";
+
+export type TripReservationStatus = "pending" | "confirmed" | "cancelled";
+
+export type TransportReservationMode =
+  | "flight"
+  | "train"
+  | "bus"
+  | "ferry"
+  | "other";
+
+export interface TransportReservationDetails {
+  mode: TransportReservationMode;
+  operatorName: string | null;
+  serviceNumber: string | null;
+  originName: string;
+  destinationName: string;
+}
+
+export interface TripReservation {
+  id: string;
+  kind: TripReservationKind;
+  status: TripReservationStatus;
+  title: string;
+  providerName: string | null;
+  confirmationCode: string | null;
+  startDate: string;
+  startTime: string | null;
+  endDate: string | null;
+  endTime: string | null;
+  locationName: string | null;
+  notes: string | null;
+  itineraryItemId: string | null;
+  transport: TransportReservationDetails | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateTripReservationRequest {
+  kind: TripReservationKind;
+  status: TripReservationStatus;
+  title: string;
+  providerName?: string | null;
+  confirmationCode?: string | null;
+  startDate: string;
+  startTime?: string | null;
+  endDate?: string | null;
+  endTime?: string | null;
+  locationName?: string | null;
+  notes?: string | null;
+  itineraryItemId?: string | null;
+  transport?: TransportReservationDetails | null;
+}
+
+export interface UpdateTripReservationRequest {
+  kind?: TripReservationKind;
+  status?: TripReservationStatus;
+  title?: string;
+  providerName?: string | null;
+  confirmationCode?: string | null;
+  startDate?: string;
+  startTime?: string | null;
+  endDate?: string | null;
+  endTime?: string | null;
+  locationName?: string | null;
+  notes?: string | null;
+  itineraryItemId?: string | null;
+  transport?: TransportReservationDetails | null;
+}
+
 export interface CreateTripRequest {
   name: string;
   startsOn?: string | null;

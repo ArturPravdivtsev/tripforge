@@ -2,6 +2,7 @@ import type {
   AddTripMemberRequest,
   CreateItineraryItemRequest,
   CreateTripRouteRequest,
+  CreateTripReservationRequest,
   CreateTripDestinationRequest,
   CreateTripRequest,
   ItineraryItem,
@@ -12,12 +13,14 @@ import type {
   TripDestination,
   TripParticipant,
   TripRouteSegment,
+  TripReservation,
   TripsPage,
   UpdateTripDayRequest,
   UpdateTripDestinationRequest,
   UpdateTripMemberRequest,
   UpdateTripRequest,
   UpdateTripRouteRequest,
+  UpdateTripReservationRequest,
   UpdateItineraryItemRequest,
 } from "@tripforge/contracts";
 
@@ -93,6 +96,25 @@ export const tripsApi = {
     });
   },
 
+  listReservations(
+    tripId: string,
+    options: RequestOptions = {},
+  ): Promise<TripReservation[]> {
+    return apiFetch(`/api/trips/${tripId}/reservations`, {
+      signal: options.signal,
+    });
+  },
+
+  getReservation(
+    tripId: string,
+    reservationId: string,
+    options: RequestOptions = {},
+  ): Promise<TripReservation> {
+    return apiFetch(`/api/trips/${tripId}/reservations/${reservationId}`, {
+      signal: options.signal,
+    });
+  },
+
   addMember(
     tripId: string,
     input: AddTripMemberRequest,
@@ -133,6 +155,16 @@ export const tripsApi = {
     });
   },
 
+  createReservation(
+    tripId: string,
+    input: CreateTripReservationRequest,
+  ): Promise<TripReservation> {
+    return apiFetch(`/api/trips/${tripId}/reservations`, {
+      json: input,
+      method: "POST",
+    });
+  },
+
   remove(tripId: string): Promise<void> {
     return apiFetch(`/api/trips/${tripId}`, { method: "DELETE" });
   },
@@ -157,6 +189,12 @@ export const tripsApi = {
 
   removeRoute(tripId: string, routeId: string): Promise<void> {
     return apiFetch(`/api/trips/${tripId}/routes/${routeId}`, {
+      method: "DELETE",
+    });
+  },
+
+  removeReservation(tripId: string, reservationId: string): Promise<void> {
+    return apiFetch(`/api/trips/${tripId}/reservations/${reservationId}`, {
       method: "DELETE",
     });
   },
@@ -238,6 +276,17 @@ export const tripsApi = {
     input: UpdateTripRouteRequest,
   ): Promise<TripRouteSegment> {
     return apiFetch(`/api/trips/${tripId}/routes/${routeId}`, {
+      json: input,
+      method: "PATCH",
+    });
+  },
+
+  updateReservation(
+    tripId: string,
+    reservationId: string,
+    input: UpdateTripReservationRequest,
+  ): Promise<TripReservation> {
+    return apiFetch(`/api/trips/${tripId}/reservations/${reservationId}`, {
       json: input,
       method: "PATCH",
     });

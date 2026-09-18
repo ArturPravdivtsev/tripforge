@@ -26,6 +26,8 @@ failures receive at most one retry.
 ["trips", "detail", tripId, "days"]
 ["trips", "detail", tripId, "itinerary"]
 ["trips", "detail", tripId, "routes"]
+["trips", "detail", tripId, "reservations"]
+["trips", "detail", tripId, "reservations", reservationId]
 ["place-search", "maptiler", { query, proximity }]
 ```
 
@@ -57,6 +59,11 @@ paginated lists without clearing unrelated cache entries.
   recalculate replaces that entry; delete removes it. An itinerary place update
   or item delete invalidates both itinerary and routes because coordinate changes
   can delete route rows server-side. Reorder leaves the routes cache intact.
+- Reservation create invalidates only the exact reservation list. Update sets
+  the returned detail, invalidates only the exact list, then navigates back.
+  Delete removes the detail and invalidates the exact list. Server ordering is
+  authoritative, so these mutations are not optimistic. Reservation mutations
+  never invalidate routes, itinerary, Days, or unrelated Trip caches.
 - Logout, login, registration, or guest discovery: cancel and remove all Trip
   queries so data cannot cross user identities.
 - MapTiler autocomplete uses a separate public external-state tree, a 60-second
@@ -92,3 +99,7 @@ cleared for security at logout and is allowed to expire in memory naturally.
 `TripRouteSegment[]` is TripForge server state. The ORS request in progress is
 external-operation/mutation state. Selected route and map camera are local React
 state; neither belongs in TanStack Query or PostgreSQL.
+
+`TripReservation[]` and reservation detail are server state. Form values and
+delete/cancellation confirmations are local state. Root `['trips']` removal on
+authentication transitions clears both reservation list and detail keys.

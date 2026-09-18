@@ -3,7 +3,8 @@
 TripForge is a collaborative travel planner. The current product flow supports
 browser authentication, collaborative Trips, structured Days and itinerary,
 MapTiler-backed optional place search, persisted ORS route snapshots, and a
-combined destination/itinerary/route map.
+combined destination/itinerary/route map. Trips also support structured booking
+records with optional itinerary links and typed transport details.
 
 ## Structure
 
@@ -75,7 +76,9 @@ applications during cookie testing. See [Maps](docs/maps.md) for provider and
 key details and [Place search](docs/place-search.md) for autocomplete,
 persistence, attribution, and provider-terms decisions. See
 [Routing](docs/routing.md) for the server-secret model, snapshot lifecycle,
-concurrency boundary, ORS errors, and attribution.
+concurrency boundary, ORS errors, and attribution. See
+[Reservations](docs/reservations.md) for booking lifecycle, local schedule
+semantics, typed transport details, and itinerary-link behavior.
 
 ## Testing and quality
 

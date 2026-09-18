@@ -11,10 +11,14 @@ User ───── owns ─────> Trip
 Trip
 ├── owns many TripDestination
 │
-└── owns many TripDay
+├── owns many TripDay
                │
                ├── optional primary TripDestination
                └── owns many ordered ItineraryItem
+│
+└── owns many TripReservation
+               ├── optionally references ItineraryItem
+               └── optionally owns one TransportReservationDetails
 ```
 
 `trips.owner_id` is the single source of truth for ownership. The owner is never
@@ -40,6 +44,8 @@ transport role derived from `trips.owner_id`, not a stored membership value.
 | Assign a destination to a Day | ✓ | ✓ | — |
 | Read itinerary items | ✓ | ✓ | ✓ |
 | Create/update/delete/reorder itinerary items | ✓ | ✓ | — |
+| Read reservations and confirmation codes | ✓ | ✓ | ✓ |
+| Create/update/delete reservations | ✓ | ✓ | — |
 
 Authentication establishes the user identity only. Every request resolves the
 current Trip permission from PostgreSQL, so downgrade and revocation take effect
@@ -99,3 +105,7 @@ Itinerary persistence, wall-clock time, and ordering are detailed in
 
 Map rendering and browser-only interaction state are detailed in
 [Maps](./maps.md).
+
+Booking lifecycle, typed transport details, local wall-clock schedules, and the
+intentional itinerary `SET NULL` relationship are detailed in
+[Reservations](./reservations.md).
