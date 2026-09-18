@@ -36,6 +36,7 @@ export const environmentSchema = Joi.object({
     then: Joi.required(),
     otherwise: webOriginSchema.default(defaultWebOrigin),
   }),
+  OPENROUTESERVICE_API_KEY: Joi.string().trim().empty("").min(1).optional(),
 });
 
 export function validateEnvironment(

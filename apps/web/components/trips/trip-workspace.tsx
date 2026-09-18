@@ -13,11 +13,13 @@ import type { TripMapSelection } from "@/lib/maps/trip-map-points";
 
 import { DaysSection } from "./days-section";
 import { DestinationsSection } from "./destinations-section";
+import { RoutesSection } from "./routes-section";
 
 type TripWorkspaceProps = Readonly<{ tripId: string }>;
 
 export function TripWorkspace({ tripId }: TripWorkspaceProps) {
   const [selectedMapPoint, setSelectedMapPoint] = useState<TripMapSelection>();
+  const [selectedRouteId, setSelectedRouteId] = useState<string>();
   const tripQuery = useQuery({
     queryFn: ({ signal }) => tripsApi.get(tripId, { signal }),
     queryKey: tripKeys.detail(tripId),
@@ -83,8 +85,16 @@ export function TripWorkspace({ tripId }: TripWorkspaceProps) {
         <DestinationsSection
           canEdit={canEdit}
           selectedMapPoint={selectedMapPoint}
+          selectedRouteId={selectedRouteId}
           tripId={tripId}
-          onSelectMapPoint={setSelectedMapPoint}
+          onSelectMapPoint={(selection) => {
+            setSelectedMapPoint(selection);
+            if (selection) setSelectedRouteId(undefined);
+          }}
+          onSelectRoute={(routeId) => {
+            setSelectedRouteId(routeId);
+            if (routeId) setSelectedMapPoint(undefined);
+          }}
         />
         <DaysSection
           canEdit={canEdit}
@@ -93,6 +103,15 @@ export function TripWorkspace({ tripId }: TripWorkspaceProps) {
           onSelectMapPoint={setSelectedMapPoint}
         />
       </div>
+      <RoutesSection
+        canEdit={canEdit}
+        selectedRouteId={selectedRouteId}
+        tripId={tripId}
+        onSelectRoute={(routeId) => {
+          setSelectedRouteId(routeId);
+          if (routeId) setSelectedMapPoint(undefined);
+        }}
+      />
     </div>
   );
 }

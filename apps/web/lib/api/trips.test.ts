@@ -261,4 +261,30 @@ describe("tripsApi", () => {
     );
     expect(options.method).toBe("DELETE");
   });
+
+  it.each([
+    ["create", "POST", "", { fromItemId: "from", mode: "walking", toItemId: "to" }],
+    ["update", "PATCH", "/route-id", { mode: "cycling" }],
+  ] as const)("sends route %s only to Nest", async (operation, method, suffix, body) => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({})));
+    vi.stubGlobal("fetch", fetchMock);
+    if (operation === "create") await tripsApi.createRoute(trip.id, body);
+    else await tripsApi.updateRoute(trip.id, "route-id", body);
+    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(`http://127.0.0.1:4000/api/trips/${trip.id}/routes${suffix}`);
+    expect(url).not.toContain("api.heigit.org");
+    expect(options.method).toBe(method);
+    expect(options.body).toBe(JSON.stringify(body));
+  });
+
+  it("lists and deletes routes through Nest", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response("[]"))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await tripsApi.listRoutes(trip.id);
+    await tripsApi.removeRoute(trip.id, "route-id");
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(`http://127.0.0.1:4000/api/trips/${trip.id}/routes`);
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(`http://127.0.0.1:4000/api/trips/${trip.id}/routes/route-id`);
+  });
 });

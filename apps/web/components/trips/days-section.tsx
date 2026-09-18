@@ -110,13 +110,19 @@ export function DaysSection({
           } as CreateItineraryItemRequest),
     onSuccess: async () => {
       setActiveForm(undefined);
-      await queryClient.invalidateQueries({ queryKey: itineraryKey });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: itineraryKey }),
+        queryClient.invalidateQueries({ queryKey: tripKeys.routes(tripId) }),
+      ]);
     },
   });
   const deleteItem = useMutation({
     mutationFn: (itemId: string) => tripsApi.removeItineraryItem(tripId, itemId),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: itineraryKey });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: itineraryKey }),
+        queryClient.invalidateQueries({ queryKey: tripKeys.routes(tripId) }),
+      ]);
     },
   });
   const reorderItems = useMutation({

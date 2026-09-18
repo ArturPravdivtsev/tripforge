@@ -74,6 +74,7 @@ services:
       PORT: "4000"
       DATABASE_URL: postgresql://tripforge:tripforge@db:5432/tripforge
       WEB_ORIGIN: http://127.0.0.1:3100
+      OPENROUTESERVICE_API_KEY: ${OPENROUTESERVICE_API_KEY:-}
     depends_on:
       migrate:
         condition: service_completed_successfully

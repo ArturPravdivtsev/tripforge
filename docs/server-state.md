@@ -25,6 +25,7 @@ failures receive at most one retry.
 ["trips", "detail", tripId, "destinations"]
 ["trips", "detail", tripId, "days"]
 ["trips", "detail", tripId, "itinerary"]
+["trips", "detail", tripId, "routes"]
 ["place-search", "maptiler", { query, proximity }]
 ```
 
@@ -52,6 +53,10 @@ paginated lists without clearing unrelated cache entries.
   cancels the query, snapshots the complete item array, writes normalized Day IDs
   and positions optimistically, restores the full snapshot on error, and always
   invalidates after settlement. No request is sent during drag-over.
+- Route create appends the returned snapshot to the exact routes cache;
+  recalculate replaces that entry; delete removes it. An itinerary place update
+  or item delete invalidates both itinerary and routes because coordinate changes
+  can delete route rows server-side. Reorder leaves the routes cache intact.
 - Logout, login, registration, or guest discovery: cancel and remove all Trip
   queries so data cannot cross user identities.
 - MapTiler autocomplete uses a separate public external-state tree, a 60-second
@@ -83,3 +88,7 @@ interaction state. Provider results are temporary external server state.
 Only an explicitly selected, normalized `ItineraryPlace` becomes TripForge
 server state after the item mutation succeeds. Public search cache need not be
 cleared for security at logout and is allowed to expire in memory naturally.
+
+`TripRouteSegment[]` is TripForge server state. The ORS request in progress is
+external-operation/mutation state. Selected route and map camera are local React
+state; neither belongs in TanStack Query or PostgreSQL.

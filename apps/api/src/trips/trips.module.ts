@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 
 import { AuthModule } from "../auth/auth.module";
 import { DatabaseModule } from "../database/database.module";
+import { OpenRouteServiceClient } from "../routing/openrouteservice.client";
 import { ItineraryItemsController } from "./itinerary-items.controller";
 import { ItineraryItemsRepository } from "./itinerary-items.repository";
 import { ItineraryItemsService } from "./itinerary-items.service";
@@ -12,6 +13,9 @@ import { TripDestinationsController } from "./trip-destinations.controller";
 import { TripDestinationsRepository } from "./trip-destinations.repository";
 import { TripDestinationsService } from "./trip-destinations.service";
 import { TripPermissionsService } from "./trip-permissions.service";
+import { TripRoutesController } from "./trip-routes.controller";
+import { TripRoutesRepository } from "./trip-routes.repository";
+import { TripRoutesService } from "./trip-routes.service";
 import { TripsController } from "./trips.controller";
 import { TripsRepository } from "./trips.repository";
 import { TripsService } from "./trips.service";
@@ -23,6 +27,7 @@ import { TripsService } from "./trips.service";
     TripDestinationsController,
     TripDaysController,
     ItineraryItemsController,
+    TripRoutesController,
   ],
   providers: [
     TripsRepository,
@@ -34,6 +39,9 @@ import { TripsService } from "./trips.service";
     TripDaysService,
     ItineraryItemsRepository,
     ItineraryItemsService,
+    TripRoutesRepository,
+    TripRoutesService,
+    OpenRouteServiceClient,
   ],
 })
 export class TripsModule {}

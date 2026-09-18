@@ -28,6 +28,11 @@ describe("validateEnvironment", () => {
     });
   });
 
+  it("allows routing to remain unconfigured", () => {
+    expect(validateEnvironment({ OPENROUTESERVICE_API_KEY: "" }))
+      .not.toHaveProperty("OPENROUTESERVICE_API_KEY");
+  });
+
   it("rejects an invalid TCP port", () => {
     expect(() =>
       validateEnvironment({ NODE_ENV: "test", PORT: "not-a-port" }),

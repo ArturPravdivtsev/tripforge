@@ -24,7 +24,9 @@ import { TripMapPanel } from "../maps/trip-map-panel";
 type DestinationsSectionProps = Readonly<{
   canEdit: boolean;
   onSelectMapPoint?: (selection?: TripMapSelection) => void;
+  onSelectRoute?: (routeId?: string) => void;
   selectedMapPoint?: TripMapSelection;
+  selectedRouteId?: string;
   tripId: string;
 }>;
 
@@ -39,7 +41,9 @@ function validateName(value: string): string | undefined {
 export function DestinationsSection({
   canEdit,
   onSelectMapPoint = () => undefined,
+  onSelectRoute = () => undefined,
   selectedMapPoint,
+  selectedRouteId,
   tripId,
 }: DestinationsSectionProps) {
   const queryClient = useQueryClient();
@@ -64,6 +68,10 @@ export function DestinationsSection({
   const itineraryQuery = useQuery({
     queryFn: ({ signal }) => tripsApi.listItineraryItems(tripId, { signal }),
     queryKey: tripKeys.itinerary(tripId),
+  });
+  const routesQuery = useQuery({
+    queryFn: ({ signal }) => tripsApi.listRoutes(tripId, { signal }),
+    queryKey: tripKeys.routes(tripId),
   });
   const refresh = () =>
     queryClient.invalidateQueries({ exact: true, queryKey: key });
@@ -326,11 +334,14 @@ export function DestinationsSection({
               destinations={destinationsQuery.data}
               editingDestinationId={locationEditingId}
               itineraryItems={itineraryQuery.data ?? []}
+              routes={routesQuery.data ?? []}
               onEditLocation={startLocationEdit}
               onMapClick={setLocationPreview}
               onSelectMapPoint={onSelectMapPoint}
+              onSelectRoute={onSelectRoute}
               preview={locationPreview}
               selectedMapPoint={selectedMapPoint}
+              selectedRouteId={selectedRouteId}
             />
           </>
         )}

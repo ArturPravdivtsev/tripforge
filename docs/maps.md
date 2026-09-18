@@ -10,6 +10,8 @@ TripForge keeps four concerns distinct:
 - **react-map-gl 8.1.3** is the React integration around MapLibre's imperative
   map.
 - **MapTiler** supplies the basemap style and tiles directly to the browser.
+- **openrouteservice** calculates route snapshots through Nest only when the user
+  explicitly creates or recalculates a route.
 
 Nest does not proxy map tiles and owns no MapTiler secret. Plain nullable
 latitude/longitude columns are sufficient while the server only persists
@@ -63,3 +65,12 @@ browser-visible key is used, and no Nest proxy, reverse geocoder, routes, user
 location, or second details lookup exists. The map combines both categories via
 a UI-only discriminated `TripMapPoint` union; this is not another persistence
 aggregate. See [Place search](place-search.md).
+
+## Stage 16 route lines
+
+Saved route LineStrings render on the existing map as a GeoJSON Source with line
+layers: dotted walking, dashed cycling, and solid driving. No vertex DOM markers
+or second map are created. Selected route/card state is shared locally; selecting
+a route fits bounds derived from persisted geometry. Ordinary query refetch does
+not force camera changes. Route attribution remains visible whenever geometry is
+rendered. See [Routing](routing.md).

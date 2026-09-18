@@ -24,6 +24,7 @@ describe("TripWorkspace", () => {
     vi.spyOn(tripsApi, "listDestinations").mockResolvedValue([]);
     vi.spyOn(tripsApi, "listDays").mockResolvedValue([]);
     vi.spyOn(tripsApi, "listItineraryItems").mockResolvedValue([]);
+    vi.spyOn(tripsApi, "listRoutes").mockResolvedValue([]);
   });
 
   it("renders loading then the complete Trip workspace", async () => {

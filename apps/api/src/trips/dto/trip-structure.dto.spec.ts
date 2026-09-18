@@ -3,9 +3,11 @@ import { validate } from "class-validator";
 import { describe, expect, it } from "vitest";
 
 import { CreateTripDestinationDto } from "./create-trip-destination.dto";
+import { CreateTripRouteDto } from "./create-trip-route.dto";
 import { ReorderTripDestinationsDto } from "./reorder-trip-destinations.dto";
 import { UpdateTripDayDto } from "./update-trip-day.dto";
 import { UpdateTripDestinationDto } from "./update-trip-destination.dto";
+import { UpdateTripRouteDto } from "./update-trip-route.dto";
 
 async function validateDto<T extends object>(dto: T) {
   return validate(dto, { forbidNonWhitelisted: true, whitelist: true });
@@ -66,5 +68,31 @@ describe("Trip structure DTOs", () => {
     await expect(validateDto(cleared)).resolves.toEqual([]);
     await expect(validateDto(missing)).resolves.not.toEqual([]);
     await expect(validateDto(malformed)).resolves.not.toEqual([]);
+  });
+
+  it("accepts only TripForge route modes and UUID endpoints", async () => {
+    const valid = plainToInstance(CreateTripRouteDto, {
+      fromItemId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      mode: "walking",
+      toItemId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    });
+    const providerProfile = plainToInstance(CreateTripRouteDto, {
+      fromItemId: valid.fromItemId,
+      mode: "foot-walking",
+      toItemId: valid.toItemId,
+    });
+    const forged = plainToInstance(CreateTripRouteDto, {
+      distanceMeters: 10,
+      fromItemId: valid.fromItemId,
+      geometry: { type: "LineString", coordinates: [] },
+      mode: "walking",
+      toItemId: valid.toItemId,
+    });
+    const recalculate = plainToInstance(UpdateTripRouteDto, { mode: "driving" });
+
+    await expect(validateDto(valid)).resolves.toEqual([]);
+    await expect(validateDto(providerProfile)).resolves.not.toEqual([]);
+    await expect(validateDto(forged)).resolves.not.toEqual([]);
+    await expect(validateDto(recalculate)).resolves.toEqual([]);
   });
 });

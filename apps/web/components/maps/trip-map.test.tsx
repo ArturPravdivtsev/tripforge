@@ -1,7 +1,7 @@
 import type { PropsWithChildren } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { TripDestination } from "@tripforge/contracts";
+import type { TripDestination, TripRouteSegment } from "@tripforge/contracts";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mapMethods = vi.hoisted(() => ({
@@ -15,7 +15,7 @@ vi.mock("maplibre-gl", () => ({ setWorkerUrl: vi.fn() }));
 vi.mock("react-map-gl/maplibre", async () => {
   const React = await import("react");
   type FakeMapProps = PropsWithChildren<{
-    onClick?: (event: { lngLat: { lat: number; lng: number } }) => void;
+    onClick?: (event: { features?: Array<{ properties: { routeId: string } }>; lngLat: { lat: number; lng: number } }) => void;
     onError?: () => void;
     onLoad?: () => void;
   }>;
@@ -35,14 +35,22 @@ vi.mock("react-map-gl/maplibre", async () => {
           >
             Map surface
           </button>
+          <button
+            onClick={() => onClick?.({ features: [{ properties: { routeId: "route-a" } }], lngLat: { lat: 35.7, lng: 139.7 } })}
+            type="button"
+          >
+            Route surface
+          </button>
           <button onClick={onError} type="button">Fail map</button>
           {children}
         </div>
       );
     }),
     Marker: ({ children }: PropsWithChildren) => <div>{children}</div>,
+    Layer: () => <div data-testid="route-layer" />,
     NavigationControl: () => <div>Zoom controls</div>,
     Popup: ({ children }: PropsWithChildren) => <div>{children}</div>,
+    Source: ({ children }: PropsWithChildren) => <div data-testid="route-source">{children}</div>,
   };
 });
 
@@ -77,6 +85,18 @@ const baseProps = {
   onMapClick: vi.fn(),
   onSelectMapPoint: vi.fn(),
   points: buildTripMapPoints(destinations, [], []),
+};
+
+const route: TripRouteSegment = {
+  createdAt: "2027-01-01T00:00:00.000Z",
+  distanceMeters: 2400,
+  durationSeconds: 1860,
+  fromItemId: "senso",
+  geometry: { coordinates: [[139.7967, 35.7148], [139.8107, 35.7101]], type: "LineString" },
+  id: "route-a",
+  mode: "walking",
+  toItemId: "skytree",
+  updatedAt: "2027-01-01T00:00:00.000Z",
 };
 
 describe("TripMap", () => {
@@ -167,5 +187,28 @@ describe("TripMap", () => {
 
     await user.click(screen.getByRole("button", { name: "Fail map" }));
     expect(screen.getByText(/Map is temporarily unavailable/)).toBeVisible();
+  });
+
+  it("renders route GeoJSON, attribution, selects the line, and fits route bounds", async () => {
+    const user = userEvent.setup();
+    const onSelectRoute = vi.fn();
+    render(
+      <TripMap
+        {...baseProps}
+        onSelectRoute={onSelectRoute}
+        routes={[route]}
+        selectedRouteId="route-a"
+      />,
+    );
+
+    expect(screen.getByTestId("route-source")).toBeVisible();
+    expect(screen.getAllByTestId("route-layer")).toHaveLength(4);
+    expect(screen.getByText(/openrouteservice.org/)).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Route surface" }));
+    expect(onSelectRoute).toHaveBeenCalledWith("route-a");
+    expect(mapMethods.fitBounds).toHaveBeenCalledWith(
+      [[139.7967, 35.7101], [139.8107, 35.7148]],
+      expect.objectContaining({ maxZoom: 14, padding: 64 }),
+    );
   });
 });

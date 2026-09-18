@@ -57,6 +57,13 @@ Neither may be logged or persisted in raw form.
 | Search result contains malformed external data | Focused Zod validation before normalization or UI consumption |
 | Search provider outage breaks item editing | Optional query/component boundary; normal form and stored snapshots remain usable |
 | Search queries leak into application logs | TripForge does not proxy, persist, or intentionally log autocomplete text |
+| ORS API key exposed | Server-only environment value; absent from browser builds, responses, and logs |
+| Client forges route geometry | Browser submits only endpoint IDs and TripForge mode; Nest generates geometry |
+| Foreign Trip route endpoint IDs | Trip-scoped endpoint lookup plus transactional revalidation |
+| Endpoint changes during provider request | Exact coordinate snapshots revalidated under short row locks |
+| Provider sends malformed route geometry | Focused runtime validation before persistence |
+| Routing outage breaks Trip viewing | Saved snapshots remain readable; mutation failure is isolated |
+| Viewer calculates or deletes routes | Database-backed role authorization returns `403` |
 
 ## Residual and deferred risk
 

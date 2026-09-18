@@ -2,7 +2,8 @@
 
 TripForge is a collaborative travel planner. The current product flow supports
 browser authentication, collaborative Trips, structured Days and itinerary,
-MapTiler-backed optional place search, and a combined destination/itinerary map.
+MapTiler-backed optional place search, persisted ORS route snapshots, and a
+combined destination/itinerary/route map.
 
 ## Structure
 
@@ -56,6 +57,7 @@ NODE_ENV=development
 PORT=4000
 DATABASE_URL=postgresql://tripforge:tripforge@127.0.0.1:5433/tripforge
 WEB_ORIGIN=http://127.0.0.1:3000
+OPENROUTESERVICE_API_KEY=
 ```
 
 These are local development defaults. Production requires an explicit
@@ -71,7 +73,9 @@ Environment files are optional for local development; use
 overriding the defaults. Keep the hostname style consistent between both
 applications during cookie testing. See [Maps](docs/maps.md) for provider and
 key details and [Place search](docs/place-search.md) for autocomplete,
-persistence, attribution, and provider-terms decisions.
+persistence, attribution, and provider-terms decisions. See
+[Routing](docs/routing.md) for the server-secret model, snapshot lifecycle,
+concurrency boundary, ORS errors, and attribution.
 
 ## Testing and quality
 

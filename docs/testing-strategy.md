@@ -67,6 +67,14 @@ selection, failure, form-autofill/remove/cancel tests; and pure/map-boundary
 tests for both point categories, popups, bounds, selection, and reorder-stable
 coordinates. Automated tests never call the real geocoding service.
 
+Stage 16 adds mocked ORS endpoint/profile/auth/order/timeout/response/error tests;
+route service and formatting tests; RTL owner/editor/viewer route UX; GeoJSON
+source/style/bounds/selection tests; and PostgreSQL coverage for CRUD/RBAC,
+directional uniqueness, checks, cascades, coordinate invalidation, metadata and
+reorder preservation. A deferred mock provider response proves that coordinates
+changed during external I/O produce `ROUTE_ENDPOINT_CHANGED` and no stale row.
+Automated tests never consume live ORS quota or require external network.
+
 TripForge should avoid testing implementation details and should not rely only
 on expensive browser E2E tests.
 

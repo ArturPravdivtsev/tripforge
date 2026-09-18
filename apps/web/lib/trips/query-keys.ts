@@ -8,6 +8,7 @@ export const tripKeys = {
   itinerary: (tripId: string) =>
     [...tripKeys.detail(tripId), "itinerary"] as const,
   members: (tripId: string) => [...tripKeys.detail(tripId), "members"] as const,
+  routes: (tripId: string) => [...tripKeys.detail(tripId), "routes"] as const,
   lists: () => [...tripKeys.all, "list"] as const,
   list: (page: number, pageSize: number) =>
     [...tripKeys.lists(), { page, pageSize }] as const,

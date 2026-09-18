@@ -154,6 +154,35 @@ export interface ReorderItineraryItemsRequest {
   }>;
 }
 
+export type TripRouteMode = "walking" | "cycling" | "driving";
+
+export interface TripRouteGeometry {
+  type: "LineString";
+  coordinates: [number, number][];
+}
+
+export interface TripRouteSegment {
+  id: string;
+  fromItemId: string;
+  toItemId: string;
+  mode: TripRouteMode;
+  distanceMeters: number;
+  durationSeconds: number;
+  geometry: TripRouteGeometry;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateTripRouteRequest {
+  fromItemId: string;
+  toItemId: string;
+  mode: TripRouteMode;
+}
+
+export interface UpdateTripRouteRequest {
+  mode: TripRouteMode;
+}
+
 export interface CreateTripRequest {
   name: string;
   startsOn?: string | null;

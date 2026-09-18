@@ -3,16 +3,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { setWorkerUrl } from "maplibre-gl";
 import Map, {
+  Layer,
   Marker,
   NavigationControl,
   Popup,
+  Source,
+  type LayerProps,
   type MapMouseEvent,
   type MapRef,
 } from "react-map-gl/maplibre";
 import { Button } from "@tripforge/ui";
+import type { TripRouteSegment } from "@tripforge/contracts";
 
 import { calculateBounds, type MapPoint } from "@/lib/maps/bounds";
 import { DEFAULT_MAP_VIEW } from "@/lib/maps/config";
+import {
+  buildRouteFeatureCollection,
+  routeCoordinates,
+} from "@/lib/maps/trip-map-routes";
 import type {
   TripMapPoint,
   TripMapSelection,
@@ -31,9 +39,12 @@ type TripMapProps = Readonly<{
   onEditLocation: (destinationId: string) => void;
   onMapClick: (point: MapPoint) => void;
   onSelectMapPoint: (selection?: TripMapSelection) => void;
+  onSelectRoute?: (routeId?: string) => void;
   points: readonly TripMapPoint[];
   preview?: MapPoint;
+  routes?: readonly TripRouteSegment[];
   selectedMapPoint?: TripMapSelection;
+  selectedRouteId?: string;
 }>;
 
 export function TripMap({
@@ -43,32 +54,42 @@ export function TripMap({
   onEditLocation,
   onMapClick,
   onSelectMapPoint,
+  onSelectRoute = () => undefined,
   points,
   preview,
+  routes = [],
   selectedMapPoint,
+  selectedRouteId,
 }: TripMapProps) {
   const mapRef = useRef<MapRef>(null);
   const lastAutoFitSignature = useRef<string | undefined>(undefined);
+  const lastSelectedRouteSignature = useRef<string | undefined>(undefined);
   const [failed, setFailed] = useState(false);
   const located = useMemo(() => points, [points]);
+  const routeFeatures = useMemo(() => buildRouteFeatureCollection(routes), [routes]);
+  const routePoints = useMemo(() => routeCoordinates(routes), [routes]);
+  const allCoordinates = useMemo(
+    () => [...located, ...routePoints],
+    [located, routePoints],
+  );
   const coordinateSignature = located
     .map(({ id, latitude, longitude, type }) => `${type}:${id}:${latitude}:${longitude}`)
-    .join("|");
+    .join("|") + routes.map(({ id, updatedAt }) => `|route:${id}:${updatedAt}`).join("");
 
   const fitPlaces = useCallback(() => {
     const map = mapRef.current;
-    if (!map || located.length === 0) return;
+    if (!map || allCoordinates.length === 0) return;
 
-    if (located.length === 1) {
+    if (allCoordinates.length === 1) {
       map.easeTo({
-        center: [located[0]!.longitude, located[0]!.latitude],
+        center: [allCoordinates[0]!.longitude, allCoordinates[0]!.latitude],
         duration: 500,
         zoom: SINGLE_DESTINATION_ZOOM,
       });
       return;
     }
 
-    const bounds = calculateBounds(located);
+    const bounds = calculateBounds(allCoordinates);
     if (!bounds) return;
     map.fitBounds(
       [
@@ -77,7 +98,7 @@ export function TripMap({
       ],
       { duration: 500, maxZoom: 12, padding: 48 },
     );
-  }, [located]);
+  }, [allCoordinates]);
 
   useEffect(() => {
     if (lastAutoFitSignature.current === coordinateSignature) return;
@@ -100,6 +121,29 @@ export function TripMap({
     });
   }, [selectedMapPoint, selectedLatitude, selectedLongitude]);
 
+  useEffect(() => {
+    const route = routes.find(({ id }) => id === selectedRouteId);
+    const map = mapRef.current;
+    if (!route || !map) {
+      lastSelectedRouteSignature.current = undefined;
+      return;
+    }
+    const signature = `${route.id}:${route.updatedAt}`;
+    if (lastSelectedRouteSignature.current === signature) return;
+    lastSelectedRouteSignature.current = signature;
+    const bounds = calculateBounds(
+      route.geometry.coordinates.map(([longitude, latitude]) => ({
+        latitude,
+        longitude,
+      })),
+    );
+    if (!bounds) return;
+    map.fitBounds(
+      [[bounds.west, bounds.south], [bounds.east, bounds.north]],
+      { duration: 400, maxZoom: 14, padding: 64 },
+    );
+  }, [routes, selectedRouteId]);
+
   if (failed) {
     return <MapFailure />;
   }
@@ -111,12 +155,17 @@ export function TripMap({
         dragRotate={false}
         initialViewState={DEFAULT_MAP_VIEW}
         mapStyle={mapStyle}
+        interactiveLayerIds={routes.length > 0 ? routeLayerIds : undefined}
         onClick={(event: MapMouseEvent) => {
-          if (!editingDestinationId) return;
-          onMapClick({
-            latitude: event.lngLat.lat,
-            longitude: event.lngLat.lng,
-          });
+          if (editingDestinationId) {
+            onMapClick({
+              latitude: event.lngLat.lat,
+              longitude: event.lngLat.lng,
+            });
+            return;
+          }
+          const routeId = event.features?.[0]?.properties?.routeId;
+          if (typeof routeId === "string") onSelectRoute(routeId);
         }}
         onError={() => setFailed(true)}
         onLoad={fitPlaces}
@@ -125,6 +174,17 @@ export function TripMap({
         touchPitch={false}
       >
         <NavigationControl position="top-right" showCompass={false} />
+        {routes.length > 0 ? (
+          <Source data={routeFeatures} id="trip-routes" type="geojson">
+            {routeLayers.map((layer) => <Layer {...layer} key={layer.id} />)}
+            <Layer
+              id="trip-route-selected"
+              type="line"
+              filter={["==", ["get", "routeId"], selectedRouteId ?? ""]}
+              paint={{ "line-color": "#f59e0b", "line-width": 7 }}
+            />
+          </Source>
+        ) : null}
         {located.map((point) => (
           <Marker
             anchor="bottom"
@@ -198,7 +258,7 @@ export function TripMap({
           </Popup>
         ) : null}
       </Map>
-      {located.length > 0 ? (
+      {allCoordinates.length > 0 ? (
         <Button
           className="absolute bottom-3 left-3 shadow-md"
           size="sm"
@@ -207,6 +267,11 @@ export function TripMap({
         >
           Show all places
         </Button>
+      ) : null}
+      {routes.length > 0 ? (
+        <p className="absolute left-3 top-3 max-w-56 rounded-[var(--radius-sm)] bg-[var(--surface)]/95 px-2 py-1 text-[10px] shadow-sm">
+          © <a className="underline" href="https://openrouteservice.org" rel="noreferrer" target="_blank">openrouteservice.org</a> by HeiGIT · Map data © <a className="underline" href="https://www.openstreetmap.org/copyright" rel="noreferrer" target="_blank">OpenStreetMap contributors</a>
+        </p>
       ) : null}
       {editingDestinationId ? (
         <p className="absolute bottom-3 right-3 max-w-56 rounded-[var(--radius-sm)] bg-[var(--surface)] px-3 py-2 text-xs shadow-md">
@@ -235,3 +300,26 @@ const kindLabels = {
   other: "Other",
   transport: "Transport",
 } as const;
+
+const routeLayers: LayerProps[] = [
+  {
+    filter: ["==", ["get", "mode"], "walking"],
+    id: "trip-route-walking",
+    paint: { "line-color": "#7c3aed", "line-dasharray": [1, 2], "line-width": 4 },
+    type: "line",
+  },
+  {
+    filter: ["==", ["get", "mode"], "cycling"],
+    id: "trip-route-cycling",
+    paint: { "line-color": "#059669", "line-dasharray": [3, 2], "line-width": 4 },
+    type: "line",
+  },
+  {
+    filter: ["==", ["get", "mode"], "driving"],
+    id: "trip-route-driving",
+    paint: { "line-color": "#2563eb", "line-width": 4 },
+    type: "line",
+  },
+];
+
+const routeLayerIds = routeLayers.map(({ id }) => id as string);

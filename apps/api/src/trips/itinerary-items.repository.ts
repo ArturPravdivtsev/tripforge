@@ -6,11 +6,15 @@ import type {
   ReorderItineraryItemsRequest,
   UpdateItineraryItemRequest,
 } from "@tripforge/contracts";
-import { and, asc, eq, exists, inArray, max, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, max, or } from "drizzle-orm";
 
 import { DATABASE } from "../database/database.constants";
 import type { Database } from "../database/database.provider";
-import { itineraryItems, tripDays } from "../database/schema";
+import {
+  itineraryItems,
+  tripDays,
+  tripRouteSegments,
+} from "../database/schema";
 
 const itemSelection = {
   createdAt: itineraryItems.createdAt,
@@ -164,32 +168,61 @@ export class ItineraryItemsRepository {
     itemId: string,
     input: UpdateItineraryItemRequest,
   ): Promise<ItineraryItem | undefined> {
-    const scopedDay = exists(
-      this.database
-        .select({ value: sql`1` })
-        .from(tripDays)
+    return this.database.transaction(async (transaction) => {
+      const [current] = await transaction
+        .select({
+          id: itineraryItems.id,
+          latitude: itineraryItems.placeLatitude,
+          longitude: itineraryItems.placeLongitude,
+        })
+        .from(itineraryItems)
+        .innerJoin(tripDays, eq(tripDays.id, itineraryItems.tripDayId))
         .where(
           and(
-            eq(tripDays.id, itineraryItems.tripDayId),
+            eq(itineraryItems.id, itemId),
             eq(tripDays.tripId, tripId),
           ),
-        ),
-    );
-    const changes = {
-      ...(input.kind === undefined ? {} : { kind: input.kind }),
-      ...(input.notes === undefined ? {} : { notes: input.notes }),
-      ...(input.startTime === undefined ? {} : { startTime: input.startTime }),
-      ...(input.title === undefined ? {} : { title: input.title }),
-      ...(input.place === undefined ? {} : placeColumns(input.place)),
-      updatedAt: new Date(),
-    };
-    const [row] = await this.database
-      .update(itineraryItems)
-      .set(changes)
-      .where(and(eq(itineraryItems.id, itemId), scopedDay))
-      .returning(itemSelection);
+        )
+        .for("update", { of: itineraryItems })
+        .limit(1);
 
-    return row ? toItem(row) : undefined;
+      if (!current) return undefined;
+
+      const changes = {
+        ...(input.kind === undefined ? {} : { kind: input.kind }),
+        ...(input.notes === undefined ? {} : { notes: input.notes }),
+        ...(input.startTime === undefined ? {} : { startTime: input.startTime }),
+        ...(input.title === undefined ? {} : { title: input.title }),
+        ...(input.place === undefined ? {} : placeColumns(input.place)),
+        updatedAt: new Date(),
+      };
+      const nextLatitude =
+        input.place === undefined ? current.latitude : (input.place?.latitude ?? null);
+      const nextLongitude =
+        input.place === undefined ? current.longitude : (input.place?.longitude ?? null);
+      const coordinatesChanged =
+        input.place !== undefined &&
+        (current.latitude !== nextLatitude || current.longitude !== nextLongitude);
+
+      if (coordinatesChanged) {
+        await transaction
+          .delete(tripRouteSegments)
+          .where(
+            or(
+              eq(tripRouteSegments.fromItemId, itemId),
+              eq(tripRouteSegments.toItemId, itemId),
+            ),
+          );
+      }
+
+      const [row] = await transaction
+        .update(itineraryItems)
+        .set(changes)
+        .where(eq(itineraryItems.id, itemId))
+        .returning(itemSelection);
+
+      return row ? toItem(row) : undefined;
+    });
   }
 
   async delete(tripId: string, itemId: string): Promise<boolean> {

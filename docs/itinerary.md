@@ -21,6 +21,11 @@ place lifecycle, or reuse workflow. A reusable `TripPlace` aggregate may be
 justified later by favourites, multiple visits, shared metadata, or place notes.
 Deleting the item deletes its snapshot without orphan cleanup.
 
+Persisted routes reference two itinerary items. Coordinate replacement or place
+clear invalidates every referencing route in the same transaction; metadata-only
+place edits preserve it. Reorder changes only Day/position and therefore keeps
+routes. Endpoint deletion cascades route deletion. See [Routing](routing.md).
+
 `start_time` is PostgreSQL `time without time zone`. The API transports strict
 24-hour `HH:mm`; it is a local wall-clock label for that Day, not a UTC instant,
 timestamp, or JavaScript `Date`. Timezone, end time, and duration are deferred.

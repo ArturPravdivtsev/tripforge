@@ -1,6 +1,7 @@
 import type {
   AddTripMemberRequest,
   CreateItineraryItemRequest,
+  CreateTripRouteRequest,
   CreateTripDestinationRequest,
   CreateTripRequest,
   ItineraryItem,
@@ -10,11 +11,13 @@ import type {
   TripDay,
   TripDestination,
   TripParticipant,
+  TripRouteSegment,
   TripsPage,
   UpdateTripDayRequest,
   UpdateTripDestinationRequest,
   UpdateTripMemberRequest,
   UpdateTripRequest,
+  UpdateTripRouteRequest,
   UpdateItineraryItemRequest,
 } from "@tripforge/contracts";
 
@@ -81,6 +84,15 @@ export const tripsApi = {
     });
   },
 
+  listRoutes(
+    tripId: string,
+    options: RequestOptions = {},
+  ): Promise<TripRouteSegment[]> {
+    return apiFetch(`/api/trips/${tripId}/routes`, {
+      signal: options.signal,
+    });
+  },
+
   addMember(
     tripId: string,
     input: AddTripMemberRequest,
@@ -111,6 +123,16 @@ export const tripsApi = {
     });
   },
 
+  createRoute(
+    tripId: string,
+    input: CreateTripRouteRequest,
+  ): Promise<TripRouteSegment> {
+    return apiFetch(`/api/trips/${tripId}/routes`, {
+      json: input,
+      method: "POST",
+    });
+  },
+
   remove(tripId: string): Promise<void> {
     return apiFetch(`/api/trips/${tripId}`, { method: "DELETE" });
   },
@@ -129,6 +151,12 @@ export const tripsApi = {
 
   removeItineraryItem(tripId: string, itemId: string): Promise<void> {
     return apiFetch(`/api/trips/${tripId}/itinerary-items/${itemId}`, {
+      method: "DELETE",
+    });
+  },
+
+  removeRoute(tripId: string, routeId: string): Promise<void> {
+    return apiFetch(`/api/trips/${tripId}/routes/${routeId}`, {
       method: "DELETE",
     });
   },
@@ -199,6 +227,17 @@ export const tripsApi = {
     input: UpdateItineraryItemRequest,
   ): Promise<ItineraryItem> {
     return apiFetch(`/api/trips/${tripId}/itinerary-items/${itemId}`, {
+      json: input,
+      method: "PATCH",
+    });
+  },
+
+  updateRoute(
+    tripId: string,
+    routeId: string,
+    input: UpdateTripRouteRequest,
+  ): Promise<TripRouteSegment> {
+    return apiFetch(`/api/trips/${tripId}/routes/${routeId}`, {
       json: input,
       method: "PATCH",
     });

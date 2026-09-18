@@ -1,7 +1,12 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type { ItineraryItem, TripDay, TripDestination } from "@tripforge/contracts";
+import type {
+  ItineraryItem,
+  TripDay,
+  TripDestination,
+  TripRouteSegment,
+} from "@tripforge/contracts";
 
 import type { MapPoint } from "@/lib/maps/bounds";
 import { getMapTilerStyleUrl } from "@/lib/maps/config";
@@ -29,8 +34,11 @@ type TripMapPanelProps = Readonly<{
   onEditLocation: (destinationId: string) => void;
   onMapClick: (point: MapPoint) => void;
   onSelectMapPoint: (selection?: TripMapSelection) => void;
+  onSelectRoute?: (routeId?: string) => void;
   preview?: MapPoint;
   selectedMapPoint?: TripMapSelection;
+  selectedRouteId?: string;
+  routes?: readonly TripRouteSegment[];
 }>;
 
 export function TripMapPanel(props: TripMapPanelProps) {
@@ -40,6 +48,7 @@ export function TripMapPanel(props: TripMapPanelProps) {
     props.days,
     props.itineraryItems,
   );
+  const routes = props.routes ?? [];
 
   return (
     <section aria-labelledby="trip-map-heading" className="space-y-3 border-t border-[var(--border)] pt-5">
@@ -53,7 +62,7 @@ export function TripMapPanel(props: TripMapPanelProps) {
         <MapUnavailable>
           Map is unavailable because the MapTiler browser key is not configured.
         </MapUnavailable>
-      ) : points.length === 0 && !props.editingDestinationId ? (
+      ) : points.length === 0 && routes.length === 0 && !props.editingDestinationId ? (
         <MapUnavailable>
           {props.canEdit
             ? "Add a destination location or itinerary place to show it on the map."
@@ -67,7 +76,7 @@ export function TripMapPanel(props: TripMapPanelProps) {
             </MapUnavailable>
           }
         >
-          <TripMap {...props} mapStyle={mapStyle} points={points} />
+          <TripMap {...props} mapStyle={mapStyle} points={points} routes={routes} />
         </MapErrorBoundary>
       )}
     </section>

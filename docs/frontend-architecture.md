@@ -45,6 +45,11 @@ MapLibre implementation is loaded with `next/dynamic` and `ssr: false`, so
 browser-only WebGL and worker initialization never execute during SSR and do not
 enter routes that never render a map. Map failures are isolated locally.
 
+`RoutesSection` is an application-specific client leaf. It lists persisted route
+snapshots, exposes mutations only to owner/editor, and shares only selected-route
+identity with the map. Browser route requests go through `tripsApi` to Nest; no
+ORS endpoint, profile, or key exists in frontend request code.
+
 `PlaceSearchCombobox` is another application-specific client leaf. It owns
 accessible combobox interaction and delegates request construction, Zod response
 validation, and provider normalization to `lib/places/maptiler-geocoding.ts`.

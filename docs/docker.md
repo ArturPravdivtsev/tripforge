@@ -86,6 +86,11 @@ browser bundle. Compose configures the API with
 than the internal container hostname. These two values must remain aligned with
 the URLs the browser actually uses.
 
+`OPENROUTESERVICE_API_KEY` is passed only to the API runtime service. It is not
+a web build argument or `NEXT_PUBLIC_*` value. Missing routing credentials do
+not fail the API healthcheck; saved route reads remain available while explicit
+route calculations return a controlled unavailable response.
+
 The API image includes the trusted native install step for `argon2@0.45.1` and
 runs password hashing and verification on `node:24-bookworm-slim`. The existing
 large migration image remains known optimization debt; authentication does not
