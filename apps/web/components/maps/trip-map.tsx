@@ -9,11 +9,14 @@ import Map, {
   type MapMouseEvent,
   type MapRef,
 } from "react-map-gl/maplibre";
-import type { TripDestination } from "@tripforge/contracts";
 import { Button } from "@tripforge/ui";
 
-import { calculateBounds, hasCoordinates, type MapPoint } from "@/lib/maps/bounds";
+import { calculateBounds, type MapPoint } from "@/lib/maps/bounds";
 import { DEFAULT_MAP_VIEW } from "@/lib/maps/config";
+import type {
+  TripMapPoint,
+  TripMapSelection,
+} from "@/lib/maps/trip-map-points";
 
 setWorkerUrl(
   new URL("maplibre-gl/dist/maplibre-gl-worker.mjs", import.meta.url).toString(),
@@ -23,36 +26,36 @@ const SINGLE_DESTINATION_ZOOM = 10;
 
 type TripMapProps = Readonly<{
   canEdit: boolean;
-  destinations: readonly TripDestination[];
   editingDestinationId?: string;
   mapStyle: string;
   onEditLocation: (destinationId: string) => void;
   onMapClick: (point: MapPoint) => void;
-  onSelectDestination: (destinationId?: string) => void;
+  onSelectMapPoint: (selection?: TripMapSelection) => void;
+  points: readonly TripMapPoint[];
   preview?: MapPoint;
-  selectedDestinationId?: string;
+  selectedMapPoint?: TripMapSelection;
 }>;
 
 export function TripMap({
   canEdit,
-  destinations,
   editingDestinationId,
   mapStyle,
   onEditLocation,
   onMapClick,
-  onSelectDestination,
+  onSelectMapPoint,
+  points,
   preview,
-  selectedDestinationId,
+  selectedMapPoint,
 }: TripMapProps) {
   const mapRef = useRef<MapRef>(null);
   const lastAutoFitSignature = useRef<string | undefined>(undefined);
   const [failed, setFailed] = useState(false);
-  const located = useMemo(() => destinations.filter(hasCoordinates), [destinations]);
+  const located = useMemo(() => points, [points]);
   const coordinateSignature = located
-    .map(({ id, latitude, longitude }) => `${id}:${latitude}:${longitude}`)
+    .map(({ id, latitude, longitude, type }) => `${type}:${id}:${latitude}:${longitude}`)
     .join("|");
 
-  const fitDestinations = useCallback(() => {
+  const fitPlaces = useCallback(() => {
     const map = mapRef.current;
     if (!map || located.length === 0) return;
 
@@ -79,10 +82,12 @@ export function TripMap({
   useEffect(() => {
     if (lastAutoFitSignature.current === coordinateSignature) return;
     lastAutoFitSignature.current = coordinateSignature;
-    fitDestinations();
-  }, [coordinateSignature, fitDestinations]);
+    fitPlaces();
+  }, [coordinateSignature, fitPlaces]);
 
-  const selected = located.find(({ id }) => id === selectedDestinationId);
+  const selected = located.find(
+    ({ id, type }) => id === selectedMapPoint?.id && type === selectedMapPoint.type,
+  );
   const selectedLatitude = selected?.latitude;
   const selectedLongitude = selected?.longitude;
 
@@ -93,7 +98,7 @@ export function TripMap({
       duration: 400,
       zoom: Math.max(mapRef.current.getZoom(), SINGLE_DESTINATION_ZOOM),
     });
-  }, [selectedDestinationId, selectedLatitude, selectedLongitude]);
+  }, [selectedMapPoint, selectedLatitude, selectedLongitude]);
 
   if (failed) {
     return <MapFailure />;
@@ -114,33 +119,39 @@ export function TripMap({
           });
         }}
         onError={() => setFailed(true)}
-        onLoad={fitDestinations}
+        onLoad={fitPlaces}
         pitchWithRotate={false}
         ref={mapRef}
         touchPitch={false}
       >
         <NavigationControl position="top-right" showCompass={false} />
-        {located.map((destination) => (
+        {located.map((point) => (
           <Marker
             anchor="bottom"
-            key={destination.id}
-            latitude={destination.latitude}
-            longitude={destination.longitude}
+            key={`${point.type}:${point.id}`}
+            latitude={point.latitude}
+            longitude={point.longitude}
           >
             <button
-              aria-label={`Select ${destination.name} on map`}
-              className={`min-h-8 rounded-full border-2 px-2 py-1 text-xs font-bold shadow-md ${
-                destination.id === selectedDestinationId
+              aria-label={`Select ${point.label} on map`}
+              className={`${
+                point.type === "destination"
+                  ? "min-h-8 px-2 py-1 text-xs font-bold"
+                  : "size-6 text-[10px] font-semibold"
+              } rounded-full border-2 shadow-md ${
+                point.id === selectedMapPoint?.id && point.type === selectedMapPoint.type
                   ? "border-[var(--foreground)] bg-[var(--primary)] text-[var(--primary-foreground)]"
-                  : "border-white bg-[var(--surface)] text-[var(--foreground)]"
+                  : point.type === "destination"
+                    ? "border-white bg-[var(--surface)] text-[var(--foreground)]"
+                    : "border-white bg-[var(--danger)] text-white"
               }`}
               onClick={(event) => {
                 event.stopPropagation();
-                onSelectDestination(destination.id);
+                onSelectMapPoint({ id: point.id, type: point.type });
               }}
               type="button"
             >
-              {destination.position + 1}. {destination.name}
+              {point.type === "destination" ? `${point.position + 1}. ${point.label}` : "•"}
             </button>
           </Marker>
         ))}
@@ -160,12 +171,25 @@ export function TripMap({
             latitude={selected.latitude}
             longitude={selected.longitude}
             offset={36}
-            onClose={() => onSelectDestination(undefined)}
+            onClose={() => onSelectMapPoint(undefined)}
           >
             <div className="space-y-2 text-[var(--foreground)]">
-              <p className="font-semibold">{selected.name}</p>
-              <p className="text-xs">Destination {selected.position + 1}</p>
-              {canEdit ? (
+              <p className="font-semibold">{selected.label}</p>
+              {selected.type === "destination" ? (
+                <p className="text-xs">Destination {selected.position + 1}</p>
+              ) : (
+                <>
+                  <p className="text-xs">
+                    Day {selected.dayNumber}
+                    {selected.startTime ? ` · ${selected.startTime}` : ""}
+                    {` · ${kindLabels[selected.kind]}`}
+                  </p>
+                  {selected.address ? (
+                    <p className="max-w-56 text-xs">{selected.address}</p>
+                  ) : null}
+                </>
+              )}
+              {canEdit && selected.type === "destination" ? (
                 <Button size="sm" variant="secondary" onClick={() => onEditLocation(selected.id)}>
                   Edit location
                 </Button>
@@ -179,9 +203,9 @@ export function TripMap({
           className="absolute bottom-3 left-3 shadow-md"
           size="sm"
           variant="secondary"
-          onClick={fitDestinations}
+          onClick={fitPlaces}
         >
-          Show all destinations
+          Show all places
         </Button>
       ) : null}
       {editingDestinationId ? (
@@ -199,7 +223,15 @@ export function MapFailure() {
       className="flex h-52 items-center justify-center rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-muted)] p-5 text-center text-sm text-[var(--muted-foreground)]"
       role="status"
     >
-      Map is temporarily unavailable. Destinations remain available in the list.
+      Map is temporarily unavailable. Trip places remain available in the lists.
     </div>
   );
 }
+
+const kindLabels = {
+  accommodation: "Accommodation",
+  activity: "Activity",
+  food: "Food",
+  other: "Other",
+  transport: "Transport",
+} as const;

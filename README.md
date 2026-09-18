@@ -1,8 +1,8 @@
 # TripForge
 
 TripForge is a collaborative travel planner. The current product flow supports
-browser authentication and owner-scoped Trip creation, listing, editing,
-pagination, and deletion.
+browser authentication, collaborative Trips, structured Days and itinerary,
+MapTiler-backed optional place search, and a combined destination/itinerary map.
 
 ## Structure
 
@@ -61,15 +61,17 @@ WEB_ORIGIN=http://127.0.0.1:3000
 These are local development defaults. Production requires an explicit
 `DATABASE_URL` and exact `WEB_ORIGIN`. The browser app uses
 `NEXT_PUBLIC_API_URL=http://127.0.0.1:4000`. Set `NEXT_PUBLIC_MAPTILER_KEY` to a
-MapTiler browser key to enable Trip maps; without it the workspace keeps working
-and shows a controlled map-unavailable state. Both `NEXT_PUBLIC_*` values are
+MapTiler browser key to enable Trip maps and itinerary place search; without it
+the workspace keeps working and shows controlled provider-unavailable states.
+Both `NEXT_PUBLIC_*` values are
 embedded into the web build and are not secrets. Restrict MapTiler keys to the
 allowed frontend origin and use separate development and production keys.
 Environment files are optional for local development; use
 `apps/api/.env.example` and `apps/web/.env.example` as starting points when
 overriding the defaults. Keep the hostname style consistent between both
 applications during cookie testing. See [Maps](docs/maps.md) for provider and
-key details.
+key details and [Place search](docs/place-search.md) for autocomplete,
+persistence, attribution, and provider-terms decisions.
 
 ## Testing and quality
 

@@ -11,6 +11,8 @@ type ItineraryItemCardProps = Readonly<{
   item: ItineraryItem;
   onDelete: (item: ItineraryItem) => void;
   onEdit: (item: ItineraryItem) => void;
+  onSelectPlace?: (itemId: string) => void;
+  selected?: boolean;
 }>;
 
 export function ItineraryItemCard({
@@ -20,6 +22,8 @@ export function ItineraryItemCard({
   item,
   onDelete,
   onEdit,
+  onSelectPlace,
+  selected,
 }: ItineraryItemCardProps) {
   const { handleRef, isDragging, ref } = useSortable({
     accept: "itinerary-item",
@@ -36,6 +40,7 @@ export function ItineraryItemCard({
       ref={ref}
       className={`min-w-0 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] p-3 shadow-sm ${
         isDragging ? "opacity-50" : ""
+      } ${selected ? "border-[var(--primary)] ring-2 ring-[var(--focus-ring)]" : ""
       }`}
     >
       <div className="flex min-w-0 items-start gap-2">
@@ -63,6 +68,27 @@ export function ItineraryItemCard({
           <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">
             {kindLabels[item.kind]}
           </p>
+          {item.place ? (
+            <div className="mt-2 min-w-0 text-sm">
+              <p className="break-words font-medium">📍 {item.place.name}</p>
+              {item.place.address ? (
+                <p className="break-words text-[var(--muted-foreground)]">
+                  {item.place.address}
+                </p>
+              ) : null}
+              {onSelectPlace ? (
+                <Button
+                  className="mt-1 px-0"
+                  size="sm"
+                  type="button"
+                  variant="ghost"
+                  onClick={() => onSelectPlace(item.id)}
+                >
+                  Show on map
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
           {item.notes ? <p className="mt-2 whitespace-pre-wrap break-words text-sm">{item.notes}</p> : null}
         </div>
 

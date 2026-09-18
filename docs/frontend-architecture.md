@@ -45,6 +45,12 @@ MapLibre implementation is loaded with `next/dynamic` and `ssr: false`, so
 browser-only WebGL and worker initialization never execute during SSR and do not
 enter routes that never render a map. Map failures are isolated locally.
 
+`PlaceSearchCombobox` is another application-specific client leaf. It owns
+accessible combobox interaction and delegates request construction, Zod response
+validation, and provider normalization to `lib/places/maptiler-geocoding.ts`.
+It stays in `apps/web`, not `packages/ui`, because it knows MapTiler, Trip Day
+destination proximity, and the itinerary place contract.
+
 ## Browser API boundary
 
 `lib/api/config.ts` is the only reader of `NEXT_PUBLIC_API_URL` and requires an
@@ -64,8 +70,10 @@ so cached data cannot cross authentication identities.
 
 `lib/maps/config.ts` is the only reader of `NEXT_PUBLIC_MAPTILER_KEY` and the
 only source of the MapTiler style URL. Missing configuration is represented as
-an unavailable map rather than an application startup failure because the map
-is progressive enhancement. The key is intentionally browser-visible.
+an unavailable map and disabled optional place search rather than an application
+startup failure. Normal itinerary editing and stored-place rendering continue.
+The key is intentionally browser-visible. MapTiler search uses direct browser
+`fetch`; provider JSON never enters React components or the Nest server.
 
 ## Shared UI boundary
 

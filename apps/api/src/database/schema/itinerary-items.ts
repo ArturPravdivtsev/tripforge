@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   check,
+  doublePrecision,
   index,
   integer,
   pgEnum,
@@ -33,6 +34,12 @@ export const itineraryItems = pgTable(
     title: varchar("title", { length: 200 }).notNull(),
     startTime: time("start_time", { precision: 0 }),
     notes: text("notes"),
+    placeName: varchar("place_name", { length: 200 }),
+    placeAddress: varchar("place_address", { length: 500 }),
+    placeLatitude: doublePrecision("place_latitude"),
+    placeLongitude: doublePrecision("place_longitude"),
+    placeProvider: varchar("place_provider", { length: 32 }),
+    placeProviderRef: varchar("place_provider_ref", { length: 300 }),
     position: integer("position").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
@@ -58,6 +65,46 @@ export const itineraryItems = pgTable(
     check(
       "itinerary_items_position_nonnegative_check",
       sql`${table.position} >= 0`,
+    ),
+    check(
+      "itinerary_items_place_state_check",
+      sql`(
+        ${table.placeName} is null
+        and ${table.placeAddress} is null
+        and ${table.placeLatitude} is null
+        and ${table.placeLongitude} is null
+        and ${table.placeProvider} is null
+        and ${table.placeProviderRef} is null
+      ) or (
+        ${table.placeName} is not null
+        and ${table.placeLatitude} is not null
+        and ${table.placeLongitude} is not null
+        and ${table.placeProvider} is not null
+      )`,
+    ),
+    check(
+      "itinerary_items_place_name_not_blank_check",
+      sql`${table.placeName} is null or length(btrim(${table.placeName})) > 0`,
+    ),
+    check(
+      "itinerary_items_place_address_not_blank_check",
+      sql`${table.placeAddress} is null or length(btrim(${table.placeAddress})) > 0`,
+    ),
+    check(
+      "itinerary_items_place_latitude_range_check",
+      sql`${table.placeLatitude} is null or (${table.placeLatitude} >= -90 and ${table.placeLatitude} <= 90)`,
+    ),
+    check(
+      "itinerary_items_place_longitude_range_check",
+      sql`${table.placeLongitude} is null or (${table.placeLongitude} >= -180 and ${table.placeLongitude} <= 180)`,
+    ),
+    check(
+      "itinerary_items_place_provider_check",
+      sql`${table.placeProvider} is null or ${table.placeProvider} = 'maptiler'`,
+    ),
+    check(
+      "itinerary_items_place_provider_ref_not_blank_check",
+      sql`${table.placeProviderRef} is null or length(btrim(${table.placeProviderRef})) > 0`,
     ),
   ],
 );

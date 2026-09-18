@@ -52,6 +52,11 @@ Neither may be logged or persisted in raw form.
 | Client sends a partial coordinate pair | PATCH presence validation plus PostgreSQL pair CHECK |
 | Public map key is reused elsewhere | MapTiler allowed-origin restriction, quotas, rotation, and separate environment keys |
 | Map provider is unavailable | Local error isolation; canonical destination and itinerary UI remains usable |
+| Malicious client sends invalid itinerary-place coordinates | Nested DTO validation plus PostgreSQL state/range CHECK constraints |
+| Client claims fake MapTiler provenance | Provider/reference fields are untrusted non-security metadata |
+| Search result contains malformed external data | Focused Zod validation before normalization or UI consumption |
+| Search provider outage breaks item editing | Optional query/component boundary; normal form and stored snapshots remain usable |
+| Search queries leak into application logs | TripForge does not proxy, persist, or intentionally log autocomplete text |
 
 ## Residual and deferred risk
 

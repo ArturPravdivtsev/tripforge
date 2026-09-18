@@ -17,7 +17,7 @@ const destination: TripDestination = {
 const callbacks = {
   onEditLocation: vi.fn(),
   onMapClick: vi.fn(),
-  onSelectDestination: vi.fn(),
+  onSelectMapPoint: vi.fn(),
 };
 
 describe("TripMapPanel", () => {
@@ -28,7 +28,13 @@ describe("TripMapPanel", () => {
   it("shows a controlled unavailable state when the browser key is missing", () => {
     vi.stubEnv("NEXT_PUBLIC_MAPTILER_KEY", "");
     render(
-      <TripMapPanel canEdit destinations={[destination]} {...callbacks} />,
+      <TripMapPanel
+        canEdit
+        days={[]}
+        destinations={[destination]}
+        itineraryItems={[]}
+        {...callbacks}
+      />,
     );
 
     expect(
@@ -39,11 +45,17 @@ describe("TripMapPanel", () => {
   it("uses a compact state instead of a world map when no destination is located", () => {
     vi.stubEnv("NEXT_PUBLIC_MAPTILER_KEY", "test-browser-key");
     render(
-      <TripMapPanel canEdit destinations={[destination]} {...callbacks} />,
+      <TripMapPanel
+        canEdit
+        days={[]}
+        destinations={[destination]}
+        itineraryItems={[]}
+        {...callbacks}
+      />,
     );
 
     expect(
-      screen.getByText("Add a location to a destination to show it on the map."),
+      screen.getByText("Add a destination location or itinerary place to show it on the map."),
     ).toBeVisible();
     expect(screen.queryByLabelText("Loading map")).not.toBeInTheDocument();
   });

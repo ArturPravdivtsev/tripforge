@@ -48,6 +48,7 @@ function item(id: string, dayId: string, position: number): ItineraryItem {
     id,
     kind: "activity",
     notes: null,
+    place: null,
     position,
     startTime: null,
     title: id,

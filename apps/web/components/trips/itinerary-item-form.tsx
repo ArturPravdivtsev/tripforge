@@ -3,8 +3,10 @@
 import { useId } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Alert, Button, Input, Label, Textarea } from "@tripforge/ui";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 
+import { PlaceSearchCombobox } from "@/components/places/place-search-combobox";
+import type { PlaceSearchProximity } from "@/lib/places/maptiler-geocoding";
 import {
   itineraryItemFormSchema,
   type ItineraryItemFormValues,
@@ -15,6 +17,7 @@ type ItineraryItemFormProps = Readonly<{
   isPending: boolean;
   onCancel: () => void;
   onSubmit: (values: ItineraryItemFormValues) => Promise<void>;
+  proximity?: PlaceSearchProximity;
   serverError?: string;
   submitLabel: string;
 }>;
@@ -24,18 +27,23 @@ export function ItineraryItemForm({
   isPending,
   onCancel,
   onSubmit,
+  proximity,
   serverError,
   submitLabel,
 }: ItineraryItemFormProps) {
   const formId = useId();
   const {
+    control,
     formState: { errors },
     handleSubmit,
+    getValues,
     register,
+    setValue,
   } = useForm<ItineraryItemFormValues>({
     defaultValues,
     resolver: zodResolver(itineraryItemFormSchema),
   });
+  const selectedPlace = useWatch({ control, name: "place" });
 
   return (
     <form
@@ -97,6 +105,20 @@ export function ItineraryItemForm({
           ) : null}
         </div>
       </div>
+
+      <PlaceSearchCombobox
+        disabled={isPending}
+        proximity={proximity}
+        selected={selectedPlace}
+        onChange={(place) =>
+          setValue("place", place, { shouldDirty: true, shouldValidate: true })
+        }
+        onSelectName={(name) => {
+          if (!getValues("title").trim()) {
+            setValue("title", name, { shouldDirty: true, shouldValidate: true });
+          }
+        }}
+      />
 
       <div className="space-y-2">
         <Label htmlFor={`${formId}-notes`}>Notes</Label>

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button, Card, CardContent, CardHeader, CardTitle } from "@tripforge/ui";
 
@@ -8,6 +9,7 @@ import { ApiClientError } from "@/lib/api/errors";
 import { tripsApi } from "@/lib/api/trips";
 import { formatTripDates } from "@/lib/trips/calendar-date";
 import { tripKeys } from "@/lib/trips/query-keys";
+import type { TripMapSelection } from "@/lib/maps/trip-map-points";
 
 import { DaysSection } from "./days-section";
 import { DestinationsSection } from "./destinations-section";
@@ -15,6 +17,7 @@ import { DestinationsSection } from "./destinations-section";
 type TripWorkspaceProps = Readonly<{ tripId: string }>;
 
 export function TripWorkspace({ tripId }: TripWorkspaceProps) {
+  const [selectedMapPoint, setSelectedMapPoint] = useState<TripMapSelection>();
   const tripQuery = useQuery({
     queryFn: ({ signal }) => tripsApi.get(tripId, { signal }),
     queryKey: tripKeys.detail(tripId),
@@ -77,8 +80,18 @@ export function TripWorkspace({ tripId }: TripWorkspaceProps) {
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.5fr)] lg:items-start">
-        <DestinationsSection canEdit={canEdit} tripId={tripId} />
-        <DaysSection canEdit={canEdit} tripId={tripId} />
+        <DestinationsSection
+          canEdit={canEdit}
+          selectedMapPoint={selectedMapPoint}
+          tripId={tripId}
+          onSelectMapPoint={setSelectedMapPoint}
+        />
+        <DaysSection
+          canEdit={canEdit}
+          selectedMapPoint={selectedMapPoint}
+          tripId={tripId}
+          onSelectMapPoint={setSelectedMapPoint}
+        />
       </div>
     </div>
   );

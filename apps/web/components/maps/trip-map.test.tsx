@@ -47,6 +47,7 @@ vi.mock("react-map-gl/maplibre", async () => {
 });
 
 import { TripMap } from "./trip-map";
+import { buildTripMapPoints } from "@/lib/maps/trip-map-points";
 
 const destinations: TripDestination[] = [
   {
@@ -71,11 +72,11 @@ const destinations: TripDestination[] = [
 
 const baseProps = {
   canEdit: true,
-  destinations,
   mapStyle: "https://example.test/style.json",
   onEditLocation: vi.fn(),
   onMapClick: vi.fn(),
-  onSelectDestination: vi.fn(),
+  onSelectMapPoint: vi.fn(),
+  points: buildTripMapPoints(destinations, [], []),
 };
 
 describe("TripMap", () => {
@@ -98,7 +99,10 @@ describe("TripMap", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Select Tokyo on map" }));
-    expect(baseProps.onSelectDestination).toHaveBeenCalledWith("tokyo");
+    expect(baseProps.onSelectMapPoint).toHaveBeenCalledWith({
+      id: "tokyo",
+      type: "destination",
+    });
   });
 
   it("creates a preview only from map clicks in location-pick mode", async () => {
@@ -121,6 +125,40 @@ describe("TripMap", () => {
       latitude: 35.7,
       longitude: 139.7,
     });
+  });
+
+  it("renders an itinerary marker and concise selected popup", async () => {
+    const user = userEvent.setup();
+    const points = [
+      ...baseProps.points,
+      {
+        address: "Asakusa, Tokyo",
+        dayNumber: 2,
+        id: "senso",
+        kind: "activity" as const,
+        label: "Senso-ji",
+        latitude: 35.7148,
+        longitude: 139.7967,
+        startTime: "09:00",
+        type: "itinerary" as const,
+      },
+    ];
+    const view = render(<TripMap {...baseProps} points={points} />);
+
+    await user.click(screen.getByRole("button", { name: "Select Senso-ji on map" }));
+    expect(baseProps.onSelectMapPoint).toHaveBeenCalledWith({
+      id: "senso",
+      type: "itinerary",
+    });
+    view.rerender(
+      <TripMap
+        {...baseProps}
+        points={points}
+        selectedMapPoint={{ id: "senso", type: "itinerary" }}
+      />,
+    );
+    expect(screen.getByText("Day 2 · 09:00 · Activity")).toBeVisible();
+    expect(screen.getByText("Asakusa, Tokyo")).toBeVisible();
   });
 
   it("isolates map runtime failures", async () => {

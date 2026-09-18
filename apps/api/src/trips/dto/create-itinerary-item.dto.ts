@@ -1,4 +1,4 @@
-import { Transform } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import {
   IsIn,
   IsOptional,
@@ -7,13 +7,16 @@ import {
   MaxLength,
   MinLength,
   ValidateIf,
+  ValidateNested,
 } from "class-validator";
 import type {
   CreateItineraryItemRequest,
   ItineraryItemKind,
+  ItineraryPlaceInput,
 } from "@tripforge/contracts";
 
 import { IsWallClockTime } from "./wall-clock-time.validator";
+import { ItineraryPlaceDto } from "./itinerary-place.dto";
 
 const ITEM_KINDS = [
   "activity",
@@ -51,6 +54,11 @@ export class CreateItineraryItemDto implements CreateItineraryItemRequest {
   @IsString()
   @MaxLength(5000)
   notes?: string | null;
+
+  @ValidateIf((_object, value: unknown) => value !== null && value !== undefined)
+  @ValidateNested()
+  @Type(() => ItineraryPlaceDto)
+  place?: ItineraryPlaceInput | null;
 }
 
 export { ITEM_KINDS };

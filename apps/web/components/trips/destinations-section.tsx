@@ -16,12 +16,15 @@ import {
 
 import { tripsApi } from "@/lib/api/trips";
 import type { MapPoint } from "@/lib/maps/bounds";
+import type { TripMapSelection } from "@/lib/maps/trip-map-points";
 import { tripKeys } from "@/lib/trips/query-keys";
 
 import { TripMapPanel } from "../maps/trip-map-panel";
 
 type DestinationsSectionProps = Readonly<{
   canEdit: boolean;
+  onSelectMapPoint?: (selection?: TripMapSelection) => void;
+  selectedMapPoint?: TripMapSelection;
   tripId: string;
 }>;
 
@@ -35,6 +38,8 @@ function validateName(value: string): string | undefined {
 
 export function DestinationsSection({
   canEdit,
+  onSelectMapPoint = () => undefined,
+  selectedMapPoint,
   tripId,
 }: DestinationsSectionProps) {
   const queryClient = useQueryClient();
@@ -45,13 +50,20 @@ export function DestinationsSection({
   const [confirmingClearId, setConfirmingClearId] = useState<string>();
   const [locationEditingId, setLocationEditingId] = useState<string>();
   const [locationPreview, setLocationPreview] = useState<MapPoint>();
-  const [selectedDestinationId, setSelectedDestinationId] = useState<string>();
   const [formError, setFormError] = useState<string>();
   const [mutationError, setMutationError] = useState<string>();
   const key = tripKeys.destinations(tripId);
   const destinationsQuery = useQuery({
     queryFn: ({ signal }) => tripsApi.listDestinations(tripId, { signal }),
     queryKey: key,
+  });
+  const daysQuery = useQuery({
+    queryFn: ({ signal }) => tripsApi.listDays(tripId, { signal }),
+    queryKey: tripKeys.days(tripId),
+  });
+  const itineraryQuery = useQuery({
+    queryFn: ({ signal }) => tripsApi.listItineraryItems(tripId, { signal }),
+    queryKey: tripKeys.itinerary(tripId),
   });
   const refresh = () =>
     queryClient.invalidateQueries({ exact: true, queryKey: key });
@@ -86,7 +98,7 @@ export function DestinationsSection({
       setConfirmingClearId(undefined);
       setLocationEditingId(undefined);
       setLocationPreview(undefined);
-      setSelectedDestinationId(updated.id);
+      onSelectMapPoint({ id: updated.id, type: "destination" });
     },
   });
   const deleteDestination = useMutation({
@@ -143,7 +155,9 @@ export function DestinationsSection({
     setMutationError(undefined);
     try {
       await deleteDestination.mutateAsync(id);
-      if (selectedDestinationId === id) setSelectedDestinationId(undefined);
+      if (selectedMapPoint?.type === "destination" && selectedMapPoint.id === id) {
+        onSelectMapPoint(undefined);
+      }
     } catch {
       safeMutationError();
     }
@@ -155,7 +169,7 @@ export function DestinationsSection({
     setConfirmingClearId(undefined);
     setLocationEditingId(id);
     setLocationPreview(undefined);
-    setSelectedDestinationId(id);
+    onSelectMapPoint({ id, type: "destination" });
     setMutationError(undefined);
   }
 
@@ -260,7 +274,9 @@ export function DestinationsSection({
                       setFormError(undefined);
                     }}
                     onMove={(offset) => void moveDestination(index, offset)}
-                    onSelect={() => setSelectedDestinationId(destination.id)}
+                    onSelect={() =>
+                      onSelectMapPoint({ id: destination.id, type: "destination" })
+                    }
                     onSave={() => void saveDestination(destination.id)}
                     onSaveLocation={() => void saveLocation()}
                     onStartLocation={() => startLocationEdit(destination.id)}
@@ -270,7 +286,10 @@ export function DestinationsSection({
                     }}
                     locationEditing={locationEditingId === destination.id}
                     locationPreviewReady={Boolean(locationPreview)}
-                    selected={selectedDestinationId === destination.id}
+                    selected={
+                      selectedMapPoint?.type === "destination" &&
+                      selectedMapPoint.id === destination.id
+                    }
                   />
                 ))}
               </ul>
@@ -303,13 +322,15 @@ export function DestinationsSection({
 
             <TripMapPanel
               canEdit={canEdit}
+              days={daysQuery.data ?? []}
               destinations={destinationsQuery.data}
               editingDestinationId={locationEditingId}
+              itineraryItems={itineraryQuery.data ?? []}
               onEditLocation={startLocationEdit}
               onMapClick={setLocationPreview}
-              onSelectDestination={setSelectedDestinationId}
+              onSelectMapPoint={onSelectMapPoint}
               preview={locationPreview}
-              selectedDestinationId={selectedDestinationId}
+              selectedMapPoint={selectedMapPoint}
             />
           </>
         )}

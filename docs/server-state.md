@@ -25,6 +25,7 @@ failures receive at most one retry.
 ["trips", "detail", tripId, "destinations"]
 ["trips", "detail", tripId, "days"]
 ["trips", "detail", tripId, "itinerary"]
+["place-search", "maptiler", { query, proximity }]
 ```
 
 Every list-changing parameter is part of its key. The list prefix targets all
@@ -53,6 +54,10 @@ paginated lists without clearing unrelated cache entries.
   invalidates after settlement. No request is sent during drag-over.
 - Logout, login, registration, or guest discovery: cancel and remove all Trip
   queries so data cannot cross user identities.
+- MapTiler autocomplete uses a separate public external-state tree, a 60-second
+  stale time, five-minute garbage collection, and no persistent storage. Its
+  query function forwards TanStack Query's `AbortSignal` to `fetch`, so obsolete
+  queries can be canceled. It is intentionally not nested below `['trips']`.
 
 Only the visible page is optimistically changed. Inactive pages are refreshed
 through invalidation rather than reshuffled in browser code.
@@ -72,3 +77,9 @@ Destination coordinates are durable server state. Map camera position, selected
 marker, active location-pick destination, and preview point are local React
 interaction state. They are deliberately absent from TanStack Query and
 PostgreSQL until the user explicitly saves a coordinate pair.
+
+Place search text, highlighted option, and dropdown visibility are local
+interaction state. Provider results are temporary external server state.
+Only an explicitly selected, normalized `ItineraryPlace` becomes TripForge
+server state after the item mutation succeeds. Public search cache need not be
+cleared for security at logout and is allowed to expire in memory naturally.

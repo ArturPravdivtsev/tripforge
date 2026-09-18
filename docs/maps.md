@@ -4,8 +4,8 @@
 
 TripForge keeps four concerns distinct:
 
-- **TripForge PostgreSQL** is the source of truth for destination latitude and
-  longitude.
+- **TripForge PostgreSQL** is the source of truth for destination coordinates
+  and selected itinerary-place snapshots.
 - **MapLibre GL JS 6.10.0** is the browser/WebGL rendering engine.
 - **react-map-gl 8.1.3** is the React integration around MapLibre's imperative
   map.
@@ -40,10 +40,12 @@ layout. Its ES module worker is configured through the webpack-supported
 `setWorkerUrl(new URL(..., import.meta.url))` form. The existing
 `next build --webpack` path remains authoritative.
 
-The first mapped destination receives a city-scale view; multiple destinations
-fit to bounds with padding. Later coordinate-set changes refit once, while pan,
-zoom, marker selection, and the preview pin remain local camera/UI state. The
-semantic destination list is the canonical accessible representation.
+The first mapped point receives a city-scale view; multiple points fit to bounds
+with padding. Destination markers are larger/order-labelled while itinerary
+markers are smaller. Later coordinate-set changes refit once, while pan, zoom,
+cross-list marker selection, and the preview pin remain local camera/UI state.
+The semantic destination and itinerary lists remain the canonical accessible
+representations.
 
 Owner/editor location changes follow `pick → preview → explicit save`; cancel
 discards the preview and clear requires confirmation. Viewers can pan, zoom, and
@@ -53,10 +55,11 @@ errors, and style/tile failures stay isolated from the rest of the workspace.
 The current bounds helper intentionally does not attempt antimeridian-perfect
 global geometry.
 
-## No geocoder in Stage 14
+## Stage 15 place search
 
-Destination names remain user-authored, and coordinates are selected directly
-on the map. Public Nominatim is unsuitable for type-ahead autocomplete, while
-provider persistence and licensing terms require a deliberate product decision.
-No autocomplete, reverse geocoding, place IDs, or third-party geocoding response
-is persisted in this stage.
+Destination names remain user-authored and manually pinned. Itinerary items may
+instead attach a place selected through MapTiler forward geocoding. The same
+browser-visible key is used, and no Nest proxy, reverse geocoder, routes, user
+location, or second details lookup exists. The map combines both categories via
+a UI-only discriminated `TripMapPoint` union; this is not another persistence
+aggregate. See [Place search](place-search.md).

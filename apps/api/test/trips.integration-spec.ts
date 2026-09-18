@@ -125,6 +125,14 @@ describe("Trips CRUD with PostgreSQL", () => {
       dayId: string;
       kind?: string;
       notes?: string | null;
+      place?: {
+        address?: string | null;
+        latitude: number;
+        longitude: number;
+        name: string;
+        provider: string;
+        providerReference?: string | null;
+      } | null;
       startTime?: string | null;
       title: string;
     },
@@ -1314,6 +1322,129 @@ describe("Trips CRUD with PostgreSQL", () => {
     expect(ownerDeleted.status).toBe(204);
   });
 
+  it("persists nested itinerary places with PATCH, RBAC, and reorder semantics", async () => {
+    const created = await createTrip(userA, {
+      endsOn: "2027-04-13",
+      name: "Located itinerary",
+      startsOn: "2027-04-12",
+    });
+    const tripId = created.body.id as string;
+    await addMember(userA, tripId, "user-b@example.com", "editor");
+    await addMember(userA, tripId, "user-c@example.com", "viewer");
+    const days = (
+      await request(app.getHttpServer())
+        .get(`/api/trips/${tripId}/days`)
+        .set("Cookie", userA.cookie)
+    ).body as Array<{ id: string }>;
+    const place = {
+      address: "2 Chome-3-1 Asakusa, Tokyo",
+      latitude: 35.7148,
+      longitude: 139.7967,
+      name: "Senso-ji",
+      provider: "maptiler",
+      providerReference: "poi.123",
+    };
+    const located = await createItineraryItem(userA, tripId, {
+      dayId: days[0]!.id,
+      place,
+      title: "Morning temple visit",
+    });
+
+    expect(located.status).toBe(201);
+    expect(located.body.place).toEqual(place);
+    const viewerList = await request(app.getHttpServer())
+      .get(`/api/trips/${tripId}/itinerary-items`)
+      .set("Cookie", userC.cookie);
+    expect(viewerList.status).toBe(200);
+    expect(viewerList.body[0].place).toEqual(place);
+
+    const titleOnly = await browserPatch(
+      app,
+      `/api/trips/${tripId}/itinerary-items/${located.body.id}`,
+    )
+      .set("Cookie", userB.cookie)
+      .send({ title: "Temple morning" });
+    expect(titleOnly.status).toBe(200);
+    expect(titleOnly.body.place).toEqual(place);
+
+    const reordered = await browserPatch(
+      app,
+      `/api/trips/${tripId}/itinerary-items/reorder`,
+    )
+      .set("Cookie", userA.cookie)
+      .send({
+        days: [
+          { dayId: days[0]!.id, itemIds: [] },
+          { dayId: days[1]!.id, itemIds: [located.body.id] },
+        ],
+      });
+    expect(reordered.status).toBe(200);
+    expect(reordered.body[0]).toMatchObject({
+      dayId: days[1]!.id,
+      place,
+    });
+
+    const replacement = {
+      ...place,
+      address: "   ",
+      latitude: 35.7101,
+      name: "Kaminarimon Gate",
+      providerReference: null,
+    };
+    const replaced = await browserPatch(
+      app,
+      `/api/trips/${tripId}/itinerary-items/${located.body.id}`,
+    )
+      .set("Cookie", userB.cookie)
+      .send({ place: replacement });
+    expect(replaced.status).toBe(200);
+    expect(replaced.body.place).toMatchObject({
+      address: null,
+      latitude: 35.7101,
+      name: "Kaminarimon Gate",
+      providerReference: null,
+    });
+
+    const viewerUpdate = await browserPatch(
+      app,
+      `/api/trips/${tripId}/itinerary-items/${located.body.id}`,
+    )
+      .set("Cookie", userC.cookie)
+      .send({ place });
+    const unrelatedUpdate = await browserPatch(
+      app,
+      `/api/trips/${tripId}/itinerary-items/${located.body.id}`,
+    )
+      .set("Cookie", userD.cookie)
+      .send({ place });
+    expect(viewerUpdate.status).toBe(403);
+    expect(unrelatedUpdate.status).toBe(404);
+
+    for (const invalidPlace of [
+      { ...place, latitude: 91 },
+      { ...place, longitude: -181 },
+      { ...place, provider: "fake" },
+    ]) {
+      const invalid = await browserPatch(
+        app,
+        `/api/trips/${tripId}/itinerary-items/${located.body.id}`,
+      )
+        .set("Cookie", userA.cookie)
+        .send({ place: invalidPlace });
+      expect(invalid.status).toBe(400);
+      expect(invalid.body.code).toBe("VALIDATION_ERROR");
+    }
+
+    const cleared = await browserPatch(
+      app,
+      `/api/trips/${tripId}/itinerary-items/${located.body.id}`,
+    )
+      .set("Cookie", userA.cookie)
+      .send({ place: null });
+    expect(cleared.status).toBe(200);
+    expect(cleared.body.place).toBeNull();
+  });
+
   it("atomically reorders itinerary items within and across Days", async () => {
     const created = await createTrip(userA, {
       endsOn: "2027-04-13",
@@ -1668,6 +1799,36 @@ describe("Trips CRUD with PostgreSQL", () => {
         [UNKNOWN_TRIP_ID],
       ),
     ).rejects.toMatchObject({ code: "23503" });
+
+    for (const statement of [
+      `INSERT INTO itinerary_items
+        (trip_day_id, kind, title, position, place_name)
+       VALUES ($1, 'activity', 'Partial name', 2, 'Place')`,
+      `INSERT INTO itinerary_items
+        (trip_day_id, kind, title, position, place_latitude, place_longitude, place_provider)
+       VALUES ($1, 'activity', 'Missing name', 2, 35, 139, 'maptiler')`,
+      `INSERT INTO itinerary_items
+        (trip_day_id, kind, title, position, place_name, place_latitude, place_provider)
+       VALUES ($1, 'activity', 'Partial coordinates', 2, 'Place', 35, 'maptiler')`,
+      `INSERT INTO itinerary_items
+        (trip_day_id, kind, title, position, place_name, place_latitude, place_longitude, place_provider)
+       VALUES ($1, 'activity', 'Bad range', 2, 'Place', 91, 139, 'maptiler')`,
+    ]) {
+      await expect(pool.query(statement, [day!.id])).rejects.toMatchObject({
+        code: "23514",
+      });
+    }
+
+    const validPlaceRows = await pool.query(
+      `INSERT INTO itinerary_items
+        (trip_day_id, kind, title, position, place_name, place_address, place_latitude, place_longitude, place_provider, place_provider_ref)
+       VALUES
+        ($1, 'activity', 'No optional fields', 2, 'Place', null, 35, 139, 'maptiler', null),
+        ($1, 'activity', 'Complete place', 3, 'Place', 'Address', 35, 139, 'maptiler', 'poi.1')
+       RETURNING id`,
+      [day!.id],
+    );
+    expect(validPlaceRows.rowCount).toBe(2);
 
     const duplicatePosition = await pool.query<{ id: string }>(
       "INSERT INTO itinerary_items (trip_day_id, kind, title, position) VALUES ($1, 'other', 'Tie', 0) RETURNING id",

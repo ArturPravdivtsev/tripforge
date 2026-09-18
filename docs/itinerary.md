@@ -8,6 +8,19 @@ one classification (`activity`, `food`, `transport`, `accommodation`, or
 `other`), a required title, optional notes, optional local start time, and an
 integer position. Kinds classify only; they do not add kind-specific fields.
 
+An item may contain one embedded `ItineraryPlace` snapshot: bounded name and
+optional address, finite latitude/longitude, provider, and optional provenance
+reference. The API exposes this as `place: ItineraryPlace | null`; flat nullable
+database columns remain an implementation detail. Create may set the snapshot
+atomically in the item insert. On PATCH, omitted `place` preserves it, `null`
+clears it, and an object replaces it. Title/time/kind/notes edits and both reorder
+paths do not touch place columns.
+
+This denormalization is deliberate: there is no saved-place library, independent
+place lifecycle, or reuse workflow. A reusable `TripPlace` aggregate may be
+justified later by favourites, multiple visits, shared metadata, or place notes.
+Deleting the item deletes its snapshot without orphan cleanup.
+
 `start_time` is PostgreSQL `time without time zone`. The API transports strict
 24-hour `HH:mm`; it is a local wall-clock label for that Day, not a UTC instant,
 timestamp, or JavaScript `Date`. Timezone, end time, and duration are deferred.
@@ -43,3 +56,8 @@ interaction through a dedicated focusable handle. Local groups remain stable
 during drag. Drag-end performs one optimistic TanStack Query update, snapshots
 the full itinerary, sends one reorder request, restores the full snapshot on
 failure, and refetches after settlement. No persistence occurs on drag-over.
+
+The item form keeps free-text title and search input separate. Only explicit
+selection creates a place snapshot; selecting fills a blank title but never
+overwrites meaningful text. Existing snapshots render without contacting the
+provider, and canceling an edit discards local change/remove choices.

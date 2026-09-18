@@ -43,6 +43,13 @@
       "when": 1789652036374,
       "tag": "0005_mushy_chamber",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789656962261,
+      "tag": "0006_first_screwball",
+      "breakpoints": true
     }
   ]
 }

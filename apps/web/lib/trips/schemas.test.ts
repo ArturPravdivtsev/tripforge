@@ -34,6 +34,7 @@ describe("itineraryItemFormSchema", () => {
   const valid = {
     kind: "activity",
     notes: "",
+    place: null,
     startTime: "09:05",
     title: "  Museum  ",
   };

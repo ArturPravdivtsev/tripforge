@@ -2,6 +2,7 @@ import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import type {
   CreateItineraryItemRequest,
   ItineraryItem,
+  ItineraryPlaceInput,
   ReorderItineraryItemsRequest,
   UpdateItineraryItemRequest,
 } from "@tripforge/contracts";
@@ -15,6 +16,21 @@ import { TripPermissionsService } from "./trip-permissions.service";
 export function normalizeItineraryNotes(value: string | null | undefined) {
   if (value === undefined || value === null) return value ?? null;
   return value.trim() || null;
+}
+
+export function normalizeItineraryPlace(
+  place: ItineraryPlaceInput | null | undefined,
+): ItineraryPlaceInput | null | undefined {
+  if (place === undefined || place === null) return place;
+
+  return {
+    address: place.address?.trim() || null,
+    latitude: place.latitude,
+    longitude: place.longitude,
+    name: place.name.trim(),
+    provider: place.provider,
+    providerReference: place.providerReference?.trim() || null,
+  };
 }
 
 export function hasValidItineraryOrderStructure(
@@ -53,6 +69,7 @@ export class ItineraryItemsService {
       dayId: input.dayId,
       kind: input.kind,
       notes: normalizeItineraryNotes(input.notes),
+      place: normalizeItineraryPlace(input.place) ?? null,
       startTime: input.startTime ?? null,
       title: input.title.trim(),
     });
@@ -84,6 +101,7 @@ export class ItineraryItemsService {
     if (input.title !== undefined) update.title = input.title.trim();
     if (input.startTime !== undefined) update.startTime = input.startTime;
     if (input.notes !== undefined) update.notes = normalizeItineraryNotes(input.notes);
+    if (input.place !== undefined) update.place = normalizeItineraryPlace(input.place);
 
     const item = await this.itemsRepository.update(tripId, itemId, update);
     if (!item) throw this.itemNotFound();

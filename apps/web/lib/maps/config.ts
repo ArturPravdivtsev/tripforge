@@ -6,8 +6,12 @@ export const DEFAULT_MAP_VIEW = {
   zoom: 1.5,
 } as const;
 
+export function getMapTilerKey(): string | undefined {
+  return process.env.NEXT_PUBLIC_MAPTILER_KEY?.trim() || undefined;
+}
+
 export function getMapTilerStyleUrl(): string | undefined {
-  const key = process.env.NEXT_PUBLIC_MAPTILER_KEY?.trim();
+  const key = getMapTilerKey();
 
   if (!key) return undefined;
 

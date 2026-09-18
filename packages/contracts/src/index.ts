@@ -97,6 +97,26 @@ export type ItineraryItemKind =
   | "accommodation"
   | "other";
 
+export type PlaceProvider = "maptiler";
+
+export interface ItineraryPlace {
+  name: string;
+  address: string | null;
+  latitude: number;
+  longitude: number;
+  provider: PlaceProvider;
+  providerReference: string | null;
+}
+
+export interface ItineraryPlaceInput {
+  name: string;
+  address?: string | null;
+  latitude: number;
+  longitude: number;
+  provider: PlaceProvider;
+  providerReference?: string | null;
+}
+
 export interface ItineraryItem {
   id: string;
   dayId: string;
@@ -104,6 +124,7 @@ export interface ItineraryItem {
   title: string;
   startTime: string | null;
   notes: string | null;
+  place: ItineraryPlace | null;
   position: number;
   createdAt: string;
   updatedAt: string;
@@ -115,6 +136,7 @@ export interface CreateItineraryItemRequest {
   title: string;
   startTime?: string | null;
   notes?: string | null;
+  place?: ItineraryPlaceInput | null;
 }
 
 export interface UpdateItineraryItemRequest {
@@ -122,6 +144,7 @@ export interface UpdateItineraryItemRequest {
   title?: string;
   startTime?: string | null;
   notes?: string | null;
+  place?: ItineraryPlaceInput | null;
 }
 
 export interface ReorderItineraryItemsRequest {

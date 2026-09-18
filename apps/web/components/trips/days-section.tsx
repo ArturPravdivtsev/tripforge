@@ -17,6 +17,7 @@ import { Alert, Button, Card, CardContent, CardHeader, CardTitle, Label } from "
 import { ItineraryItemCard } from "@/components/trips/itinerary-item-card";
 import { ItineraryItemForm } from "@/components/trips/itinerary-item-form";
 import { tripsApi } from "@/lib/api/trips";
+import type { TripMapSelection } from "@/lib/maps/trip-map-points";
 import { formatCalendarDate } from "@/lib/trips/calendar-date";
 import {
   buildItineraryReorderRequest,
@@ -31,6 +32,8 @@ import type { ItineraryItemFormValues } from "@/lib/trips/schemas";
 type DaysSectionProps = Readonly<{
   canEdit: boolean;
   tripId: string;
+  onSelectMapPoint?: (selection?: TripMapSelection) => void;
+  selectedMapPoint?: TripMapSelection;
 }>;
 
 type ReorderVariables = Readonly<{
@@ -41,11 +44,17 @@ type ReorderVariables = Readonly<{
 const emptyItemValues: ItineraryItemFormValues = {
   kind: "activity",
   notes: "",
+  place: null,
   startTime: "",
   title: "",
 };
 
-export function DaysSection({ canEdit, tripId }: DaysSectionProps) {
+export function DaysSection({
+  canEdit,
+  onSelectMapPoint = () => undefined,
+  selectedMapPoint,
+  tripId,
+}: DaysSectionProps) {
   const queryClient = useQueryClient();
   const [activeForm, setActiveForm] = useState<
     { dayId: string; item?: ItineraryItem } | undefined
@@ -154,6 +163,7 @@ export function DaysSection({ canEdit, tripId }: DaysSectionProps) {
         input: {
           kind: values.kind,
           notes: values.notes.trim() || null,
+          place: values.place,
           startTime: values.startTime || null,
           title: values.title.trim(),
         },
@@ -273,6 +283,15 @@ export function DaysSection({ canEdit, tripId }: DaysSectionProps) {
                 const label = `Primary destination for Day ${index + 1}`;
                 const dayItems = groups[day.id] ?? [];
                 const form = activeForm?.dayId === day.id ? activeForm : undefined;
+                const proximity =
+                  destination?.latitude === null || destination?.longitude === null
+                    ? undefined
+                    : destination
+                      ? {
+                          latitude: destination.latitude,
+                          longitude: destination.longitude,
+                        }
+                      : undefined;
 
                 return (
                   <li
@@ -329,6 +348,7 @@ export function DaysSection({ canEdit, tripId }: DaysSectionProps) {
                             key={item.id}
                             defaultValues={toFormValues(item)}
                             isPending={saveItem.isPending}
+                            proximity={proximity}
                             serverError={mutationError}
                             submitLabel="Save item"
                             onCancel={() => setActiveForm(undefined)}
@@ -341,8 +361,15 @@ export function DaysSection({ canEdit, tripId }: DaysSectionProps) {
                               dayId={day.id}
                               index={itemIndex}
                               item={item}
+                              selected={
+                                selectedMapPoint?.type === "itinerary" &&
+                                selectedMapPoint.id === item.id
+                              }
                               onDelete={setPendingDelete}
                               onEdit={(selected) => setActiveForm({ dayId: day.id, item: selected })}
+                              onSelectPlace={(id) =>
+                                onSelectMapPoint({ id, type: "itinerary" })
+                              }
                             />
                             {pendingDelete?.id === item.id ? (
                               <div
@@ -381,6 +408,7 @@ export function DaysSection({ canEdit, tripId }: DaysSectionProps) {
                         <ItineraryItemForm
                           defaultValues={emptyItemValues}
                           isPending={saveItem.isPending}
+                          proximity={proximity}
                           serverError={mutationError}
                           submitLabel="Add item"
                           onCancel={() => setActiveForm(undefined)}
@@ -426,6 +454,7 @@ function toFormValues(item: ItineraryItem): ItineraryItemFormValues {
   return {
     kind: item.kind,
     notes: item.notes ?? "",
+    place: item.place,
     startTime: item.startTime ?? "",
     title: item.title,
   };

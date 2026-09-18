@@ -60,6 +60,13 @@ body checks, and PostgreSQL integration coverage for coordinate persistence,
 name-only PATCH preservation, RBAC, and every pair/range CHECK. Automated tests
 never contact MapTiler and do not require WebGL or internet access.
 
+Stage 15 adds nested place DTO/service and PostgreSQL CRUD/RBAC/reorder/CHECK
+coverage; mocked MapTiler request, runtime-schema, normalization, error, and
+`AbortSignal` tests; controlled-timer debounce coverage; RTL combobox keyboard,
+selection, failure, form-autofill/remove/cancel tests; and pure/map-boundary
+tests for both point categories, popups, bounds, selection, and reorder-stable
+coordinates. Automated tests never call the real geocoding service.
+
 TripForge should avoid testing implementation details and should not rely only
 on expensive browser E2E tests.
 

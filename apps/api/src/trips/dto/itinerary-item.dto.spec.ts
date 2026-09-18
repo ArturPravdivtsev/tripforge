@@ -52,6 +52,41 @@ describe("Itinerary item DTOs", () => {
     expect(dto.notes).toBe("Updated");
   });
 
+  it("validates and normalizes a nested place snapshot", async () => {
+    const dto = plainToInstance(CreateItineraryItemDto, {
+      ...valid,
+      place: {
+        address: "  2 Chome-3-1 Asakusa, Tokyo  ",
+        latitude: 35.7148,
+        longitude: 139.7967,
+        name: "  Senso-ji  ",
+        provider: "maptiler",
+        providerReference: "  poi.123  ",
+      },
+    });
+
+    await expect(validateDto(dto)).resolves.toEqual([]);
+    expect(dto.place).toMatchObject({
+      address: "2 Chome-3-1 Asakusa, Tokyo",
+      name: "Senso-ji",
+      providerReference: "poi.123",
+    });
+  });
+
+  it.each([
+    { latitude: 91, longitude: 0, provider: "maptiler" },
+    { latitude: 0, longitude: -181, provider: "maptiler" },
+    { latitude: 0, longitude: 0, provider: "other" },
+    { latitude: 0, longitude: 0, provider: "maptiler", name: "   " },
+  ])("rejects an invalid place snapshot: %o", async (place) => {
+    const dto = plainToInstance(CreateItineraryItemDto, {
+      ...valid,
+      place: { name: "Place", ...place },
+    });
+
+    await expect(validateDto(dto)).resolves.not.toEqual([]);
+  });
+
   it("validates nested reorder UUIDs", async () => {
     const validOrder = plainToInstance(ReorderItineraryItemsDto, {
       days: [{ dayId: valid.dayId, itemIds: [valid.dayId] }],

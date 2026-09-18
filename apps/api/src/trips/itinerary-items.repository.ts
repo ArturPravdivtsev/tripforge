@@ -2,6 +2,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import type {
   ItineraryItem,
   ItineraryItemKind,
+  ItineraryPlaceInput,
   ReorderItineraryItemsRequest,
   UpdateItineraryItemRequest,
 } from "@tripforge/contracts";
@@ -17,6 +18,12 @@ const itemSelection = {
   id: itineraryItems.id,
   kind: itineraryItems.kind,
   notes: itineraryItems.notes,
+  placeAddress: itineraryItems.placeAddress,
+  placeLatitude: itineraryItems.placeLatitude,
+  placeLongitude: itineraryItems.placeLongitude,
+  placeName: itineraryItems.placeName,
+  placeProvider: itineraryItems.placeProvider,
+  placeProviderRef: itineraryItems.placeProviderRef,
   position: itineraryItems.position,
   startTime: itineraryItems.startTime,
   title: itineraryItems.title,
@@ -29,6 +36,12 @@ type ItemRow = {
   id: string;
   kind: ItineraryItemKind;
   notes: string | null;
+  placeAddress: string | null;
+  placeLatitude: number | null;
+  placeLongitude: number | null;
+  placeName: string | null;
+  placeProvider: string | null;
+  placeProviderRef: string | null;
   position: number;
   startTime: string | null;
   title: string;
@@ -39,17 +52,57 @@ type CreateItem = Readonly<{
   dayId: string;
   kind: ItineraryItemKind;
   notes: string | null;
+  place: ItineraryPlaceInput | null;
   startTime: string | null;
   title: string;
 }>;
 
 function toItem(row: ItemRow): ItineraryItem {
   return {
-    ...row,
+    dayId: row.dayId,
+    id: row.id,
+    kind: row.kind,
+    notes: row.notes,
+    place:
+      row.placeName === null ||
+      row.placeLatitude === null ||
+      row.placeLongitude === null ||
+      row.placeProvider === null
+        ? null
+        : {
+            address: row.placeAddress,
+            latitude: row.placeLatitude,
+            longitude: row.placeLongitude,
+            name: row.placeName,
+            provider: "maptiler",
+            providerReference: row.placeProviderRef,
+          },
+    position: row.position,
     createdAt: row.createdAt.toISOString(),
     startTime: row.startTime?.slice(0, 5) ?? null,
+    title: row.title,
     updatedAt: row.updatedAt.toISOString(),
   };
+}
+
+function placeColumns(place: ItineraryPlaceInput | null) {
+  return place
+    ? {
+        placeAddress: place.address ?? null,
+        placeLatitude: place.latitude,
+        placeLongitude: place.longitude,
+        placeName: place.name,
+        placeProvider: place.provider,
+        placeProviderRef: place.providerReference ?? null,
+      }
+    : {
+        placeAddress: null,
+        placeLatitude: null,
+        placeLongitude: null,
+        placeName: null,
+        placeProvider: null,
+        placeProviderRef: null,
+      };
 }
 
 export class InvalidItineraryOrderError extends Error {}
@@ -93,6 +146,7 @@ export class ItineraryItemsRepository {
         .values({
           kind: input.kind,
           notes: input.notes,
+          ...placeColumns(input.place),
           position: (positionRow?.position ?? -1) + 1,
           startTime: input.startTime,
           title: input.title,
@@ -121,9 +175,17 @@ export class ItineraryItemsRepository {
           ),
         ),
     );
+    const changes = {
+      ...(input.kind === undefined ? {} : { kind: input.kind }),
+      ...(input.notes === undefined ? {} : { notes: input.notes }),
+      ...(input.startTime === undefined ? {} : { startTime: input.startTime }),
+      ...(input.title === undefined ? {} : { title: input.title }),
+      ...(input.place === undefined ? {} : placeColumns(input.place)),
+      updatedAt: new Date(),
+    };
     const [row] = await this.database
       .update(itineraryItems)
-      .set({ ...input, updatedAt: new Date() })
+      .set(changes)
       .where(and(eq(itineraryItems.id, itemId), scopedDay))
       .returning(itemSelection);
 

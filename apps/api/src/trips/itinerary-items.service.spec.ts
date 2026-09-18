@@ -5,6 +5,7 @@ import {
   hasValidItineraryOrderStructure,
   ItineraryItemsService,
   normalizeItineraryNotes,
+  normalizeItineraryPlace,
 } from "./itinerary-items.service";
 import { TripPermissionsService } from "./trip-permissions.service";
 
@@ -38,6 +39,26 @@ describe("ItineraryItemsService", () => {
     );
     expect(normalizeItineraryNotes("   ")).toBeNull();
     expect(normalizeItineraryNotes(null)).toBeNull();
+  });
+
+  it("normalizes only the selected place snapshot fields", () => {
+    expect(
+      normalizeItineraryPlace({
+        address: "   ",
+        latitude: 35.7148,
+        longitude: 139.7967,
+        name: "  Senso-ji  ",
+        provider: "maptiler",
+        providerReference: " poi.123 ",
+      }),
+    ).toEqual({
+      address: null,
+      latitude: 35.7148,
+      longitude: 139.7967,
+      name: "Senso-ji",
+      provider: "maptiler",
+      providerReference: "poi.123",
+    });
   });
 
   it("validates duplicate Days and items in reorder payloads", () => {
@@ -79,8 +100,24 @@ describe("ItineraryItemsService", () => {
       dayId: "day",
       kind: "activity",
       notes: "Visit early",
+      place: null,
       startTime: "09:00",
       title: "Senso-ji",
+    });
+  });
+
+  it("preserves omitted place and forwards explicit clear semantics", async () => {
+    const { repository, service } = createSubject();
+    repository.update.mockResolvedValue({ id: "item" });
+
+    await service.update("editor", "trip", "item", { title: "  New title  " });
+    expect(repository.update).toHaveBeenLastCalledWith("trip", "item", {
+      title: "New title",
+    });
+
+    await service.update("editor", "trip", "item", { place: null });
+    expect(repository.update).toHaveBeenLastCalledWith("trip", "item", {
+      place: null,
     });
   });
 

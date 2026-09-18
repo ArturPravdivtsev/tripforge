@@ -28,6 +28,7 @@ const item: ItineraryItem = {
   id: "item-1",
   kind: "food",
   notes: "Book the terrace",
+  place: null,
   position: 0,
   startTime: "19:30",
   title: "Dinner in Shibuya",
@@ -120,6 +121,7 @@ describe("DaysSection", () => {
       dayId: days[0]!.id,
       kind: "food",
       notes: null,
+      place: null,
       startTime: "19:30",
       title: "Dinner in Shibuya",
     });
@@ -133,6 +135,41 @@ describe("DaysSection", () => {
     expect(await screen.findByRole("button", { name: "Move “Dinner in Shibuya”" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Edit “Dinner in Shibuya”" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Delete “Dinner in Shibuya”" })).toBeVisible();
+  });
+
+  it("synchronizes a located item card with shared map selection", async () => {
+    vi.spyOn(tripsApi, "listDays").mockResolvedValue(days);
+    const locatedItem: ItineraryItem = {
+      ...item,
+      place: {
+        address: "Asakusa, Tokyo",
+        latitude: 35.7148,
+        longitude: 139.7967,
+        name: "Senso-ji",
+        provider: "maptiler",
+        providerReference: "poi.123",
+      },
+    };
+    vi.spyOn(tripsApi, "listItineraryItems").mockResolvedValue([locatedItem]);
+    const onSelectMapPoint = vi.fn();
+    renderWithQueryClient(
+      <DaysSection
+        canEdit
+        selectedMapPoint={{ id: item.id, type: "itinerary" }}
+        tripId={tripId}
+        onSelectMapPoint={onSelectMapPoint}
+      />,
+    );
+    const user = userEvent.setup();
+
+    const card = (await screen.findByText("Dinner in Shibuya")).closest("article")!;
+    expect(card).toHaveClass("ring-2");
+    expect(within(card).getByText("Senso-ji", { exact: false })).toBeVisible();
+    await user.click(within(card).getByRole("button", { name: "Show on map" }));
+    expect(onSelectMapPoint).toHaveBeenCalledWith({
+      id: item.id,
+      type: "itinerary",
+    });
   });
 
   it("edits an item inline and sends normalized form values", async () => {
@@ -155,6 +192,7 @@ describe("DaysSection", () => {
       expect(update).toHaveBeenCalledWith(tripId, item.id, {
         kind: "food",
         notes: "Book the terrace",
+        place: null,
         startTime: "19:30",
         title: "Supper in Shibuya",
       }),

@@ -51,6 +51,16 @@ export const itineraryItemFormSchema = z.object({
     .string()
     .trim()
     .max(5000, "Notes must be 5000 characters or fewer."),
+  place: z
+    .object({
+      address: z.string().trim().max(500).nullable().optional(),
+      latitude: z.number().finite().min(-90).max(90),
+      longitude: z.number().finite().min(-180).max(180),
+      name: z.string().trim().min(1).max(200),
+      provider: z.literal("maptiler"),
+      providerReference: z.string().trim().max(300).nullable().optional(),
+    })
+    .nullable(),
   startTime: optionalWallClockTime,
   title: z
     .string()
