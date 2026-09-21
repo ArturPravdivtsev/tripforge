@@ -209,7 +209,9 @@ describe("tripsApi", () => {
     { latitude: 35.6762, longitude: 139.6503 },
     { latitude: null, longitude: null },
   ])("sends destination coordinate PATCH body %#", async (body) => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({})));
+    const fetchMock = vi.fn().mockImplementation(() =>
+      Promise.resolve(new Response(JSON.stringify({}))),
+    );
     vi.stubGlobal("fetch", fetchMock);
 
     await tripsApi.updateDestination(trip.id, "destination-id", body);
@@ -378,5 +380,58 @@ describe("tripsApi", () => {
       `http://127.0.0.1:4000/api/trips/${trip.id}/expenses/expense-id`,
     );
     expect(options.method).toBe("DELETE");
+  });
+
+  it("lists documents and requests download capabilities through Nest", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response("[]"))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ url: "signed", expiresAt: "soon" })));
+    vi.stubGlobal("fetch", fetchMock);
+    await tripsApi.listDocuments(trip.id);
+    await tripsApi.getDocumentDownload(trip.id, "document-id");
+    expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
+      `http://127.0.0.1:4000/api/trips/${trip.id}/documents`,
+      `http://127.0.0.1:4000/api/trips/${trip.id}/documents/document-id/download`,
+    ]);
+  });
+
+  it("creates and completes a document upload intent through secured JSON APIs", async () => {
+    const input = {
+      contentType: "application/pdf" as const,
+      fileName: "ticket.pdf",
+      kind: "ticket" as const,
+      sizeBytes: 42,
+      title: "Ticket",
+    };
+    const fetchMock = vi.fn().mockImplementation(() =>
+      Promise.resolve(new Response(JSON.stringify({}))),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    await tripsApi.createDocumentUpload(trip.id, input);
+    await tripsApi.completeDocumentUpload(trip.id, "document-id");
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      `http://127.0.0.1:4000/api/trips/${trip.id}/documents/uploads`,
+    );
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(
+      `http://127.0.0.1:4000/api/trips/${trip.id}/documents/document-id/complete`,
+    );
+    for (const call of fetchMock.mock.calls) {
+      const options = call[1] as RequestInit;
+      expect(options.method).toBe("POST");
+      expect(new Headers(options.headers).get("X-TripForge-Request")).toBe("1");
+    }
+  });
+
+  it("updates and deletes document metadata through scoped URLs", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({})))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await tripsApi.updateDocument(trip.id, "document-id", { title: "New title" });
+    await tripsApi.removeDocument(trip.id, "document-id");
+    expect(fetchMock.mock.calls.map((call) => [call[0], (call[1] as RequestInit).method])).toEqual([
+      [`http://127.0.0.1:4000/api/trips/${trip.id}/documents/document-id`, "PATCH"],
+      [`http://127.0.0.1:4000/api/trips/${trip.id}/documents/document-id`, "DELETE"],
+    ]);
   });
 });

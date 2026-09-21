@@ -24,6 +24,9 @@ describe("validateEnvironment", () => {
         "postgresql://tripforge:tripforge@127.0.0.1:5433/tripforge",
       NODE_ENV: "development",
       PORT: 4000,
+      S3_BUCKET: "tripforge-documents",
+      S3_FORCE_PATH_STYLE: false,
+      S3_REGION: "us-east-1",
       WEB_ORIGIN: "http://127.0.0.1:3000",
     });
   });
@@ -31,6 +34,26 @@ describe("validateEnvironment", () => {
   it("allows routing to remain unconfigured", () => {
     expect(validateEnvironment({ OPENROUTESERVICE_API_KEY: "" }))
       .not.toHaveProperty("OPENROUTESERVICE_API_KEY");
+  });
+
+  it("accepts separate internal and public S3 endpoints", () => {
+    expect(
+      validateEnvironment({
+        S3_ENDPOINT: "http://localstack:4566",
+        S3_FORCE_PATH_STYLE: "true",
+        S3_PUBLIC_ENDPOINT: "http://localhost:4566",
+      }),
+    ).toMatchObject({
+      S3_ENDPOINT: "http://localstack:4566",
+      S3_FORCE_PATH_STYLE: true,
+      S3_PUBLIC_ENDPOINT: "http://localhost:4566",
+    });
+  });
+
+  it("rejects malformed S3 endpoints", () => {
+    expect(() => validateEnvironment({ S3_ENDPOINT: "localstack:4566" })).toThrow(
+      /S3_ENDPOINT/,
+    );
   });
 
   it("rejects an invalid TCP port", () => {

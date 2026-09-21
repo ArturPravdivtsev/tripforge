@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { tripKeys } from "./query-keys";
 
-describe("expense query keys", () => {
-  it("keeps list, detail and balances below the Trip cache tree", () => {
+describe("Trip query keys", () => {
+  it("keeps expenses and documents below the Trip cache tree", () => {
     expect(tripKeys.expenses("trip-id")).toEqual([
       "trips",
       "detail",
@@ -24,6 +24,12 @@ describe("expense query keys", () => {
       "trip-id",
       "expenses",
       "balances",
+    ]);
+    expect(tripKeys.documents("trip-id")).toEqual([
+      "trips",
+      "detail",
+      "trip-id",
+      "documents",
     ]);
   });
 });

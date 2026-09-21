@@ -6,6 +6,7 @@ MapTiler-backed optional place search, persisted ORS route snapshots, and a
 combined destination/itinerary/route map. Trips also support structured booking
 records with optional itinerary links and typed transport details, plus exact
 multi-currency expenses, participant splits, balances, and settlement suggestions.
+Private Trip documents use direct browser uploads to S3-compatible storage.
 
 ## Structure
 
@@ -60,6 +61,11 @@ PORT=4000
 DATABASE_URL=postgresql://tripforge:tripforge@127.0.0.1:5433/tripforge
 WEB_ORIGIN=http://127.0.0.1:3000
 OPENROUTESERVICE_API_KEY=
+S3_BUCKET=tripforge-documents
+S3_REGION=us-east-1
+S3_ENDPOINT=http://127.0.0.1:4566
+S3_PUBLIC_ENDPOINT=http://localhost:4566
+S3_FORCE_PATH_STYLE=true
 ```
 
 These are local development defaults. Production requires an explicit
@@ -81,7 +87,9 @@ concurrency boundary, ORS errors, and attribution. See
 [Reservations](docs/reservations.md) for booking lifecycle, local schedule
 semantics, typed transport details, and itinerary-link behavior. See
 [Expenses](docs/expenses.md) for exact minor-unit money, historical participant
-lifecycle, per-currency balances, and the no-FX boundary.
+lifecycle, per-currency balances, and the no-FX boundary. See
+[Documents](docs/documents.md) for private object storage, presigned URLs,
+two-phase uploads, and distributed deletion.
 
 ## Testing and quality
 
@@ -121,14 +129,20 @@ pnpm dev
 Build and start both production containers with:
 
 ```bash
+export LOCALSTACK_AUTH_TOKEN=<your-localstack-token>
 docker compose up --build -d
 ```
+
+LocalStack releases from `2026.03.0` onward require an account token, including
+the pinned `2026.08.3` image. Keep this token in the shell or an uncommitted
+Compose `.env`; never commit it. CI must use its own CI auth token.
 
 Local Docker endpoints:
 
 - Web: <http://127.0.0.1:3100>
 - API health: <http://127.0.0.1:4000/health>
 - PostgreSQL: `127.0.0.1:5433` (loopback only)
+- LocalStack S3: <http://127.0.0.1:4566>
 
 See [Docker runtime](docs/docker.md) for architecture, inspection, and shutdown
 commands, and [Database foundation](docs/database.md) for the schema and

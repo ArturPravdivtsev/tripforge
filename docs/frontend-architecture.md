@@ -73,6 +73,13 @@ and component state owns inline delete confirmation and safe error messages.
 Successful login, registration, logout, and guest discovery remove Trip queries
 so cached data cannot cross authentication identities.
 
+`DocumentsScreen` is the client leaf for document metadata and the two-phase
+upload state machine. Nest creates a pending row and returns a presigned URL;
+`lib/documents/upload-file.ts` performs only the raw S3 PUT with XHR so progress
+and cancellation are observable. Cookies and `X-TripForge-Request` are never
+sent to S3. AWS SDK packages remain API-only. Temporary progress and signed URLs
+are component-local and never enter TanStack Query or persistent browser storage.
+
 `lib/maps/config.ts` is the only reader of `NEXT_PUBLIC_MAPTILER_KEY` and the
 only source of the MapTiler style URL. Missing configuration is represented as
 an unavailable map and disabled optional place search rather than an application

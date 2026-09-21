@@ -31,6 +31,7 @@ failures receive at most one retry.
 ["trips", "detail", tripId, "expenses"]
 ["trips", "detail", tripId, "expenses", "detail", expenseId]
 ["trips", "detail", tripId, "expenses", "balances"]
+["trips", "detail", tripId, "documents"]
 ["place-search", "maptiler", { query, proximity }]
 ```
 
@@ -75,6 +76,10 @@ paginated lists without clearing unrelated cache entries.
   remove expense queries because the server preserves the expense and clears
   its link. Authentication transitions remove all expense and balance keys
   through the root `['trips']` cache tree.
+- Document upload completion invalidates the exact documents list; pending rows
+  are deliberately absent from it. Metadata/link update and delete invalidate
+  that exact list after server success. Download URLs are requested on demand
+  and are never cached as durable document state.
 - Logout, login, registration, or guest discovery: cancel and remove all Trip
   queries so data cannot cross user identities.
 - MapTiler autocomplete uses a separate public external-state tree, a 60-second
@@ -119,3 +124,10 @@ authentication transitions clears both reservation list and detail keys.
 state. Major-unit strings, selected split participants, custom-share strings,
 confirmation UI, and mutation errors are local form/UI state. The server remains
 authoritative for currency validation and exact share allocation.
+
+Ready `TripDocument[]` metadata is server state. The selected browser `File`,
+XHR upload percentage, cancellation handle, short-lived presigned URLs, and a
+failed-finalization retry affordance are local transient state. Raw bytes bypass
+the API only through the presigned capability; the API remains authoritative for
+publication and access. Authentication transitions clear documents with the
+root `['trips']` cache tree.

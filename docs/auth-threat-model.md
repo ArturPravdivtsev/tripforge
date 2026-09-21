@@ -77,6 +77,19 @@ Neither may be logged or persisted in raw form.
 | Foreign reservation linked to expense | Trip-scoped reservation lookup |
 | Viewer edits financial data | Database-backed Trip RBAC returns `403` |
 | Cross-currency total misleads users | No implicit FX conversion or combined grand total |
+| Viewer uploads, edits, or deletes a document | Database-backed Trip RBAC returns `403` |
+| Unrelated user discovers document existence | Trip-scoped authorization and anti-enumerating `404` |
+| Pending or incomplete object is exposed | Pending metadata is excluded from list/download routes |
+| Client lies about uploaded bytes or MIME type | Completion verifies authoritative S3 HEAD size and content type |
+| Client chooses a storage key | API generates an opaque UUID-based key and never returns it |
+| Presigned URL grants long-lived access | Upload/download capabilities expire after 10/5 minutes |
+| Browser uploads an unsigned or altered request | Private bucket plus SigV4 validation; signed Content-Type is exact |
+| File is linked across Trips | Trip-scoped lookup plus database foreign keys |
+| Link deletion destroys document history | Optional link FKs use `ON DELETE SET NULL` |
+| Removed member loses attribution | Uploader FK is independent of membership rows |
+| Storage outage leaves authorized metadata after delete | Database-first delete revokes API access before best-effort object cleanup |
+| Object key leaks through API or logs | Transport contracts omit keys; signed URLs and credentials are not logged |
+| Dangerous inline content executes in TripForge origin | Allowlisted MIME types and attachment-only download disposition |
 
 ## Residual and deferred risk
 
@@ -100,6 +113,8 @@ Neither may be logged or persisted in raw form.
   can detect hashes that no longer match current parameters.
 - UUID unpredictability is defense in depth, not authorization. Trip access is
   authorized by ownership or current membership in SQL.
+- Abandoned pending uploads and rare database-first-delete object orphans need a
+  scheduled storage reconciliation/expiry job before production scale.
 
 ## Operational rules
 

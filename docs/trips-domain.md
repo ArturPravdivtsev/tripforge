@@ -24,6 +24,11 @@ Trip
                ├── optionally references TripReservation
                ├── references one payer User
                └── owns one or more TripExpenseSplit → User
+│
+└── owns many TripDocument
+               ├── optionally references one itinerary item, reservation, or expense
+               ├── references the uploader User
+               └── stores private bytes in S3-compatible object storage
 ```
 
 `trips.owner_id` is the single source of truth for ownership. The owner is never
@@ -53,6 +58,8 @@ transport role derived from `trips.owner_id`, not a stored membership value.
 | Create/update/delete reservations | ✓ | ✓ | — |
 | Read expenses, balances, and settlements | ✓ | ✓ | ✓ |
 | Create/update/delete expenses | ✓ | ✓ | — |
+| List/download ready documents | ✓ | ✓ | ✓ |
+| Upload/update/delete documents | ✓ | ✓ | — |
 
 Authentication establishes the user identity only. Every request resolves the
 current Trip permission from PostgreSQL, so downgrade and revocation take effect
@@ -121,3 +128,10 @@ Exact money, split invariants, balances, settlements, and historical financial
 participation are detailed in [Expenses](./expenses.md). Membership removal does
 not delete or rewrite payer/share history, and reservation deletion only clears
 the optional expense link.
+
+Private file metadata and authorization remain in PostgreSQL while file bytes
+remain in S3-compatible object storage. A document may link to at most one
+same-Trip itinerary item, reservation, or expense. Deleting a linked resource
+clears that link; deleting a membership does not erase the uploader identity.
+The pending-to-ready lifecycle and cleanup tradeoffs are detailed in
+[Documents](./documents.md).

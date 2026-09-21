@@ -97,6 +97,16 @@ foreign participant rejection, reservation `SET NULL`, Trip/split cascades,
 per-currency balance invariants, and direct money CHECK constraints. No test
 contacts an FX, booking, banking, or payment provider.
 
+Stage 19 adds unit coverage for S3 signing/HEAD/delete behavior, opaque keys,
+document RBAC, completion mismatches, idempotency, and best-effort cleanup. RTL
+covers cards, viewer mode, validation, XHR PUT progress/cancellation, completion
+retry, update/delete actions, and API request contracts. Integration tests run
+PostgreSQL 18.6 and pinned LocalStack `4.14.0` Community together, upload and download real
+bytes through presigned URLs, verify the bucket's public-access block, reject a
+tampered presigned URL, enforce pending visibility,
+exercise same-Trip links and `SET NULL`, verify removed-uploader history, and
+assert enum/FK/CHECK/unique/cascade constraints. They never use real AWS.
+
 TripForge should avoid testing implementation details and should not rely only
 on expensive browser E2E tests.
 
@@ -117,10 +127,25 @@ pnpm check:full
 ```
 
 The regular suite must remain usable without Docker. Integration tests use
-`@testcontainers/postgresql@12.1.0` and `postgres:18.6-bookworm`; each run gets
-an independent database and never touches the developer's Compose volume. The
-suite applies committed migrations rather than manually creating tables or
-using schema push, truncates test data between cases, and does not depend on
-test order. Real PostgreSQL is intentional because transactions, foreign keys,
-checks, timestamps, unique violations, and Drizzle behavior are part of the
-authentication and Trips contracts.
+`@testcontainers/postgresql@12.1.0`, `@testcontainers/localstack@12.1.0`,
+`postgres:18.6-bookworm`, and pinned `localstack/localstack:4.14.0` when a suite
+needs object storage; each run gets independent infrastructure and never touches the
+developer's Compose volumes. The suite applies committed migrations rather than
+manually creating tables or using schema push, truncates test data between
+cases, and does not depend on test order. Real PostgreSQL is intentional because
+transactions, foreign keys, checks, timestamps, unique violations, and Drizzle
+behavior are part of the authentication and Trips contracts. Real S3-compatible
+requests are intentional because URL signing, CORS-relevant headers, ETags, byte
+equality, and private object access are part of the document contract.
+The automated suite deliberately uses the final pre-account Community release
+so contributors and CI do not need a third-party credential. Compose separately
+pins the required runtime version `2026.08.3`, which requires a LocalStack auth
+token under the vendor's current distribution model. Set
+`LOCALSTACK_TEST_IMAGE` plus `LOCALSTACK_AUTH_TOKEN` to test that runtime image.
+Community LocalStack does not enforce IAM authorization. The suite therefore
+asserts the private-bucket configuration and signature validation, while actual
+anonymous-access denial remains an AWS/deployment security check rather than a
+claim made by the local emulator.
+The Community image also does not provide snapshot persistence. Restart QA for
+S3 bytes therefore requires the authenticated `2026.08.3` Compose runtime; the
+database persistence path remains independently testable without that token.

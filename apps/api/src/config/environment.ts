@@ -37,6 +37,22 @@ export const environmentSchema = Joi.object({
     otherwise: webOriginSchema.default(defaultWebOrigin),
   }),
   OPENROUTESERVICE_API_KEY: Joi.string().trim().empty("").min(1).optional(),
+  S3_BUCKET: Joi.string().trim().min(3).default("tripforge-documents"),
+  S3_REGION: Joi.string().trim().min(1).default("us-east-1"),
+  S3_ENDPOINT: Joi.string()
+    .uri({ scheme: ["http", "https"] })
+    .trim()
+    .empty("")
+    .optional(),
+  S3_PUBLIC_ENDPOINT: Joi.string()
+    .uri({ scheme: ["http", "https"] })
+    .trim()
+    .empty("")
+    .optional(),
+  S3_FORCE_PATH_STYLE: Joi.boolean()
+    .truthy("true")
+    .falsy("false")
+    .default(false),
 });
 
 export function validateEnvironment(

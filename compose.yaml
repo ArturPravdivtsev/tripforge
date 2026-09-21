@@ -48,6 +48,30 @@ services:
       retries: 5
       start_period: 10s
 
+  localstack:
+    image: localstack/localstack:2026.08.3
+    environment:
+      LOCALSTACK_AUTH_TOKEN: ${LOCALSTACK_AUTH_TOKEN:-}
+      SERVICES: s3
+      PERSISTENCE: "1"
+      S3_BUCKET: tripforge-documents
+      TRIPFORGE_WEB_ORIGIN: http://127.0.0.1:3100
+    ports:
+      - "127.0.0.1:4566:4566"
+    volumes:
+      - localstack_data:/var/lib/localstack
+      - ./docker/localstack/init/ready.d:/etc/localstack/init/ready.d:ro
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          curl -fsS http://127.0.0.1:4566/_localstack/health |
+          grep -Eq '"s3"[[:space:]]*:[[:space:]]*"(available|running)"'
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
   migrate:
     image: tripforge-api-migrate:local
     build:
@@ -75,6 +99,13 @@ services:
       DATABASE_URL: postgresql://tripforge:tripforge@db:5432/tripforge
       WEB_ORIGIN: http://127.0.0.1:3100
       OPENROUTESERVICE_API_KEY: ${OPENROUTESERVICE_API_KEY:-}
+      S3_BUCKET: tripforge-documents
+      S3_REGION: us-east-1
+      S3_ENDPOINT: http://localstack:4566
+      S3_PUBLIC_ENDPOINT: http://localhost:4566
+      S3_FORCE_PATH_STYLE: "true"
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -95,4 +126,5 @@ services:
       start_period: 10s
 
 volumes:
+  localstack_data:
   postgres_data:

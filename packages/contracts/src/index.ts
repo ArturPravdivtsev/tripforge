@@ -486,3 +486,71 @@ function supportedCurrencies(): ReadonlySet<string> {
   supportedCurrencyCodes ??= new Set(Intl.supportedValuesOf("currency"));
   return supportedCurrencyCodes;
 }
+
+export const TRIP_DOCUMENT_CONTENT_TYPES = [
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+] as const;
+
+export const MAX_TRIP_DOCUMENT_SIZE_BYTES = 25 * 1024 * 1024;
+
+export type TripDocumentContentType =
+  (typeof TRIP_DOCUMENT_CONTENT_TYPES)[number];
+export type TripDocumentKind =
+  | "ticket"
+  | "booking"
+  | "receipt"
+  | "image"
+  | "other";
+export type TripDocumentStatus = "pending" | "ready";
+export type TripDocumentLink =
+  | { type: "itinerary"; id: string }
+  | { type: "reservation"; id: string }
+  | { type: "expense"; id: string }
+  | null;
+
+export interface TripDocument {
+  id: string;
+  kind: TripDocumentKind;
+  title: string;
+  fileName: string;
+  contentType: TripDocumentContentType;
+  sizeBytes: number;
+  status: TripDocumentStatus;
+  link: TripDocumentLink;
+  uploadedBy: ExpenseParticipant;
+  createdAt: string;
+  readyAt: string | null;
+}
+
+export interface CreateDocumentUploadRequest {
+  kind: TripDocumentKind;
+  title: string;
+  fileName: string;
+  contentType: TripDocumentContentType;
+  sizeBytes: number;
+  link?: TripDocumentLink;
+}
+
+export interface CreateDocumentUploadResponse {
+  document: TripDocument;
+  upload: {
+    url: string;
+    method: "PUT";
+    headers: { "Content-Type": TripDocumentContentType };
+    expiresAt: string;
+  };
+}
+
+export interface TripDocumentDownload {
+  url: string;
+  expiresAt: string;
+}
+
+export interface UpdateTripDocumentRequest {
+  kind?: TripDocumentKind;
+  title?: string;
+  link?: TripDocumentLink;
+}

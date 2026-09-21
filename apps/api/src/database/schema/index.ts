@@ -10,6 +10,11 @@ export {
   tripReservationStatus,
 } from "./trip-reservations";
 export { tripDestinations } from "./trip-destinations";
+export {
+  tripDocumentKind,
+  tripDocuments,
+  tripDocumentStatus,
+} from "./trip-documents";
 export { tripDays } from "./trip-days";
 export {
   tripExpenseCategory,

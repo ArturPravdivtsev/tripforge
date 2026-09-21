@@ -61,9 +61,12 @@ intentionally not used with credentials.
 
 Browser mutations require exact `Origin` and `X-TripForge-Request: 1`. Missing
 or mismatched proof returns `403 CSRF_PROTECTION_FAILED`. Register, login, Trip,
-member, destination, Day, itinerary, route, reservation, and expense JSON mutations require `application/json`,
-otherwise they return `415 UNSUPPORTED_MEDIA_TYPE`. Safe `GET` requests do not require the
-mutation header; bodyless logout and DELETE requests do not require a content type.
+member, destination, Day, itinerary, route, reservation, expense, and document
+JSON mutations require `application/json`, otherwise they return `415
+UNSUPPORTED_MEDIA_TYPE`. Safe `GET` requests do not require the mutation header;
+bodyless logout and DELETE requests do not require a content type. Browser PUTs
+to a presigned object-storage URL are outside the session API boundary and send
+only the signed `Content-Type` plus file bytes.
 
 ## Shared transport contracts
 
@@ -110,6 +113,12 @@ Trip resources use conventional HTTP semantics:
 | read expense | `GET /api/trips/:tripId/expenses/:expenseId` | `200` expense |
 | update expense | `PATCH /api/trips/:tripId/expenses/:expenseId` | `200` expense |
 | delete expense | `DELETE /api/trips/:tripId/expenses/:expenseId` | `204` empty body |
+| list ready documents | `GET /api/trips/:tripId/documents` | `200` documents |
+| initialize document upload | `POST /api/trips/:tripId/documents/uploads` | `201` pending document and presigned PUT |
+| complete document upload | `POST /api/trips/:tripId/documents/:documentId/complete` | `201` ready document |
+| request document download | `GET /api/trips/:tripId/documents/:documentId/download` | `200` presigned GET |
+| update document metadata/link | `PATCH /api/trips/:tripId/documents/:documentId` | `200` document |
+| delete document metadata/object | `DELETE /api/trips/:tripId/documents/:documentId` | `204` empty body |
 
 All routes require the existing server session. Ownership is derived from
 `trips.owner_id`, and editor/viewer access from `trip_members`; neither comes from
@@ -154,3 +163,14 @@ Amounts and shares are safe integers in minor units. Split-total and participant
 lifecycle rules are validated over the final aggregate before a transaction
 commits. Balances and deterministic settlements are derived per currency and
 never perform FX conversion.
+
+Document list/download reads allow every accessible role; upload, complete,
+update, and delete allow owners and editors. Initialization validates the
+allowlisted MIME type, declared byte size, metadata, and same-Trip optional link,
+then returns a short-lived presigned PUT. Completion performs an authoritative
+object HEAD and publishes only when content type and size exactly match. Pending
+rows are never listed or downloadable. Downloads use short-lived attachment
+URLs; storage keys and credentials are never returned. Unknown/foreign document
+or link IDs use scoped `404` errors. Delete removes metadata first and then
+attempts best-effort object cleanup so authorization cannot survive a storage
+outage.

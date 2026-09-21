@@ -1,6 +1,8 @@
 import type {
   AddTripMemberRequest,
   CreateItineraryItemRequest,
+  CreateDocumentUploadRequest,
+  CreateDocumentUploadResponse,
   CreateTripExpenseRequest,
   CreateTripRouteRequest,
   CreateTripReservationRequest,
@@ -12,6 +14,8 @@ import type {
   Trip,
   TripDay,
   TripDestination,
+  TripDocument,
+  TripDocumentDownload,
   TripExpense,
   TripExpenseBalances,
   TripParticipant,
@@ -19,6 +23,7 @@ import type {
   TripReservation,
   TripsPage,
   UpdateTripDayRequest,
+  UpdateTripDocumentRequest,
   UpdateTripExpenseRequest,
   UpdateTripDestinationRequest,
   UpdateTripMemberRequest,
@@ -118,6 +123,15 @@ export const tripsApi = {
     });
   },
 
+  listDocuments(
+    tripId: string,
+    options: RequestOptions = {},
+  ): Promise<TripDocument[]> {
+    return apiFetch(`/api/trips/${tripId}/documents`, {
+      signal: options.signal,
+    });
+  },
+
   getExpense(
     tripId: string,
     expenseId: string,
@@ -207,6 +221,35 @@ export const tripsApi = {
     });
   },
 
+  createDocumentUpload(
+    tripId: string,
+    input: CreateDocumentUploadRequest,
+  ): Promise<CreateDocumentUploadResponse> {
+    return apiFetch(`/api/trips/${tripId}/documents/uploads`, {
+      json: input,
+      method: "POST",
+    });
+  },
+
+  completeDocumentUpload(
+    tripId: string,
+    documentId: string,
+  ): Promise<TripDocument> {
+    return apiFetch(
+      `/api/trips/${tripId}/documents/${documentId}/complete`,
+      { json: {}, method: "POST" },
+    );
+  },
+
+  getDocumentDownload(
+    tripId: string,
+    documentId: string,
+  ): Promise<TripDocumentDownload> {
+    return apiFetch(
+      `/api/trips/${tripId}/documents/${documentId}/download`,
+    );
+  },
+
   remove(tripId: string): Promise<void> {
     return apiFetch(`/api/trips/${tripId}`, { method: "DELETE" });
   },
@@ -243,6 +286,12 @@ export const tripsApi = {
 
   removeExpense(tripId: string, expenseId: string): Promise<void> {
     return apiFetch(`/api/trips/${tripId}/expenses/${expenseId}`, {
+      method: "DELETE",
+    });
+  },
+
+  removeDocument(tripId: string, documentId: string): Promise<void> {
+    return apiFetch(`/api/trips/${tripId}/documents/${documentId}`, {
       method: "DELETE",
     });
   },
@@ -346,6 +395,17 @@ export const tripsApi = {
     input: UpdateTripExpenseRequest,
   ): Promise<TripExpense> {
     return apiFetch(`/api/trips/${tripId}/expenses/${expenseId}`, {
+      json: input,
+      method: "PATCH",
+    });
+  },
+
+  updateDocument(
+    tripId: string,
+    documentId: string,
+    input: UpdateTripDocumentRequest,
+  ): Promise<TripDocument> {
+    return apiFetch(`/api/trips/${tripId}/documents/${documentId}`, {
       json: input,
       method: "PATCH",
     });
