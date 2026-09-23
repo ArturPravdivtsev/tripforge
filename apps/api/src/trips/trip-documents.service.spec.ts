@@ -12,7 +12,8 @@ import { TripDocumentsService } from "./trip-documents.service";
 describe("TripDocumentsService", () => {
   const documents = {
     createPending: vi.fn(),
-    delete: vi.fn(),
+    deleteMetadata: vi.fn(),
+    deleteWithOutbox: vi.fn(),
     find: vi.fn(),
     linkBelongsToTrip: vi.fn(),
     listReady: vi.fn(),
@@ -82,7 +83,7 @@ describe("TripDocumentsService", () => {
       record(undefined, state.storageKey),
     );
     storage.createUploadUrl.mockRejectedValue(new Error("signing unavailable"));
-    documents.delete.mockResolvedValue("opaque");
+    documents.deleteMetadata.mockResolvedValue("opaque");
 
     await expect(
       service.createUpload("user", "trip", {
@@ -93,7 +94,10 @@ describe("TripDocumentsService", () => {
         title: "Map",
       }),
     ).rejects.toThrow("signing unavailable");
-    expect(documents.delete).toHaveBeenCalledWith("trip", expect.any(String));
+    expect(documents.deleteMetadata).toHaveBeenCalledWith(
+      "trip",
+      expect.any(String),
+    );
   });
 
   it("keeps an incomplete upload pending", async () => {
@@ -151,11 +155,11 @@ describe("TripDocumentsService", () => {
     ).rejects.toMatchObject({ response: { code: "EXPENSE_NOT_FOUND" } });
   });
 
-  it("keeps metadata deleted when object cleanup fails", async () => {
-    documents.delete.mockResolvedValue("opaque");
-    storage.deleteObject.mockRejectedValue(new Error("S3 unavailable"));
+  it("returns after atomically persisting cleanup without calling S3", async () => {
+    documents.deleteWithOutbox.mockResolvedValue(true);
     await expect(service.delete("user", "trip", "document")).resolves.toBeUndefined();
-    expect(documents.delete).toHaveBeenCalledBefore(storage.deleteObject);
+    expect(documents.deleteWithOutbox).toHaveBeenCalledWith("trip", "document");
+    expect(storage.deleteObject).not.toHaveBeenCalled();
   });
 });
 

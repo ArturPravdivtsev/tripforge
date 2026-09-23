@@ -1,5 +1,9 @@
 export { authSessions, passwordCredentials } from "./auth";
 export { itineraryItemKind, itineraryItems } from "./itinerary-items";
+export {
+  storageCleanupOutbox,
+  storageCleanupReason,
+} from "./storage-cleanup-outbox";
 export { tripMemberRole, tripMembers } from "./trip-members";
 export { tripRouteMode, tripRouteSegments } from "./trip-route-segments";
 export {

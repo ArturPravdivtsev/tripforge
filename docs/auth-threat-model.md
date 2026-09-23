@@ -87,7 +87,14 @@ Neither may be logged or persisted in raw form.
 | File is linked across Trips | Trip-scoped lookup plus database foreign keys |
 | Link deletion destroys document history | Optional link FKs use `ON DELETE SET NULL` |
 | Removed member loses attribution | Uploader FK is independent of membership rows |
-| Storage outage leaves authorized metadata after delete | Database-first delete revokes API access before best-effort object cleanup |
+| Redis unavailable during delete | PostgreSQL mutation and cleanup outbox commit atomically; API has no Redis dependency |
+| Worker executes a duplicate cleanup job | Completed outbox state plus idempotent S3 deletion |
+| Queue payload is forged with an object key | Payload contains only a validated outbox UUID; PostgreSQL owns the key |
+| Stale pending upload leaves a private object | Hourly bounded cleanup moves old pending rows into the durable outbox |
+| Trip deletion leaves document objects | All keys are captured into outbox rows before the Trip cascade |
+| Redis queue data is lost | Dispatcher reconstructs work from incomplete PostgreSQL outbox rows |
+| Cleanup fails permanently | Finite retries, retained failed BullMQ job, and incomplete/failed outbox evidence |
+| Worker leaks a signed URL or credentials | Jobs/logs contain no signed URLs, credentials, file bytes, or object keys |
 | Object key leaks through API or logs | Transport contracts omit keys; signed URLs and credentials are not logged |
 | Dangerous inline content executes in TripForge origin | Allowlisted MIME types and attachment-only download disposition |
 
@@ -113,8 +120,10 @@ Neither may be logged or persisted in raw form.
   can detect hashes that no longer match current parameters.
 - UUID unpredictability is defense in depth, not authorization. Trip access is
   authorized by ownership or current membership in SQL.
-- Abandoned pending uploads and rare database-first-delete object orphans need a
-  scheduled storage reconciliation/expiry job before production scale.
+- Final cleanup failures currently require operational inspection and manual
+  remediation; an admin retry UI and alerting belong to later observability work.
+- A presigned download URL issued before deletion can remain valid until its
+  five-minute expiry; asynchronous object cleanup is not instant revocation.
 
 ## Operational rules
 

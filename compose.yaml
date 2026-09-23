@@ -48,6 +48,23 @@ services:
       retries: 5
       start_period: 10s
 
+  redis:
+    image: redis:8.10.1-alpine
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
   localstack:
     image: localstack/localstack:2026.08.3
     environment:
@@ -125,6 +142,37 @@ services:
       retries: 5
       start_period: 10s
 
+  worker:
+    image: tripforge-api:local
+    command: ["node", "dist/worker.js"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://tripforge:tripforge@db:5432/tripforge
+      REDIS_URL: redis://redis:6379
+      S3_BUCKET: tripforge-documents
+      S3_REGION: us-east-1
+      S3_ENDPOINT: http://localstack:4566
+      S3_PUBLIC_ENDPOINT: http://localhost:4566
+      S3_FORCE_PATH_STYLE: "true"
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "dist/worker-health.js"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
 volumes:
   localstack_data:
   postgres_data:
+  redis_data:

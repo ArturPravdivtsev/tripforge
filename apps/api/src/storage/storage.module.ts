@@ -4,6 +4,7 @@ import { S3Client, type S3ClientConfig } from "@aws-sdk/client-s3";
 
 import { S3_INTERNAL_CLIENT, S3_SIGNING_CLIENT } from "./storage.constants";
 import { S3StorageService } from "./s3-storage.service";
+import { StorageLifecycle } from "./storage.lifecycle";
 
 function clientConfig(
   config: ConfigService,
@@ -36,6 +37,7 @@ function clientConfig(
       },
     },
     S3StorageService,
+    StorageLifecycle,
   ],
   exports: [S3StorageService],
 })

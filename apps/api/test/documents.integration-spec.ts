@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 
 import {
@@ -14,17 +15,30 @@ import {
   PostgreSqlContainer,
   type StartedPostgreSqlContainer,
 } from "@testcontainers/postgresql";
+import { RedisContainer, type StartedRedisContainer } from "@testcontainers/redis";
+import { Queue, QueueEvents, Worker } from "bullmq";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
+import Redis from "ioredis";
 import { Pool } from "pg";
 import request, { type Response } from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { configureApplication } from "../src/common/configure-application";
+import { JOB_NAMES } from "../src/background-jobs/background-jobs.constants";
+import { CleanupOutboxDispatcher } from "../src/background-jobs/cleanup-outbox-dispatcher.service";
+import { cleanupJobId } from "../src/background-jobs/cleanup-outbox-dispatcher.service";
+import { StorageCleanupOutboxRepository } from "../src/background-jobs/storage-cleanup-outbox.repository";
+import { StorageCleanupProcessor } from "../src/background-jobs/storage-cleanup.processor";
+import { DATABASE } from "../src/database/database.constants";
+import type { Database } from "../src/database/database.provider";
+import { S3StorageService } from "../src/storage/s3-storage.service";
+import { TripDocumentsRepository } from "../src/trips/trip-documents.repository";
 
 const BUCKET = "tripforge-documents";
 const LOCALSTACK_TEST_IMAGE =
   process.env.LOCALSTACK_TEST_IMAGE ?? "localstack/localstack:4.14.0";
+const REDIS_IMAGE = "redis:8.10.1-alpine";
 const PASSWORD = "a sufficiently long password";
 const WEB_ORIGIN = "http://127.0.0.1:3000";
 const credentials = { accessKeyId: "test", secretAccessKey: "test" };
@@ -48,8 +62,14 @@ describe("Trip documents with PostgreSQL and LocalStack S3", () => {
   let app: INestApplication;
   let database: StartedPostgreSqlContainer;
   let localstack: StartedLocalStackContainer;
+  let redis: StartedRedisContainer;
   let pool: Pool;
   let s3: S3Client;
+  let cleanupProcessor: StorageCleanupProcessor;
+  let dispatcher: CleanupOutboxDispatcher;
+  let documentsRepository: TripDocumentsRepository;
+  let outboxRepository: StorageCleanupOutboxRepository;
+  let storage: S3StorageService;
   let owner: TestIdentity;
   let viewer: TestIdentity;
   let outsider: TestIdentity;
@@ -86,8 +106,105 @@ describe("Trip documents with PostgreSQL and LocalStack S3", () => {
       });
   }
 
+  async function createReadyDocument(identity: TestIdentity, tripId: string) {
+    const bytes = Buffer.from("pdf bytes");
+    const intent = await createUpload(identity, tripId);
+    expect(intent.status).toBe(201);
+    const uploaded = await fetch(intent.body.upload.url, {
+      body: bytes,
+      headers: intent.body.upload.headers,
+      method: "PUT",
+    });
+    expect(uploaded.ok).toBe(true);
+    const completed = await mutation(
+      app,
+      "post",
+      `/api/trips/${tripId}/documents/${intent.body.document.id}/complete`,
+    )
+      .set("Cookie", identity.cookie)
+      .send({});
+    expect(completed.status).toBe(201);
+    const key = await pool.query<{ storage_key: string }>(
+      "SELECT storage_key FROM trip_documents WHERE id = $1",
+      [completed.body.id],
+    );
+    return {
+      documentId: completed.body.id as string,
+      storageKey: key.rows[0]?.storage_key as string,
+    };
+  }
+
+  async function processIncompleteOutbox(
+    processor: StorageCleanupProcessor = cleanupProcessor,
+    options: { attempts?: number; backoffDelay?: number; dispatch?: boolean } = {},
+  ): Promise<number> {
+    const name = `tripforge-maintenance-documents-${randomUUID()}`;
+    const queueConnection = redisConnection(1);
+    const eventConnection = redisConnection(null);
+    const workerConnection = redisConnection(null);
+    const queue = new Queue(name, { connection: queueConnection });
+    const events = new QueueEvents(name, { connection: eventConnection });
+    const worker = new Worker(name, (job) => processor.process(job), {
+      connection: workerConnection,
+      concurrency: 2,
+    });
+    try {
+      await Promise.all([events.waitUntilReady(), worker.waitUntilReady()]);
+      const pending = await pool.query<{ id: string }>(
+        "SELECT id FROM storage_cleanup_outbox WHERE completed_at IS NULL AND failed_at IS NULL ORDER BY created_at, id",
+      );
+      if (options.dispatch === false) {
+        for (const { id } of pending.rows) {
+          await queue.add(
+            JOB_NAMES.cleanupObject,
+            { outboxId: id },
+            {
+              attempts: options.attempts ?? 3,
+              backoff: { delay: options.backoffDelay ?? 20, type: "exponential" },
+              jobId: cleanupJobId(id),
+            },
+          );
+        }
+      } else {
+        await dispatcher.dispatch(queue);
+      }
+      for (const { id } of pending.rows) {
+        const job = await queue.getJob(cleanupJobId(id));
+        expect(job).toBeDefined();
+        await job?.waitUntilFinished(events, 10_000);
+      }
+      return pending.rows.length;
+    } finally {
+      await worker.close();
+      await events.close();
+      await queue.close();
+      await closeRedis(workerConnection, eventConnection, queueConnection);
+    }
+  }
+
+  function redisConnection(maxRetriesPerRequest: number | null): Redis {
+    return new Redis(redis.getConnectionUrl(), { maxRetriesPerRequest });
+  }
+
+  async function waitForDatabaseLock(): Promise<void> {
+    const deadline = Date.now() + 5_000;
+    while (Date.now() < deadline) {
+      const result = await pool.query<{ waiting: boolean }>(
+        `SELECT EXISTS (
+           SELECT 1 FROM pg_stat_activity
+           WHERE datname = current_database()
+             AND pid <> pg_backend_pid()
+             AND wait_event_type = 'Lock'
+         ) AS waiting`,
+      );
+      if (result.rows[0]?.waiting) return;
+      await new Promise((resolvePromise) => setTimeout(resolvePromise, 10));
+    }
+    throw new Error("Expected a PostgreSQL lock waiter");
+  }
+
   beforeAll(async () => {
-    [database, localstack] = await Promise.all([
+    [database, localstack, redis] = await Promise.all([
       new PostgreSqlContainer("postgres:18.6-bookworm")
         .withDatabase("tripforge")
         .withUsername("tripforge")
@@ -101,6 +218,15 @@ describe("Trip documents with PostgreSQL and LocalStack S3", () => {
           S3_SKIP_SIGNATURE_VALIDATION: "0",
           SERVICES: "s3",
         })
+        .start(),
+      new RedisContainer(REDIS_IMAGE)
+        .withCommand([
+          "redis-server",
+          "--appendonly",
+          "yes",
+          "--appendfsync",
+          "everysec",
+        ])
         .start(),
     ]);
     const databaseUrl = database.getConnectionUri();
@@ -145,12 +271,18 @@ describe("Trip documents with PostgreSQL and LocalStack S3", () => {
     app = module.createNestApplication();
     configureApplication(app);
     await app.init();
+    documentsRepository = app.get(TripDocumentsRepository);
+    const applicationDatabase = app.get<Database>(DATABASE);
+    storage = app.get(S3StorageService);
+    outboxRepository = new StorageCleanupOutboxRepository(applicationDatabase);
+    cleanupProcessor = new StorageCleanupProcessor(outboxRepository, storage);
+    dispatcher = new CleanupOutboxDispatcher(outboxRepository);
     pool = new Pool({ connectionString: databaseUrl });
   });
 
   beforeEach(async () => {
     await pool.query(
-      "TRUNCATE TABLE auth_sessions, password_credentials, trip_documents, trip_expense_splits, trip_expenses, trip_members, trips, users CASCADE",
+      "TRUNCATE TABLE auth_sessions, password_credentials, storage_cleanup_outbox, trip_documents, trip_expense_splits, trip_expenses, trip_members, trips, users CASCADE",
     );
     owner = await register("document-owner@example.com");
     viewer = await register("document-viewer@example.com");
@@ -163,9 +295,10 @@ describe("Trip documents with PostgreSQL and LocalStack S3", () => {
     s3?.destroy();
     await database?.stop();
     await localstack?.stop();
+    await redis?.stop();
   });
 
-  it("uploads, verifies, downloads identical bytes and deletes metadata plus object", async () => {
+  it("uploads, verifies and records durable asynchronous cleanup on delete", async () => {
     const trip = await createTrip(owner);
     const bytes = Buffer.from("pdf bytes");
     const intent = await createUpload(owner, trip.body.id);
@@ -228,9 +361,94 @@ describe("Trip documents with PostgreSQL and LocalStack S3", () => {
       `/api/trips/${trip.body.id}/documents/${completed.body.id}`,
     ).set("Cookie", owner.cookie);
     expect(deleted.status).toBe(204);
+    const deletedDownload = await request(app.getHttpServer())
+      .get(`/api/trips/${trip.body.id}/documents/${completed.body.id}/download`)
+      .set("Cookie", owner.cookie);
+    expect(deletedDownload.status).toBe(404);
+    expect(
+      (
+        await pool.query(
+          "SELECT storage_key, reason, completed_at FROM storage_cleanup_outbox",
+        )
+      ).rows,
+    ).toEqual([
+      {
+        completed_at: null,
+        reason: "document_delete",
+        storage_key: storageKey,
+      },
+    ]);
     await expect(
       s3.send(new HeadObjectCommand({ Bucket: BUCKET, Key: storageKey })),
-    ).rejects.toBeDefined();
+    ).resolves.toBeDefined();
+  });
+
+  it("dispatches a document outbox through Redis and deletes S3 asynchronously", async () => {
+    const trip = await createTrip(owner);
+    const document = await createReadyDocument(owner, trip.body.id);
+
+    const deleted = await mutation(
+      app,
+      "delete",
+      `/api/trips/${trip.body.id}/documents/${document.documentId}`,
+    ).set("Cookie", owner.cookie);
+    expect(deleted.status).toBe(204);
+    await expect(
+      s3.send(new HeadObjectCommand({ Bucket: BUCKET, Key: document.storageKey })),
+    ).resolves.toBeDefined();
+
+    await expect(processIncompleteOutbox()).resolves.toBe(1);
+    await expect(
+      s3.send(new HeadObjectCommand({ Bucket: BUCKET, Key: document.storageKey })),
+    ).rejects.toThrow();
+    const outbox = await pool.query<{ completed_at: Date | null }>(
+      "SELECT completed_at FROM storage_cleanup_outbox WHERE storage_key = $1",
+      [document.storageKey],
+    );
+    expect(outbox.rows[0]?.completed_at).toBeInstanceOf(Date);
+  });
+
+  it("retries a transient storage failure and eventually completes cleanup", async () => {
+    const trip = await createTrip(owner);
+    const document = await createReadyDocument(owner, trip.body.id);
+    await mutation(
+      app,
+      "delete",
+      `/api/trips/${trip.body.id}/documents/${document.documentId}`,
+    ).set("Cookie", owner.cookie);
+
+    let deleteAttempts = 0;
+    const flakyStorage = {
+      deleteObject: async (storageKey: string) => {
+        deleteAttempts += 1;
+        if (deleteAttempts < 3) throw new Error("S3 temporarily unavailable");
+        await storage.deleteObject(storageKey);
+      },
+    } as unknown as S3StorageService;
+    const flakyProcessor = new StorageCleanupProcessor(
+      outboxRepository,
+      flakyStorage,
+    );
+
+    await expect(
+      processIncompleteOutbox(flakyProcessor, {
+        attempts: 3,
+        backoffDelay: 20,
+        dispatch: false,
+      }),
+    ).resolves.toBe(1);
+    expect(deleteAttempts).toBe(3);
+    await expect(
+      s3.send(new HeadObjectCommand({ Bucket: BUCKET, Key: document.storageKey })),
+    ).rejects.toThrow();
+    expect(
+      (
+        await pool.query(
+          "SELECT completed_at FROM storage_cleanup_outbox WHERE storage_key = $1",
+          [document.storageKey],
+        )
+      ).rows[0]?.completed_at,
+    ).toBeInstanceOf(Date);
   });
 
   it("keeps incomplete and mismatched uploads pending", async () => {
@@ -264,6 +482,171 @@ describe("Trip documents with PostgreSQL and LocalStack S3", () => {
     expect(
       (await pool.query("SELECT status FROM trip_documents WHERE id = $1", [mismatch.body.document.id])).rows[0]?.status,
     ).toBe("pending");
+  });
+
+  it("cleans only stale pending rows into a bounded durable outbox", async () => {
+    const trip = await createTrip(owner);
+    const oldPending = await createUpload(owner, trip.body.id, {
+      title: "Old pending",
+    });
+    const recentPending = await createUpload(owner, trip.body.id, {
+      title: "Recent pending",
+    });
+    const oldReady = await createUpload(owner, trip.body.id, {
+      title: "Old ready",
+    });
+    await fetch(oldReady.body.upload.url, {
+      body: Buffer.from("pdf bytes"),
+      headers: oldReady.body.upload.headers,
+      method: "PUT",
+    });
+    await mutation(
+      app,
+      "post",
+      `/api/trips/${trip.body.id}/documents/${oldReady.body.document.id}/complete`,
+    )
+      .set("Cookie", owner.cookie)
+      .send({});
+    await pool.query(
+      `UPDATE trip_documents
+       SET created_at = CASE WHEN id = $1 OR id = $2
+         THEN '2027-01-01T00:00:00Z'::timestamptz
+         ELSE '2027-01-01T02:00:00Z'::timestamptz END`,
+      [oldPending.body.document.id, oldReady.body.document.id],
+    );
+    const oldPendingKey = (
+      await pool.query<{ storage_key: string }>(
+        "SELECT storage_key FROM trip_documents WHERE id = $1",
+        [oldPending.body.document.id],
+      )
+    ).rows[0]?.storage_key;
+
+    await expect(
+      documentsRepository.cleanupStalePending(
+        new Date("2027-01-01T01:00:00.000Z"),
+        100,
+      ),
+    ).resolves.toBe(1);
+    const remaining = await pool.query<{ id: string; status: string }>(
+      "SELECT id, status FROM trip_documents ORDER BY title",
+    );
+    expect(remaining.rows).toEqual(
+      expect.arrayContaining([
+        { id: oldReady.body.document.id, status: "ready" },
+        { id: recentPending.body.document.id, status: "pending" },
+      ]),
+    );
+    expect(remaining.rows).toHaveLength(2);
+    expect(
+      (
+        await pool.query(
+          "SELECT reason, storage_key FROM storage_cleanup_outbox",
+        )
+      ).rows,
+    ).toEqual([
+      {
+        reason: "stale_pending",
+        storage_key: oldPendingKey,
+      },
+    ]);
+  });
+
+  it("cleans stale pending uploads with and without an S3 object", async () => {
+    const trip = await createTrip(owner);
+    const withObject = await createUpload(owner, trip.body.id, {
+      title: "Abandoned after PUT",
+    });
+    const withoutObject = await createUpload(owner, trip.body.id, {
+      title: "Abandoned before PUT",
+    });
+    expect(withoutObject.status).toBe(201);
+    await fetch(withObject.body.upload.url, {
+      body: Buffer.from("pdf bytes"),
+      headers: withObject.body.upload.headers,
+      method: "PUT",
+    });
+    await pool.query(
+      "UPDATE trip_documents SET created_at = '2027-01-01T00:00:00Z'::timestamptz",
+    );
+    const keys = await pool.query<{ storage_key: string }>(
+      "SELECT storage_key FROM trip_documents ORDER BY storage_key",
+    );
+
+    await expect(
+      documentsRepository.cleanupStalePending(
+        new Date("2027-01-01T01:00:00.000Z"),
+        100,
+      ),
+    ).resolves.toBe(2);
+    await expect(processIncompleteOutbox()).resolves.toBe(2);
+    expect((await pool.query("SELECT id FROM trip_documents")).rowCount).toBe(0);
+    expect(
+      (
+        await pool.query(
+          "SELECT id FROM storage_cleanup_outbox WHERE completed_at IS NOT NULL",
+        )
+      ).rowCount,
+    ).toBe(2);
+    for (const { storage_key: storageKey } of keys.rows) {
+      await expect(
+        s3.send(new HeadObjectCommand({ Bucket: BUCKET, Key: storageKey })),
+      ).rejects.toThrow();
+    }
+  });
+
+  it("reconstructs cleanup jobs from PostgreSQL after Redis data loss", async () => {
+    const trip = await createTrip(owner);
+    const document = await createReadyDocument(owner, trip.body.id);
+    await mutation(
+      app,
+      "delete",
+      `/api/trips/${trip.body.id}/documents/${document.documentId}`,
+    ).set("Cookie", owner.cookie);
+    const outbox = await pool.query<{ id: string }>(
+      "SELECT id FROM storage_cleanup_outbox WHERE storage_key = $1",
+      [document.storageKey],
+    );
+    const outboxId = outbox.rows[0]?.id as string;
+    const name = `tripforge-maintenance-loss-${randomUUID()}`;
+    const queueConnection = redisConnection(1);
+    const queue = new Queue(name, { connection: queueConnection });
+    let workerConnection: Redis | undefined;
+    let eventConnection: Redis | undefined;
+    let worker: Worker | undefined;
+    let events: QueueEvents | undefined;
+    try {
+      await dispatcher.dispatch(queue);
+      expect(await queue.getJob(cleanupJobId(outboxId))).toBeDefined();
+      const admin = redisConnection(1);
+      await admin.flushdb();
+      await admin.quit();
+      expect(await queue.getJob(cleanupJobId(outboxId))).toBeUndefined();
+
+      await dispatcher.dispatch(queue);
+      const restored = await queue.getJob(cleanupJobId(outboxId));
+      expect(restored).toBeDefined();
+      eventConnection = redisConnection(null);
+      workerConnection = redisConnection(null);
+      events = new QueueEvents(name, { connection: eventConnection });
+      worker = new Worker(name, (job) => cleanupProcessor.process(job), {
+        connection: workerConnection,
+      });
+      await Promise.all([events.waitUntilReady(), worker.waitUntilReady()]);
+      await restored?.waitUntilFinished(events, 10_000);
+      expect(
+        (
+          await pool.query(
+            "SELECT completed_at FROM storage_cleanup_outbox WHERE id = $1",
+            [outboxId],
+          )
+        ).rows[0]?.completed_at,
+      ).toBeInstanceOf(Date);
+    } finally {
+      await worker?.close();
+      await events?.close();
+      await queue.close();
+      await closeRedis(workerConnection, eventConnection, queueConnection);
+    }
   });
 
   it("enforces upload RBAC and Trip-scoped links", async () => {
@@ -420,6 +803,139 @@ describe("Trip documents with PostgreSQL and LocalStack S3", () => {
     expect(formerAccess.status).toBe(404);
   });
 
+  it("serializes upload initialization against Trip deletion", async () => {
+    const trip = await createTrip(owner);
+    const lockClient = await pool.connect();
+    await lockClient.query("BEGIN");
+    await lockClient.query("SELECT id FROM trips WHERE id = $1 FOR UPDATE", [
+      trip.body.id,
+    ]);
+    const upload = createUpload(owner, trip.body.id);
+    try {
+      await waitForDatabaseLock();
+      await lockClient.query("DELETE FROM trips WHERE id = $1", [trip.body.id]);
+      await lockClient.query("COMMIT");
+      const response = await upload;
+      expect(response.status).toBe(404);
+      expect(response.body.code).toBe("TRIP_NOT_FOUND");
+      expect((await pool.query("SELECT id FROM trip_documents")).rowCount).toBe(0);
+    } finally {
+      await lockClient.query("ROLLBACK").catch(() => undefined);
+      lockClient.release();
+    }
+  });
+
+  it("serializes completion against stale cleanup without contradictory state", async () => {
+    const trip = await createTrip(owner);
+    const pending = await createUpload(owner, trip.body.id);
+    await fetch(pending.body.upload.url, {
+      body: Buffer.from("pdf bytes"),
+      headers: pending.body.upload.headers,
+      method: "PUT",
+    });
+    await pool.query(
+      "UPDATE trip_documents SET created_at = '2027-01-01T00:00:00Z'::timestamptz WHERE id = $1",
+      [pending.body.document.id],
+    );
+    const lockClient = await pool.connect();
+    await lockClient.query("BEGIN");
+    await lockClient.query(
+      "SELECT id FROM trip_documents WHERE id = $1 FOR UPDATE",
+      [pending.body.document.id],
+    );
+    const completion = mutation(
+      app,
+      "post",
+      `/api/trips/${trip.body.id}/documents/${pending.body.document.id}/complete`,
+    )
+      .set("Cookie", owner.cookie)
+      .send({})
+      .then((response) => response);
+    try {
+      await waitForDatabaseLock();
+      await expect(
+        documentsRepository.cleanupStalePending(
+          new Date("2027-01-01T01:00:00.000Z"),
+          100,
+        ),
+      ).resolves.toBe(0);
+      await lockClient.query("COMMIT");
+      expect((await completion).status).toBe(201);
+      expect(
+        (
+          await pool.query(
+            "SELECT status FROM trip_documents WHERE id = $1",
+            [pending.body.document.id],
+          )
+        ).rows[0]?.status,
+      ).toBe("ready");
+      expect((await pool.query("SELECT id FROM storage_cleanup_outbox")).rowCount).toBe(0);
+    } finally {
+      await lockClient.query("ROLLBACK").catch(() => undefined);
+      lockClient.release();
+    }
+  });
+
+  it("creates and completes Trip-wide cleanup for every document object", async () => {
+    const trip = await createTrip(owner);
+    const first = await createReadyDocument(owner, trip.body.id);
+    const second = await createReadyDocument(owner, trip.body.id);
+
+    const deleted = await mutation(app, "delete", `/api/trips/${trip.body.id}`).set(
+      "Cookie",
+      owner.cookie,
+    );
+    expect(deleted.status).toBe(204);
+    expect(
+      (
+        await pool.query(
+          "SELECT storage_key FROM storage_cleanup_outbox WHERE reason = 'trip_delete' ORDER BY storage_key",
+        )
+      ).rows,
+    ).toEqual(
+      [first.storageKey, second.storageKey]
+        .sort()
+        .map((storageKey) => ({ storage_key: storageKey })),
+    );
+
+    await expect(processIncompleteOutbox()).resolves.toBe(2);
+    for (const storageKey of [first.storageKey, second.storageKey]) {
+      await expect(
+        s3.send(new HeadObjectCommand({ Bucket: BUCKET, Key: storageKey })),
+      ).rejects.toThrow();
+    }
+  });
+
+  it("keeps HTTP deletion durable while Redis is temporarily unavailable", async () => {
+    const trip = await createTrip(owner);
+    const document = await createReadyDocument(owner, trip.body.id);
+    const admin = redisConnection(1);
+    try {
+      await admin.call("CLIENT", "PAUSE", "1000", "ALL");
+      const deleted = await mutation(
+        app,
+        "delete",
+        `/api/trips/${trip.body.id}/documents/${document.documentId}`,
+      ).set("Cookie", owner.cookie);
+      expect(deleted.status).toBe(204);
+      expect(
+        (
+          await pool.query(
+            "SELECT completed_at FROM storage_cleanup_outbox WHERE storage_key = $1",
+            [document.storageKey],
+          )
+        ).rows,
+      ).toEqual([{ completed_at: null }]);
+
+      await expect(processIncompleteOutbox()).resolves.toBe(1);
+      await expect(
+        s3.send(new HeadObjectCommand({ Bucket: BUCKET, Key: document.storageKey })),
+      ).rejects.toThrow();
+    } finally {
+      await admin.quit();
+    }
+  });
+
   it("enforces document row constraints and Trip cascade directly in PostgreSQL", async () => {
     const trip = await createTrip(owner);
     const baseSql = `INSERT INTO trip_documents
@@ -472,5 +988,21 @@ describe("Trip documents with PostgreSQL and LocalStack S3", () => {
       owner.cookie,
     );
     expect((await pool.query("SELECT id FROM trip_documents")).rowCount).toBe(0);
+    expect(
+      (
+        await pool.query(
+          "SELECT storage_key, reason FROM storage_cleanup_outbox WHERE storage_key = $1",
+          [valid[8]],
+        )
+      ).rows,
+    ).toEqual([{ reason: "trip_delete", storage_key: valid[8] }]);
   });
 });
+
+async function closeRedis(...connections: Array<Redis | undefined>): Promise<void> {
+  await Promise.all(
+    connections.map(async (connection) => {
+      if (connection && connection.status !== "end") await connection.quit();
+    }),
+  );
+}

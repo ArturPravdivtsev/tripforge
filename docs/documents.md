@@ -61,15 +61,17 @@ and download ready documents. Pending rows are excluded from the normal list.
 ## Distributed deletion
 
 PostgreSQL and S3 cannot share a normal ACID transaction. Document deletion is
-DB-first: metadata is removed, then S3 cleanup is attempted. If DeleteObject
-fails, the document stays inaccessible through TripForge and a private orphan
-may remain for later cleanup. Deleting a pending row has the same tradeoff;
-previously issued PUT URLs can remain usable until their short expiry.
+DB-first and durable: one transaction writes `storage_cleanup_outbox` and
+removes metadata. HTTP then returns without waiting for S3. A BullMQ worker
+loads the authoritative key from PostgreSQL, performs idempotent `DeleteObject`,
+and marks the intent complete. Redis or worker failure cannot lose the intent.
 
-Trip deletion cascades metadata without holding a SQL transaction open during
-network I/O. Stale pending rows, private orphan objects, Trip-wide object cleanup,
-malware scanning, thumbnails, OCR, and reconciliation are deliberate Stage 20
-background-job work.
+Once metadata is gone TripForge cannot issue a new download URL, even while the
+private object awaits cleanup. A presigned URL issued earlier remains a bearer
+capability until its short expiry. Trip deletion captures every document key
+before its cascade. Pending rows older than one hour are locked, revalidated,
+and moved into the same cleanup path in bounded batches. See
+[Background jobs](./background-jobs.md).
 
 ## Local and production storage
 

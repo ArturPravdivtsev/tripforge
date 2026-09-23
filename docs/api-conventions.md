@@ -118,7 +118,7 @@ Trip resources use conventional HTTP semantics:
 | complete document upload | `POST /api/trips/:tripId/documents/:documentId/complete` | `201` ready document |
 | request document download | `GET /api/trips/:tripId/documents/:documentId/download` | `200` presigned GET |
 | update document metadata/link | `PATCH /api/trips/:tripId/documents/:documentId` | `200` document |
-| delete document metadata/object | `DELETE /api/trips/:tripId/documents/:documentId` | `204` empty body |
+| delete document metadata and enqueue durable object cleanup | `DELETE /api/trips/:tripId/documents/:documentId` | `204` empty body |
 
 All routes require the existing server session. Ownership is derived from
 `trips.owner_id`, and editor/viewer access from `trip_members`; neither comes from

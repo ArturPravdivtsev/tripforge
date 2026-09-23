@@ -24,7 +24,9 @@ import { DATABASE } from "../database/database.constants";
 import type { Database } from "../database/database.provider";
 import {
   itineraryItems,
+  storageCleanupOutbox,
   tripDays,
+  tripDocuments,
   tripMembers,
   trips,
   users,
@@ -309,12 +311,38 @@ export class TripsRepository {
   }
 
   async deleteOwned(ownerId: string, tripId: string): Promise<boolean> {
-    const deleted = await this.database
-      .delete(trips)
-      .where(and(eq(trips.id, tripId), eq(trips.ownerId, ownerId)))
-      .returning({ id: trips.id });
+    return this.database.transaction(async (transaction) => {
+      const [owned] = await transaction
+        .select({ id: trips.id })
+        .from(trips)
+        .where(and(eq(trips.id, tripId), eq(trips.ownerId, ownerId)))
+        .for("update")
+        .limit(1);
+      if (!owned) return false;
 
-    return deleted.length > 0;
+      const documents = await transaction
+        .select({ storageKey: tripDocuments.storageKey })
+        .from(tripDocuments)
+        .where(eq(tripDocuments.tripId, tripId))
+        .for("update");
+      if (documents.length > 0) {
+        await transaction
+          .insert(storageCleanupOutbox)
+          .values(
+            documents.map(({ storageKey }) => ({
+              reason: "trip_delete" as const,
+              storageKey,
+            })),
+          )
+          .onConflictDoNothing({ target: storageCleanupOutbox.storageKey });
+      }
+
+      const deleted = await transaction
+        .delete(trips)
+        .where(and(eq(trips.id, tripId), eq(trips.ownerId, ownerId)))
+        .returning({ id: trips.id });
+      return deleted.length > 0;
+    });
   }
 
   async listParticipants(tripId: string): Promise<TripParticipant[] | undefined> {

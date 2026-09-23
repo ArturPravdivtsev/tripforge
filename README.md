@@ -7,6 +7,8 @@ combined destination/itinerary/route map. Trips also support structured booking
 records with optional itinerary links and typed transport details, plus exact
 multi-currency expenses, participant splits, balances, and settlement suggestions.
 Private Trip documents use direct browser uploads to S3-compatible storage.
+Durable background cleanup uses a PostgreSQL transactional outbox, BullMQ v6,
+and an AOF-backed Redis worker process.
 
 ## Structure
 
@@ -89,7 +91,13 @@ semantics, typed transport details, and itinerary-link behavior. See
 [Expenses](docs/expenses.md) for exact minor-unit money, historical participant
 lifecycle, per-currency balances, and the no-FX boundary. See
 [Documents](docs/documents.md) for private object storage, presigned URLs,
-two-phase uploads, and distributed deletion.
+two-phase uploads, and distributed deletion. See
+[Background jobs](docs/background-jobs.md) for the outbox, BullMQ scheduling,
+at-least-once processing, retries, and failure recovery.
+
+The separate worker validates the database/S3 settings above plus
+`REDIS_URL=redis://127.0.0.1:6379`; it does not require `WEB_ORIGIN`. The HTTP
+API intentionally does not require Redis.
 
 ## Testing and quality
 
@@ -143,6 +151,9 @@ Local Docker endpoints:
 - API health: <http://127.0.0.1:4000/health>
 - PostgreSQL: `127.0.0.1:5433` (loopback only)
 - LocalStack S3: <http://127.0.0.1:4566>
+
+Redis is internal to the Compose network and has no host-published port. The
+worker has no HTTP port; `docker compose ps` reports its CLI healthcheck.
 
 See [Docker runtime](docs/docker.md) for architecture, inspection, and shutdown
 commands, and [Database foundation](docs/database.md) for the schema and

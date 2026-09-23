@@ -7,16 +7,18 @@ import type {
   TripDocumentLink,
   TripDocumentStatus,
 } from "@tripforge/contracts";
-import { and, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, lt } from "drizzle-orm";
 
 import { DATABASE } from "../database/database.constants";
 import type { Database } from "../database/database.provider";
 import {
   itineraryItems,
+  storageCleanupOutbox,
   tripDays,
   tripDocuments,
   tripExpenses,
   tripReservations,
+  trips,
   users,
 } from "../database/schema";
 
@@ -110,24 +112,37 @@ export class TripDocumentsRepository {
     return row ? toRecord(row) : undefined;
   }
 
-  async createPending(state: PendingDocumentState): Promise<DocumentRecord> {
-    await this.database.insert(tripDocuments).values({
-      contentType: state.contentType,
-      expenseId: state.link?.type === "expense" ? state.link.id : null,
-      id: state.id,
-      itineraryItemId: state.link?.type === "itinerary" ? state.link.id : null,
-      kind: state.kind,
-      originalFileName: state.fileName,
-      reservationId: state.link?.type === "reservation" ? state.link.id : null,
-      sizeBytes: state.sizeBytes,
-      storageKey: state.storageKey,
-      title: state.title,
-      tripId: state.tripId,
-      uploadedByUserId: state.uploadedByUserId,
+  async createPending(
+    state: PendingDocumentState,
+  ): Promise<DocumentRecord | undefined> {
+    const created = await this.database.transaction(async (transaction) => {
+      const [trip] = await transaction
+        .select({ id: trips.id })
+        .from(trips)
+        .where(eq(trips.id, state.tripId))
+        .for("key share")
+        .limit(1);
+      if (!trip) return false;
+
+      await transaction.insert(tripDocuments).values({
+        contentType: state.contentType,
+        expenseId: state.link?.type === "expense" ? state.link.id : null,
+        id: state.id,
+        itineraryItemId:
+          state.link?.type === "itinerary" ? state.link.id : null,
+        kind: state.kind,
+        originalFileName: state.fileName,
+        reservationId:
+          state.link?.type === "reservation" ? state.link.id : null,
+        sizeBytes: state.sizeBytes,
+        storageKey: state.storageKey,
+        title: state.title,
+        tripId: state.tripId,
+        uploadedByUserId: state.uploadedByUserId,
+      });
+      return true;
     });
-    const created = await this.find(state.tripId, state.id);
-    if (!created) throw new Error("Created document could not be loaded");
-    return created;
+    return created ? this.find(state.tripId, state.id) : undefined;
   }
 
   async markReady(
@@ -180,7 +195,10 @@ export class TripDocumentsRepository {
     return rows.length > 0 ? this.find(tripId, documentId) : undefined;
   }
 
-  async delete(tripId: string, documentId: string): Promise<string | undefined> {
+  async deleteMetadata(
+    tripId: string,
+    documentId: string,
+  ): Promise<string | undefined> {
     const [row] = await this.database
       .delete(tripDocuments)
       .where(
@@ -191,6 +209,82 @@ export class TripDocumentsRepository {
       )
       .returning({ storageKey: tripDocuments.storageKey });
     return row?.storageKey;
+  }
+
+  async deleteWithOutbox(
+    tripId: string,
+    documentId: string,
+  ): Promise<boolean> {
+    return this.database.transaction(async (transaction) => {
+      const [document] = await transaction
+        .select({ storageKey: tripDocuments.storageKey })
+        .from(tripDocuments)
+        .where(
+          and(
+            eq(tripDocuments.tripId, tripId),
+            eq(tripDocuments.id, documentId),
+          ),
+        )
+        .for("update")
+        .limit(1);
+      if (!document) return false;
+
+      await transaction
+        .insert(storageCleanupOutbox)
+        .values({
+          reason: "document_delete",
+          storageKey: document.storageKey,
+        })
+        .onConflictDoNothing({ target: storageCleanupOutbox.storageKey });
+      const deleted = await transaction
+        .delete(tripDocuments)
+        .where(
+          and(
+            eq(tripDocuments.tripId, tripId),
+            eq(tripDocuments.id, documentId),
+          ),
+        )
+        .returning({ id: tripDocuments.id });
+      return deleted.length > 0;
+    });
+  }
+
+  async cleanupStalePending(cutoff: Date, limit: number): Promise<number> {
+    return this.database.transaction(async (transaction) => {
+      const stale = await transaction
+        .select({ id: tripDocuments.id, storageKey: tripDocuments.storageKey })
+        .from(tripDocuments)
+        .where(
+          and(
+            eq(tripDocuments.status, "pending"),
+            lt(tripDocuments.createdAt, cutoff),
+          ),
+        )
+        .orderBy(asc(tripDocuments.createdAt), asc(tripDocuments.id))
+        .limit(limit)
+        .for("update", { skipLocked: true });
+      if (stale.length === 0) return 0;
+
+      await transaction
+        .insert(storageCleanupOutbox)
+        .values(
+          stale.map(({ storageKey }) => ({
+            reason: "stale_pending" as const,
+            storageKey,
+          })),
+        )
+        .onConflictDoNothing({ target: storageCleanupOutbox.storageKey });
+      await transaction.delete(tripDocuments).where(
+        and(
+          inArray(
+            tripDocuments.id,
+            stale.map(({ id }) => id),
+          ),
+          eq(tripDocuments.status, "pending"),
+        ),
+      );
+      return stale.length;
+    });
   }
 
   async linkBelongsToTrip(

@@ -57,6 +57,7 @@ export class TripDocumentsService {
       tripId,
       uploadedByUserId: userId,
     });
+    if (!record) throw tripNotFound();
 
     try {
       const signed = await this.storage.createUploadUrl(
@@ -72,12 +73,14 @@ export class TripDocumentsService {
         },
       };
     } catch (error) {
-      await this.documents.delete(tripId, documentId).catch((cleanupError) => {
-        this.logger.error(
-          `Failed to remove document metadata after presign failure: ${documentId}`,
-          cleanupError instanceof Error ? cleanupError.stack : undefined,
-        );
-      });
+      await this.documents
+        .deleteMetadata(tripId, documentId)
+        .catch((cleanupError) => {
+          this.logger.error(
+            `Failed to remove document metadata after presign failure: ${documentId}`,
+            cleanupError instanceof Error ? cleanupError.stack : undefined,
+          );
+        });
       throw error;
     }
   }
@@ -176,17 +179,8 @@ export class TripDocumentsService {
     documentId: string,
   ): Promise<void> {
     await this.permissions.requireEditable(userId, tripId);
-    const storageKey = await this.documents.delete(tripId, documentId);
-    if (!storageKey) throw documentNotFound();
-
-    try {
-      await this.storage.deleteObject(storageKey);
-    } catch (error) {
-      this.logger.error(
-        `Private orphan object requires cleanup for document ${documentId}`,
-        error instanceof Error ? error.stack : undefined,
-      );
-    }
+    const deleted = await this.documents.deleteWithOutbox(tripId, documentId);
+    if (!deleted) throw documentNotFound();
   }
 
   private async validateLink(
@@ -202,6 +196,10 @@ export class TripDocumentsService {
     const [code, message] = errors[link.type];
     throw documentError(code, message, HttpStatus.NOT_FOUND);
   }
+}
+
+function tripNotFound(): HttpException {
+  return documentError("TRIP_NOT_FOUND", "Trip not found", HttpStatus.NOT_FOUND);
 }
 
 function documentNotFound(): HttpException {

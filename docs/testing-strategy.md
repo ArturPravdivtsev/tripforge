@@ -98,7 +98,7 @@ per-currency balance invariants, and direct money CHECK constraints. No test
 contacts an FX, booking, banking, or payment provider.
 
 Stage 19 adds unit coverage for S3 signing/HEAD/delete behavior, opaque keys,
-document RBAC, completion mismatches, idempotency, and best-effort cleanup. RTL
+document RBAC, completion mismatches, idempotency, and storage behavior. RTL
 covers cards, viewer mode, validation, XHR PUT progress/cancellation, completion
 retry, update/delete actions, and API request contracts. Integration tests run
 PostgreSQL 18.6 and pinned LocalStack `4.14.0` Community together, upload and download real
@@ -106,6 +106,17 @@ bytes through presigned URLs, verify the bucket's public-access block, reject a
 tampered presigned URL, enforce pending visibility,
 exercise same-Trip links and `SET NULL`, verify removed-uploader history, and
 assert enum/FK/CHECK/unique/cascade constraints. They never use real AWS.
+
+Stage 20 adds fast payload, dispatcher, scheduler, stale-threshold, processor,
+worker-configuration, and retry/idempotency coverage. Docker integration uses
+real `redis:8.10.1-alpine` and BullMQ Queue/Worker instances to verify retries,
+job-ID deduplication, scheduler upserts, worker restart, and AOF-backed Redis
+restart. The PostgreSQL + Redis + LocalStack suite verifies the complete HTTP
+delete/outbox/dispatch/worker/S3 path, transient storage failure recovery,
+Redis-loss reconstruction, stale uploads with and without objects, Trip-wide
+cleanup, Redis-independent HTTP deletion, and upload/delete plus
+completion/stale-cleaner serialization. Tests use short controlled backoffs and
+call maintenance services directly instead of waiting for production cadence.
 
 TripForge should avoid testing implementation details and should not rely only
 on expensive browser E2E tests.
@@ -128,6 +139,7 @@ pnpm check:full
 
 The regular suite must remain usable without Docker. Integration tests use
 `@testcontainers/postgresql@12.1.0`, `@testcontainers/localstack@12.1.0`,
+`@testcontainers/redis@12.1.0`,
 `postgres:18.6-bookworm`, and pinned `localstack/localstack:4.14.0` when a suite
 needs object storage; each run gets independent infrastructure and never touches the
 developer's Compose volumes. The suite applies committed migrations rather than
