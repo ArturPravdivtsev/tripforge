@@ -24,6 +24,11 @@ export type SessionCookieResponse = {
   cookie(name: string, value: string, options: SessionCookieOptions): void;
 };
 
+export type ResolvedSession = AuthenticatedUser & {
+  expiresAt: Date;
+  sessionId: string;
+};
+
 @Injectable()
 export class SessionService {
   private readonly cookieConfiguration;
@@ -70,6 +75,20 @@ export class SessionService {
   }
 
   async resolve(rawToken: string): Promise<AuthenticatedUser | undefined> {
+    const session = await this.resolveSession(rawToken);
+
+    if (!session) {
+      return undefined;
+    }
+
+    return {
+      displayName: session.displayName,
+      email: session.email,
+      id: session.id,
+    };
+  }
+
+  async resolveSession(rawToken: string): Promise<ResolvedSession | undefined> {
     const tokenHash = hashSessionToken(rawToken);
     let session: Awaited<
       ReturnType<AuthRepository["findSessionWithUser"]>
@@ -95,11 +114,11 @@ export class SessionService {
       return undefined;
     }
 
-    return {
-      displayName: session.displayName,
-      email: session.email,
-      id: session.id,
-    };
+    return session;
+  }
+
+  cookieName(): string {
+    return this.cookieConfiguration.name;
   }
 
   async invalidate(rawToken: string): Promise<void> {

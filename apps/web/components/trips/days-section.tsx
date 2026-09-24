@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { DragDropProvider, type DragEndEvent } from "@dnd-kit/react";
 import { isSortableOperation, useSortable } from "@dnd-kit/react/sortable";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -18,6 +18,10 @@ import { ItineraryItemCard } from "@/components/trips/itinerary-item-card";
 import { ItineraryItemForm } from "@/components/trips/itinerary-item-form";
 import { tripsApi } from "@/lib/api/trips";
 import type { TripMapSelection } from "@/lib/maps/trip-map-points";
+import {
+  beginItineraryReorder,
+  endItineraryReorder,
+} from "@/lib/realtime/itinerary-invalidation";
 import { formatCalendarDate } from "@/lib/trips/calendar-date";
 import {
   buildItineraryReorderRequest,
@@ -82,6 +86,13 @@ export function DaysSection({
   const groups =
     localGroups ??
     groupItineraryItems(daysQuery.data ?? [], itineraryQuery.data ?? []);
+
+  useEffect(
+    () => () => {
+      endItineraryReorder(tripId);
+    },
+    [tripId],
+  );
 
   const updateDay = useMutation({
     mutationFn: ({ dayId, destinationId }: { dayId: string; destinationId: string | null }) =>
@@ -149,6 +160,7 @@ export function DaysSection({
     onSettled: async () => {
       await queryClient.invalidateQueries({ queryKey: itineraryKey });
       setLocalGroups(undefined);
+      endItineraryReorder(tripId);
     },
   });
 
@@ -198,6 +210,7 @@ export function DaysSection({
       !isSortableOperation(operation)
     ) {
       setLocalGroups(undefined);
+      endItineraryReorder(tripId);
       return;
     }
 
@@ -207,6 +220,7 @@ export function DaysSection({
     const before = dragSnapshot.current ?? groups;
     if (!sourceDayId || !targetDayId) {
       setLocalGroups(undefined);
+      endItineraryReorder(tripId);
       return;
     }
 
@@ -220,6 +234,7 @@ export function DaysSection({
     const request = buildItineraryReorderRequest(before, after);
     if (request.days.length === 0) {
       setLocalGroups(undefined);
+      endItineraryReorder(tripId);
       return;
     }
 
@@ -277,6 +292,7 @@ export function DaysSection({
           <DragDropProvider
             onDragEnd={handleDragEnd}
             onDragStart={() => {
+              beginItineraryReorder(tripId);
               dragSnapshot.current = groups;
               setLocalGroups(groups);
             }}

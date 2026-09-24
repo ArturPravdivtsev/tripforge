@@ -22,6 +22,7 @@ import { CurrentUser } from "./decorators/current-user.decorator";
 import { LoginDto } from "./dto/login.dto";
 import { RegisterDto } from "./dto/register.dto";
 import { SessionAuthGuard } from "./guards/session-auth.guard";
+import { TripRealtimePublisher } from "../realtime/trip-realtime.publisher";
 import {
   SessionService,
   type SessionCookieResponse,
@@ -33,6 +34,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly sessionService: SessionService,
+    private readonly realtimePublisher: TripRealtimePublisher,
   ) {}
 
   @Post("register")
@@ -78,7 +80,11 @@ export class AuthController {
 
     try {
       if (rawToken) {
+        const session = await this.sessionService.resolveSession(rawToken);
         await this.sessionService.invalidate(rawToken);
+        if (session) {
+          this.realtimePublisher.disconnectSession(session.sessionId);
+        }
       }
     } finally {
       this.sessionService.clearCookie(response);

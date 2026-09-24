@@ -7,6 +7,7 @@ import type {
   UpdateItineraryItemRequest,
 } from "@tripforge/contracts";
 
+import { TripRealtimePublisher } from "../realtime/trip-realtime.publisher";
 import {
   InvalidItineraryOrderError,
   ItineraryItemsRepository,
@@ -52,6 +53,7 @@ export class ItineraryItemsService {
   constructor(
     private readonly itemsRepository: ItineraryItemsRepository,
     private readonly permissions: TripPermissionsService,
+    private readonly realtime: TripRealtimePublisher,
   ) {}
 
   async list(userId: string, tripId: string): Promise<ItineraryItem[]> {
@@ -75,6 +77,7 @@ export class ItineraryItemsService {
     });
 
     if (!item) throw this.dayNotFound();
+    this.realtime.invalidate(tripId, ["itinerary"]);
     return item;
   }
 
@@ -105,6 +108,10 @@ export class ItineraryItemsService {
 
     const item = await this.itemsRepository.update(tripId, itemId, update);
     if (!item) throw this.itemNotFound();
+    this.realtime.invalidate(
+      tripId,
+      input.place === undefined ? ["itinerary"] : ["itinerary", "routes"],
+    );
     return item;
   }
 
@@ -113,6 +120,7 @@ export class ItineraryItemsService {
     if (!(await this.itemsRepository.delete(tripId, itemId))) {
       throw this.itemNotFound();
     }
+    this.realtime.invalidate(tripId, ["itinerary", "routes"]);
   }
 
   async reorder(
@@ -126,7 +134,9 @@ export class ItineraryItemsService {
     }
 
     try {
-      return await this.itemsRepository.reorder(tripId, input.days);
+      const items = await this.itemsRepository.reorder(tripId, input.days);
+      this.realtime.invalidate(tripId, ["itinerary"]);
+      return items;
     } catch (error) {
       if (error instanceof InvalidItineraryOrderError) throw this.invalidOrder();
       throw error;

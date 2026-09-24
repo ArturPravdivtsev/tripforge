@@ -64,6 +64,11 @@ transport role derived from `trips.owner_id`, not a stored membership value.
 Authentication establishes the user identity only. Every request resolves the
 current Trip permission from PostgreSQL, so downgrade and revocation take effect
 without a new login. Roles and Trip IDs are not stored in auth sessions.
+The same rule applies to WebSocket rooms: every `trip:join` performs a fresh
+database permission check. A downgrade keeps read access and triggers a cache
+refetch; removal targets the user and force-evicts their sockets from the Trip
+room across API nodes. Rejoining with the still-valid login is denied without
+requiring a relogin.
 
 List/get queries are access-scoped in SQL and return `accessRole`. PATCH itself
 is constrained to owner or editor, and DELETE itself is constrained to owner.
@@ -135,3 +140,9 @@ same-Trip itinerary item, reservation, or expense. Deleting a linked resource
 clears that link; deleting a membership does not erase the uploader identity.
 The pending-to-ready lifecycle and cleanup tradeoffs are detailed in
 [Documents](./documents.md).
+
+Committed mutations publish best-effort resource invalidations only after their
+repository operation returns. They do not publish entity snapshots or create a
+second write path. Ordinary concurrent writes remain last-committed-write-wins,
+subject to existing transaction and conflict rules. See
+[Realtime collaboration](./realtime.md) for the mutation matrix and presence.

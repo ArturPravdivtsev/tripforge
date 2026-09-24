@@ -15,6 +15,7 @@ import {
   normalizeCurrencyCode,
 } from "@tripforge/contracts";
 
+import { TripRealtimePublisher } from "../realtime/trip-realtime.publisher";
 import { TripPermissionsService } from "./trip-permissions.service";
 import {
   type ExpenseShareState,
@@ -29,6 +30,7 @@ export class TripExpensesService {
     private readonly expenses: TripExpensesRepository,
     private readonly permissions: TripPermissionsService,
     private readonly trips: TripsRepository,
+    private readonly realtime: TripRealtimePublisher,
   ) {}
 
   async list(userId: string, tripId: string): Promise<TripExpense[]> {
@@ -82,7 +84,9 @@ export class TripExpensesService {
       splitMethod: input.split.method,
       title: input.title.trim(),
     };
-    return this.expenses.create(tripId, state);
+    const expense = await this.expenses.create(tripId, state);
+    this.realtime.invalidate(tripId, ["expenses"]);
+    return expense;
   }
 
   async update(
@@ -173,6 +177,7 @@ export class TripExpensesService {
       replaceShares,
     );
     if (!updated) throw expenseNotFound();
+    this.realtime.invalidate(tripId, ["expenses"]);
     return updated;
   }
 
@@ -185,6 +190,7 @@ export class TripExpensesService {
     if (!(await this.expenses.delete(tripId, expenseId))) {
       throw expenseNotFound();
     }
+    this.realtime.invalidate(tripId, ["expenses"]);
   }
 
   private async currentParticipantIds(tripId: string): Promise<Set<string>> {

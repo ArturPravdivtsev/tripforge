@@ -4,6 +4,7 @@ import {
   OpenRouteServiceClient,
   RoutingProviderError,
 } from "../routing/openrouteservice.client";
+import { TripRealtimePublisher } from "../realtime/trip-realtime.publisher";
 import { TripPermissionsService } from "./trip-permissions.service";
 import { TripRoutesRepository } from "./trip-routes.repository";
 import { TripRoutesService } from "./trip-routes.service";
@@ -39,6 +40,7 @@ function createSubject() {
       routes as unknown as TripRoutesRepository,
       permissions as unknown as TripPermissionsService,
       provider as unknown as OpenRouteServiceClient,
+      new TripRealtimePublisher(),
     ),
   };
 }

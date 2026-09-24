@@ -4,6 +4,7 @@ import { AuthModule } from "../auth/auth.module";
 import { DatabaseModule } from "../database/database.module";
 import { OpenRouteServiceClient } from "../routing/openrouteservice.client";
 import { StorageModule } from "../storage/storage.module";
+import { RealtimePublisherModule } from "../realtime/realtime-publisher.module";
 import { ItineraryItemsController } from "./itinerary-items.controller";
 import { ItineraryItemsRepository } from "./itinerary-items.repository";
 import { ItineraryItemsService } from "./itinerary-items.service";
@@ -31,7 +32,12 @@ import { TripsRepository } from "./trips.repository";
 import { TripsService } from "./trips.service";
 
 @Module({
-  imports: [AuthModule, DatabaseModule, StorageModule],
+  imports: [
+    AuthModule,
+    DatabaseModule,
+    RealtimePublisherModule,
+    StorageModule,
+  ],
   controllers: [
     TripsController,
     TripDestinationsController,
@@ -62,5 +68,6 @@ import { TripsService } from "./trips.service";
     TripDocumentsService,
     OpenRouteServiceClient,
   ],
+  exports: [TripPermissionsService],
 })
 export class TripsModule {}

@@ -98,6 +98,7 @@ export class AuthRepository {
   ): Promise<
     | (AuthenticatedUser & {
         expiresAt: Date;
+        sessionId: string;
       })
     | undefined
   > {
@@ -107,6 +108,7 @@ export class AuthRepository {
         email: users.email,
         expiresAt: authSessions.expiresAt,
         id: users.id,
+        sessionId: authSessions.id,
       })
       .from(authSessions)
       .innerJoin(users, eq(authSessions.userId, users.id))

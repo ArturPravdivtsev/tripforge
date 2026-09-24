@@ -16,6 +16,7 @@ import type {
 } from "@tripforge/contracts";
 
 import { S3StorageService } from "../storage/s3-storage.service";
+import { TripRealtimePublisher } from "../realtime/trip-realtime.publisher";
 import { TripPermissionsService } from "./trip-permissions.service";
 import { TripDocumentsRepository } from "./trip-documents.repository";
 
@@ -27,6 +28,7 @@ export class TripDocumentsService {
     private readonly documents: TripDocumentsRepository,
     private readonly permissions: TripPermissionsService,
     private readonly storage: S3StorageService,
+    private readonly realtime: TripRealtimePublisher,
   ) {}
 
   async list(userId: string, tripId: string): Promise<TripDocument[]> {
@@ -119,7 +121,10 @@ export class TripDocumentsService {
       documentId,
       head.etag,
     );
-    if (ready) return ready.document;
+    if (ready) {
+      this.realtime.invalidate(tripId, ["documents"]);
+      return ready.document;
+    }
     const concurrent = await this.documents.find(tripId, documentId);
     if (concurrent?.document.status === "ready") return concurrent.document;
     throw documentNotFound();
@@ -170,6 +175,7 @@ export class TripDocumentsService {
       title: input.title?.trim() ?? existing.document.title,
     });
     if (!updated) throw documentNotFound();
+    this.realtime.invalidate(tripId, ["documents"]);
     return updated.document;
   }
 
@@ -181,6 +187,7 @@ export class TripDocumentsService {
     await this.permissions.requireEditable(userId, tripId);
     const deleted = await this.documents.deleteWithOutbox(tripId, documentId);
     if (!deleted) throw documentNotFound();
+    this.realtime.invalidate(tripId, ["documents"]);
   }
 
   private async validateLink(

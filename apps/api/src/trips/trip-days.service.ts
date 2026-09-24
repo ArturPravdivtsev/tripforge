@@ -1,6 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import type { TripDay } from "@tripforge/contracts";
 
+import { TripRealtimePublisher } from "../realtime/trip-realtime.publisher";
 import { TripDaysRepository } from "./trip-days.repository";
 import { TripDestinationsRepository } from "./trip-destinations.repository";
 import { TripPermissionsService } from "./trip-permissions.service";
@@ -11,6 +12,7 @@ export class TripDaysService {
     private readonly daysRepository: TripDaysRepository,
     private readonly destinationsRepository: TripDestinationsRepository,
     private readonly permissions: TripPermissionsService,
+    private readonly realtime: TripRealtimePublisher,
   ) {}
 
   async list(userId: string, tripId: string): Promise<TripDay[]> {
@@ -49,6 +51,7 @@ export class TripDaysService {
       );
     }
 
+    this.realtime.invalidate(tripId, ["days"]);
     return day;
   }
 }

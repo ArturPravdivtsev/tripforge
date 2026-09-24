@@ -3,6 +3,7 @@ import { NestFactory } from "@nestjs/core";
 
 import { AppModule } from "./app.module";
 import { configureApplication } from "./common/configure-application";
+import { TripForgeIoAdapter } from "./realtime/tripforge-io.adapter";
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
@@ -11,6 +12,7 @@ async function bootstrap(): Promise<void> {
 
   app.enableShutdownHooks();
   configureApplication(app);
+  app.useWebSocketAdapter(new TripForgeIoAdapter(app, configService));
 
   await app.listen(port);
 }

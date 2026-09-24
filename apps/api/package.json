@@ -25,6 +25,9 @@
     "@nestjs/config": "12.0.0",
     "@nestjs/core": "11.2.3",
     "@nestjs/platform-express": "11.2.3",
+    "@nestjs/platform-socket.io": "11.2.3",
+    "@nestjs/websockets": "11.2.3",
+    "@socket.io/redis-streams-adapter": "0.3.1",
     "@tripforge/contracts": "workspace:*",
     "argon2": "0.45.1",
     "bullmq": "6.3.8",
@@ -36,7 +39,8 @@
     "joi": "18.2.8",
     "pg": "8.23.0",
     "reflect-metadata": "0.2.2",
-    "rxjs": "7.8.2"
+    "rxjs": "7.8.2",
+    "socket.io": "4.8.3"
   },
   "devDependencies": {
     "@nestjs/cli": "11.0.24",
@@ -54,6 +58,7 @@
     "@vitest/coverage-v8": "catalog:",
     "drizzle-kit": "0.31.10",
     "eslint": "9.39.5",
+    "socket.io-client": "4.8.3",
     "supertest": "7.2.2",
     "typescript": "5.9.3",
     "vitest": "catalog:"

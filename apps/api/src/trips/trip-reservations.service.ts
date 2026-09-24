@@ -6,6 +6,7 @@ import type {
   UpdateTripReservationRequest,
 } from "@tripforge/contracts";
 
+import { TripRealtimePublisher } from "../realtime/trip-realtime.publisher";
 import { TripPermissionsService } from "./trip-permissions.service";
 import {
   type ReservationState,
@@ -17,6 +18,7 @@ export class TripReservationsService {
   constructor(
     private readonly reservations: TripReservationsRepository,
     private readonly permissions: TripPermissionsService,
+    private readonly realtime: TripRealtimePublisher,
   ) {}
 
   async list(userId: string, tripId: string): Promise<TripReservation[]> {
@@ -59,7 +61,9 @@ export class TripReservationsService {
 
     validateReservationState(state);
     await this.validateItineraryLink(tripId, state.itineraryItemId);
-    return this.reservations.create(tripId, state);
+    const reservation = await this.reservations.create(tripId, state);
+    this.realtime.invalidate(tripId, ["reservations"]);
+    return reservation;
   }
 
   async update(
@@ -125,6 +129,7 @@ export class TripReservationsService {
       state,
     );
     if (!reservation) throw reservationNotFound();
+    this.realtime.invalidate(tripId, ["reservations"]);
     return reservation;
   }
 
@@ -137,6 +142,7 @@ export class TripReservationsService {
     if (!(await this.reservations.delete(tripId, reservationId))) {
       throw reservationNotFound();
     }
+    this.realtime.invalidate(tripId, ["reservations"]);
   }
 
   private async validateItineraryLink(

@@ -7,6 +7,7 @@ import { ApiExceptionFilter } from "./common/filters/api-exception.filter";
 import { validateEnvironment } from "./config/environment";
 import { DatabaseModule } from "./database/database.module";
 import { HealthController } from "./health.controller";
+import { RealtimeModule } from "./realtime/realtime.module";
 import { TripsModule } from "./trips/trips.module";
 
 @Module({
@@ -18,6 +19,7 @@ import { TripsModule } from "./trips/trips.module";
     }),
     AuthModule,
     DatabaseModule,
+    RealtimeModule,
     TripsModule,
   ],
   controllers: [HealthController],

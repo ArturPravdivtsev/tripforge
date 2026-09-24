@@ -99,6 +99,7 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://tripforge:tripforge@db:5432/tripforge
       WEB_ORIGIN: http://127.0.0.1:3100
+      REDIS_URL: redis://redis:6379
     depends_on:
       db:
         condition: service_healthy
@@ -115,6 +116,7 @@ services:
       PORT: "4000"
       DATABASE_URL: postgresql://tripforge:tripforge@db:5432/tripforge
       WEB_ORIGIN: http://127.0.0.1:3100
+      REDIS_URL: redis://redis:6379
       OPENROUTESERVICE_API_KEY: ${OPENROUTESERVICE_API_KEY:-}
       S3_BUCKET: tripforge-documents
       S3_REGION: us-east-1

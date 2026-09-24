@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -97,6 +97,26 @@ describe("EditTripScreen", () => {
       queryKey: tripKeys.itinerary(trip.id),
     });
     expect(push).toHaveBeenCalledWith("/trips");
+  });
+
+  it("preserves unsaved form values when realtime refreshes query data", async () => {
+    vi.spyOn(tripsApi, "get").mockResolvedValue(trip);
+    const user = userEvent.setup();
+    const { queryClient } = renderWithQueryClient(
+      <EditTripScreen tripId={trip.id} />,
+    );
+    const name = await screen.findByRole("textbox", { name: "Name" });
+
+    await user.clear(name);
+    await user.type(name, "My unsaved name");
+    act(() => {
+      queryClient.setQueryData(tripKeys.detail(trip.id), {
+        ...trip,
+        name: "Remote committed name",
+      });
+    });
+
+    expect(name).toHaveValue("My unsaved name");
   });
 
   it("shows a safe update failure", async () => {

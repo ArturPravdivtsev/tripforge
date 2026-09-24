@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { TripReservation } from "@tripforge/contracts";
 
+import { TripRealtimePublisher } from "../realtime/trip-realtime.publisher";
 import { TripPermissionsService } from "./trip-permissions.service";
 import { TripReservationsRepository } from "./trip-reservations.repository";
 import { TripReservationsService } from "./trip-reservations.service";
@@ -46,6 +47,7 @@ function subject(existing: TripReservation | undefined = reservation) {
     service: new TripReservationsService(
       repository as unknown as TripReservationsRepository,
       permissions as unknown as TripPermissionsService,
+      new TripRealtimePublisher(),
     ),
   };
 }

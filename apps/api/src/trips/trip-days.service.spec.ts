@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { TripRealtimePublisher } from "../realtime/trip-realtime.publisher";
 import { TripDaysRepository } from "./trip-days.repository";
 import { TripDaysService } from "./trip-days.service";
 import { TripDestinationsRepository } from "./trip-destinations.repository";
@@ -14,6 +15,7 @@ describe("TripDaysService", () => {
       days as unknown as TripDaysRepository,
       destinations as unknown as TripDestinationsRepository,
       permissions as unknown as TripPermissionsService,
+      new TripRealtimePublisher(),
     );
 
     await expect(
@@ -31,6 +33,7 @@ describe("TripDaysService", () => {
       days as unknown as TripDaysRepository,
       destinations as unknown as TripDestinationsRepository,
       permissions as unknown as TripPermissionsService,
+      new TripRealtimePublisher(),
     );
 
     await expect(

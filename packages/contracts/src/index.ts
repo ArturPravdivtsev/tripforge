@@ -554,3 +554,77 @@ export interface UpdateTripDocumentRequest {
   title?: string;
   link?: TripDocumentLink;
 }
+
+export const TRIP_REALTIME_RESOURCES = [
+  "trip",
+  "members",
+  "destinations",
+  "days",
+  "itinerary",
+  "routes",
+  "reservations",
+  "expenses",
+  "documents",
+] as const;
+
+export type TripRealtimeResource = (typeof TRIP_REALTIME_RESOURCES)[number];
+
+export const TRIP_REALTIME_EVENTS = {
+  accessRevoked: "trip:access-revoked",
+  deleted: "trip:deleted",
+  invalidate: "trip:invalidate",
+  join: "trip:join",
+  leave: "trip:leave",
+  presence: "trip:presence",
+} as const;
+
+export interface TripJoinRequest {
+  tripId: string;
+}
+
+export type TripJoinResponse =
+  | { ok: true; accessRole: TripAccessRole }
+  | {
+      ok: false;
+      error: {
+        code: "INVALID_TRIP_ID" | "TRIP_ACCESS_DENIED" | "INTERNAL_ERROR";
+        message: string;
+      };
+    };
+
+export interface TripLeaveRequest {
+  tripId: string;
+}
+
+export type TripLeaveResponse =
+  | { ok: true }
+  | {
+      ok: false;
+      error: {
+        code: "INVALID_TRIP_ID";
+        message: string;
+      };
+    };
+
+export interface TripInvalidateEvent {
+  tripId: string;
+  resources: TripRealtimeResource[];
+}
+
+export interface TripDeletedEvent {
+  tripId: string;
+}
+
+export interface TripAccessRevokedEvent {
+  tripId: string;
+}
+
+export interface TripPresenceUser {
+  userId: string;
+  displayName: string | null;
+}
+
+export interface TripPresenceEvent {
+  tripId: string;
+  users: TripPresenceUser[];
+}

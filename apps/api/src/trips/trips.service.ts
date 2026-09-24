@@ -10,6 +10,7 @@ import type {
 } from "@tripforge/contracts";
 
 import { normalizeEmail } from "../auth/email-normalizer";
+import { TripRealtimePublisher } from "../realtime/trip-realtime.publisher";
 import { generateTripDates } from "./trip-calendar";
 import {
   TripDateChangeConflictError,
@@ -19,7 +20,10 @@ import {
 
 @Injectable()
 export class TripsService {
-  constructor(private readonly tripsRepository: TripsRepository) {}
+  constructor(
+    private readonly tripsRepository: TripsRepository,
+    private readonly realtime: TripRealtimePublisher,
+  ) {}
 
   async create(ownerId: string, input: CreateTripRequest): Promise<Trip> {
     const normalized = {
@@ -148,6 +152,10 @@ export class TripsService {
       throw this.notFound();
     }
 
+    this.realtime.invalidate(
+      tripId,
+      hasStartsOn || hasEndsOn ? ["trip", "days", "itinerary"] : ["trip"],
+    );
     return updated;
   }
 
@@ -155,6 +163,7 @@ export class TripsService {
     const deleted = await this.tripsRepository.deleteOwned(userId, tripId);
 
     if (deleted) {
+      this.realtime.tripDeleted(tripId);
       return;
     }
 
@@ -224,6 +233,7 @@ export class TripsService {
       );
     }
 
+    this.realtime.invalidate(tripId, ["members", "trip"]);
     return { role: input.role, user: invitee };
   }
 
@@ -264,6 +274,7 @@ export class TripsService {
       throw this.memberNotFound();
     }
 
+    this.realtime.invalidate(tripId, ["members", "trip"]);
     return participant;
   }
 
@@ -292,6 +303,9 @@ export class TripsService {
     if (!removed) {
       throw this.memberNotFound();
     }
+
+    this.realtime.accessRevoked(tripId, memberUserId);
+    this.realtime.invalidate(tripId, ["members", "trip"]);
   }
 
   private async requireAccess(

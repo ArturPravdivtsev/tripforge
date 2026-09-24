@@ -4,6 +4,7 @@ import type {
   UpdateTripDestinationRequest,
 } from "@tripforge/contracts";
 
+import { TripRealtimePublisher } from "../realtime/trip-realtime.publisher";
 import {
   DestinationOrderChangedError,
   TripDestinationsRepository,
@@ -55,6 +56,7 @@ export class TripDestinationsService {
   constructor(
     private readonly destinationsRepository: TripDestinationsRepository,
     private readonly permissions: TripPermissionsService,
+    private readonly realtime: TripRealtimePublisher,
   ) {}
 
   async list(userId: string, tripId: string): Promise<TripDestination[]> {
@@ -68,7 +70,12 @@ export class TripDestinationsService {
     name: string,
   ): Promise<TripDestination> {
     await this.permissions.requireEditable(userId, tripId);
-    return this.destinationsRepository.create(tripId, name.trim());
+    const destination = await this.destinationsRepository.create(
+      tripId,
+      name.trim(),
+    );
+    this.realtime.invalidate(tripId, ["destinations"]);
+    return destination;
   }
 
   async update(
@@ -97,6 +104,7 @@ export class TripDestinationsService {
       throw this.notFound();
     }
 
+    this.realtime.invalidate(tripId, ["destinations"]);
     return destination;
   }
 
@@ -110,6 +118,7 @@ export class TripDestinationsService {
     if (!(await this.destinationsRepository.delete(tripId, destinationId))) {
       throw this.notFound();
     }
+    this.realtime.invalidate(tripId, ["destinations", "days"]);
   }
 
   async reorder(
@@ -138,7 +147,9 @@ export class TripDestinationsService {
       throw error;
     }
 
-    return this.destinationsRepository.list(tripId);
+    const destinations = await this.destinationsRepository.list(tripId);
+    this.realtime.invalidate(tripId, ["destinations"]);
+    return destinations;
   }
 
   private invalidOrder(): HttpException {

@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 
 import { DatabaseModule } from "../database/database.module";
+import { RealtimePublisherModule } from "../realtime/realtime-publisher.module";
 import { AuthController } from "./auth.controller";
 import { AuthRepository } from "./auth.repository";
 import { AuthService } from "./auth.service";
@@ -10,7 +11,7 @@ import { PasswordHasherService } from "./password/password-hasher.service";
 import { SessionService } from "./session/session.service";
 
 @Module({
-  imports: [DatabaseModule],
+  imports: [DatabaseModule, RealtimePublisherModule],
   controllers: [AuthController],
   providers: [
     AuthRepository,

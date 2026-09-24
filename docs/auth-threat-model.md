@@ -97,6 +97,17 @@ Neither may be logged or persisted in raw form.
 | Worker leaks a signed URL or credentials | Jobs/logs contain no signed URLs, credentials, file bytes, or object keys |
 | Object key leaks through API or logs | Transport contracts omit keys; signed URLs and credentials are not logged |
 | Dangerous inline content executes in TripForge origin | Allowlisted MIME types and attachment-only download disposition |
+| Cross-site WebSocket handshake | Socket.IO `allowRequest` requires exact `Origin === WEB_ORIGIN` |
+| Socket connects without authentication | Existing HttpOnly cookie is resolved through the shared session service during handshake |
+| Session token leaks through WebSocket URL | No token query/auth payload; the cookie is the only credential |
+| Logged-out session keeps sockets | Session room is disconnected across API nodes after database revocation |
+| Socket outlives absolute session expiry | Bounded expiry timer disconnects it at the persisted expiry |
+| User joins a guessed Trip room | Runtime UUID validation plus fresh PostgreSQL permission check before every join |
+| Revoked member stays in a Trip room | Targeted event plus server-side cross-node room eviction; rejoin reauthorizes |
+| Role downgrade depends on UI timing | REST resolves the current role and returns `403` even before the refetch finishes |
+| Malformed realtime payload corrupts UI | Browser Zod schemas reject unknown or invalid event payloads |
+| Redis becomes an authorization source | PostgreSQL remains authoritative; Redis carries only best-effort invalidation/presence traffic |
+| Presence discloses private profile data | Only user ID and display name are sent to already authorized Trip room members |
 
 ## Residual and deferred risk
 
@@ -124,6 +135,10 @@ Neither may be logged or persisted in raw form.
   remediation; an admin retry UI and alerting belong to later observability work.
 - A presigned download URL issued before deletion can remain valid until its
   five-minute expiry; asynchronous object cleanup is not instant revocation.
+- Presence is approximate room membership, not durable online status. It has no
+  database history, last-seen value, cursor, typing, or activity semantics.
+- Networks that block WebSockets lose realtime freshness because Stage 21 has
+  no polling fallback; authenticated REST behavior remains available.
 
 ## Operational rules
 

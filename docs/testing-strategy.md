@@ -118,6 +118,18 @@ cleanup, Redis-independent HTTP deletion, and upload/delete plus
 completion/stale-cleaner serialization. Tests use short controlled backoffs and
 call maintenance services directly instead of waiting for production cadence.
 
+Stage 21 adds focused unit/component coverage for exact WebSocket origin checks,
+room naming, cookie-session handshake, Trip join validation/authorization,
+session expiry, cross-node room eviction, presence deduplication, runtime event
+schemas, query-key mapping, reconnect status, DnD deferral, and unsaved form
+preservation. Its dedicated integration suite starts real PostgreSQL 18.6, real
+Redis 8.10.1, two Nest/Socket.IO servers, and real `socket.io-client` instances.
+It verifies authentication and rejected origins, unauthorized joins, cross-node
+presence and mutation fan-out, role downgrade plus REST `403`, revocation,
+deletion, logout disconnect, reconnect/rejoin, invalid-session rejection, and
+REST continuity plus later broadcast recovery during a temporary Redis
+command-processing pause. Mocked gateway tests alone are not the Stage 21 gate.
+
 TripForge should avoid testing implementation details and should not rely only
 on expensive browser E2E tests.
 

@@ -87,6 +87,28 @@ startup failure. Normal itinerary editing and stored-place rendering continue.
 The key is intentionally browser-visible. MapTiler search uses direct browser
 `fetch`; provider JSON never enters React components or the Nest server.
 
+## Realtime boundary
+
+`app/trips/[tripId]/layout.tsx` mounts one `TripRealtimeBridge` around every
+active Trip subroute. The client-only socket module derives its URL from the
+existing API origin, creates no connection during SSR, and uses one
+WebSocket-only Socket.IO singleton with credentials. The bridge explicitly
+joins the Trip after connect, runtime-validates all inbound payloads, and maps
+finite backend resource names to TanStack Query keys.
+
+Reconnect repeats authentication and Trip authorization, then actively
+refetches the whole Trip resource set. Delete or access-revoked events remove
+the detail subtree and navigate to `/trips`. A compact fixed status/presence
+indicator reports `Reconnecting`, `Live`, or `Unavailable` without expanding
+Trip headers on narrow screens. Listener registration and cleanup use the same
+function references and disconnect on unmount, making the boundary safe under
+React Strict Mode.
+
+Remote itinerary invalidations are deferred while a drag/reorder operation is
+active, then flushed after it settles. Query refetches do not reset unsaved
+React Hook Form values. Realtime transports no entity snapshots and exposes no
+browser mutation API. See [Realtime collaboration](./realtime.md).
+
 ## Shared UI boundary
 
 `packages/ui` contains presentation primitives only. It must not import from

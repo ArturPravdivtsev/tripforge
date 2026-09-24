@@ -1,6 +1,7 @@
 import type { TripDocument } from "@tripforge/contracts";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { TripRealtimePublisher } from "../realtime/trip-realtime.publisher";
 import type { S3StorageService } from "../storage/s3-storage.service";
 import type { TripPermissionsService } from "./trip-permissions.service";
 import type {
@@ -34,6 +35,7 @@ describe("TripDocumentsService", () => {
     documents as unknown as TripDocumentsRepository,
     permissions as unknown as TripPermissionsService,
     storage as unknown as S3StorageService,
+    new TripRealtimePublisher(),
   );
 
   beforeEach(() => {

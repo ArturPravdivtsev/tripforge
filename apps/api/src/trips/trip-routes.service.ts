@@ -9,6 +9,7 @@ import {
   OpenRouteServiceClient,
   RoutingProviderError,
 } from "../routing/openrouteservice.client";
+import { TripRealtimePublisher } from "../realtime/trip-realtime.publisher";
 import { TripPermissionsService } from "./trip-permissions.service";
 import {
   RouteAlreadyExistsError,
@@ -24,6 +25,7 @@ export class TripRoutesService {
     private readonly routes: TripRoutesRepository,
     private readonly permissions: TripPermissionsService,
     private readonly provider: OpenRouteServiceClient,
+    private readonly realtime: TripRealtimePublisher,
   ) {}
 
   async list(userId: string, tripId: string): Promise<TripRouteSegment[]> {
@@ -62,7 +64,15 @@ export class TripRoutesService {
     const calculated = await this.calculate(input.mode, from, to);
 
     try {
-      return await this.routes.create(tripId, from, to, input.mode, calculated);
+      const route = await this.routes.create(
+        tripId,
+        from,
+        to,
+        input.mode,
+        calculated,
+      );
+      this.realtime.invalidate(tripId, ["routes"]);
+      return route;
     } catch (error) {
       if (error instanceof RouteAlreadyExistsError) throw routeAlreadyExists();
       if (error instanceof RouteEndpointChangedError) throw endpointChanged();
@@ -88,7 +98,7 @@ export class TripRoutesService {
     const calculated = await this.calculate(input.mode, from, to);
 
     try {
-      return await this.routes.update(
+      const route = await this.routes.update(
         tripId,
         routeId,
         from,
@@ -96,6 +106,8 @@ export class TripRoutesService {
         input.mode,
         calculated,
       );
+      this.realtime.invalidate(tripId, ["routes"]);
+      return route;
     } catch (error) {
       if (error instanceof RouteEndpointChangedError) throw endpointChanged();
       if (error instanceof RouteNotFoundError) throw routeNotFound();
@@ -106,6 +118,7 @@ export class TripRoutesService {
   async delete(userId: string, tripId: string, routeId: string): Promise<void> {
     await this.permissions.requireEditable(userId, tripId);
     if (!(await this.routes.delete(tripId, routeId))) throw routeNotFound();
+    this.realtime.invalidate(tripId, ["routes"]);
   }
 
   private async loadEndpoints(

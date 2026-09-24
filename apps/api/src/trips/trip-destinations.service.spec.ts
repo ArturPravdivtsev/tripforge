@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { TripRealtimePublisher } from "../realtime/trip-realtime.publisher";
 import { TripDestinationsRepository } from "./trip-destinations.repository";
 import {
   isCompleteDestinationOrder,
@@ -51,6 +52,7 @@ describe("TripDestinationsService", () => {
     const service = new TripDestinationsService(
       repository as unknown as TripDestinationsRepository,
       permissions as unknown as TripPermissionsService,
+      new TripRealtimePublisher(),
     );
 
     await service.update("editor", "trip", "tokyo", {
@@ -82,6 +84,7 @@ describe("TripDestinationsService", () => {
     const service = new TripDestinationsService(
       repository as unknown as TripDestinationsRepository,
       permissions as unknown as TripPermissionsService,
+      new TripRealtimePublisher(),
     );
 
     await expect(
@@ -98,6 +101,7 @@ describe("TripDestinationsService", () => {
     const service = new TripDestinationsService(
       repository as unknown as TripDestinationsRepository,
       permissions as unknown as TripPermissionsService,
+      new TripRealtimePublisher(),
     );
 
     await service.create("editor", "trip", "  Tokyo  ");
@@ -115,6 +119,7 @@ describe("TripDestinationsService", () => {
     const service = new TripDestinationsService(
       repository as unknown as TripDestinationsRepository,
       permissions as unknown as TripPermissionsService,
+      new TripRealtimePublisher(),
     );
 
     await expect(

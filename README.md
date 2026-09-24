@@ -8,7 +8,9 @@ records with optional itinerary links and typed transport details, plus exact
 multi-currency expenses, participant splits, balances, and settlement suggestions.
 Private Trip documents use direct browser uploads to S3-compatible storage.
 Durable background cleanup uses a PostgreSQL transactional outbox, BullMQ v6,
-and an AOF-backed Redis worker process.
+and an AOF-backed Redis worker process. Authenticated Socket.IO collaboration
+uses the same Redis service as an isolated inter-node Streams transport while
+REST remains the only mutation path.
 
 ## Structure
 
@@ -62,6 +64,7 @@ NODE_ENV=development
 PORT=4000
 DATABASE_URL=postgresql://tripforge:tripforge@127.0.0.1:5433/tripforge
 WEB_ORIGIN=http://127.0.0.1:3000
+REDIS_URL=redis://127.0.0.1:6379
 OPENROUTESERVICE_API_KEY=
 S3_BUCKET=tripforge-documents
 S3_REGION=us-east-1
@@ -93,11 +96,15 @@ lifecycle, per-currency balances, and the no-FX boundary. See
 [Documents](docs/documents.md) for private object storage, presigned URLs,
 two-phase uploads, and distributed deletion. See
 [Background jobs](docs/background-jobs.md) for the outbox, BullMQ scheduling,
-at-least-once processing, retries, and failure recovery.
+at-least-once processing, retries, and failure recovery. See
+[Realtime collaboration](docs/realtime.md) for authenticated Trip rooms,
+best-effort invalidations, presence, reconnect semantics, and Redis Streams
+fan-out.
 
-The separate worker validates the database/S3 settings above plus
-`REDIS_URL=redis://127.0.0.1:6379`; it does not require `WEB_ORIGIN`. The HTTP
-API intentionally does not require Redis.
+The separate worker validates the database/S3 settings above plus `REDIS_URL`;
+it does not require `WEB_ORIGIN`. The API opens an independently configured
+realtime Redis connection, but Redis availability is not part of HTTP health
+and does not gate REST startup or mutations.
 
 ## Testing and quality
 

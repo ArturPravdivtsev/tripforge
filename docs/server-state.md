@@ -90,6 +90,29 @@ paginated lists without clearing unrelated cache entries.
 Only the visible page is optimistically changed. Inactive pages are refreshed
 through invalidation rather than reshuffled in browser code.
 
+## Realtime invalidation
+
+`trip:invalidate` contains only a Trip ID and finite resource names. The browser
+maps them to query prefixes as follows:
+
+| Resource | Query cache |
+| --- | --- |
+| `trip` | exact detail plus all Trip lists |
+| `members` | Trip members |
+| `destinations` | Trip destinations |
+| `days` | Trip Days |
+| `itinerary` | Trip itinerary |
+| `routes` | Trip routes |
+| `reservations` | reservation subtree |
+| `expenses` | expense subtree, including details/balances |
+| `documents` | Trip documents |
+
+Invalidations batch active-query refetches and remain harmless when duplicated
+or delivered out of order. On each successful join or reconnect, the bridge
+invalidates all resources to repair any event gap. During active itinerary DnD,
+only itinerary refetch is deferred; unrelated resources remain live. Form
+values remain client state and are not replaced by background query updates.
+
 ## Client state vs server state
 
 TanStack Query owns `Trip`, `TripsPage`, `TripParticipant[]`,

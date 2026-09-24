@@ -47,16 +47,20 @@ Host
      127.0.0.1:4566 ─► LocalStack S3 :4566
 
      PostgreSQL outbox ─► worker container ─► Redis :6379
-                               │                  AOF everysec
-                               └──────────────► LocalStack S3
+                               │                  ▲
+                               └────► LocalStack  │ Socket.IO Streams
+                                             API ┘
 ```
 
 Services share the default Compose network. Database clients use `db:5432`
 inside it; the API uses `localstack:4566` for storage operations. The browser
 receives signatures for host-visible `localhost:4566`. Host-only mappings are
 `127.0.0.1:5433` for PostgreSQL and `127.0.0.1:4566` for LocalStack.
-Redis and the worker remain internal and expose no host ports. The HTTP API does
-not receive `REDIS_URL`; only the worker connects to `redis://redis:6379`.
+Redis and the worker remain internal and expose no host ports. Both API and
+worker receive `redis://redis:6379`, but use independent connections and
+protocols. The API does not depend on Redis health for startup, REST, or its
+HTTP healthcheck; the worker deliberately waits for Redis because queue work is
+its purpose.
 
 ## Commands
 
@@ -102,6 +106,13 @@ Redis runs pinned `redis:8.10.1-alpine` with `appendonly yes` and
 `PONG`. Queue state survives an ordinary restart through the named
 `redis_data` volume; incomplete PostgreSQL outbox rows remain the recovery
 source even if that volume is lost.
+
+The API uses the same Redis service only as Socket.IO's inter-node Streams
+transport. Its fixed `/socket.io` endpoint is WebSocket-only, so no sticky HTTP
+session routing is required. Browser cookies reach the host-visible API origin,
+while the server accepts only the exact configured web `Origin`. Redis outage
+may delay presence and invalidations but does not affect authoritative REST
+CRUD; reconnect and refetch repair missed freshness hints.
 
 The worker reuses the API image with `node dist/worker.js`, waits for healthy
 PostgreSQL/Redis/LocalStack and a successful migration, and receives only its

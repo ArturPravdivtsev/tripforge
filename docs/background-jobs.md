@@ -1,8 +1,9 @@
 # Background jobs
 
 TripForge uses a dedicated Nest application context for durable maintenance
-work. The HTTP API does not open a Redis connection and the worker does not
-open an HTTP port.
+work. The worker does not open an HTTP port. The HTTP API now has a separate,
+best-effort Socket.IO Redis Streams connection for realtime only; it never
+shares the BullMQ queue/worker clients.
 
 ```text
 PostgreSQL storage_cleanup_outbox
@@ -85,9 +86,12 @@ early. The CLI worker healthcheck verifies Redis reachability while Docker also
 checks that the worker process remains alive.
 
 API `/health` intentionally ignores Redis and worker health. Redis or worker
-outage delays cleanup but cannot block document or Trip deletion. A previously
+outage delays cleanup and realtime fan-out but cannot block document or Trip
+mutation. A previously
 issued presigned download URL may remain valid until its short expiry even after
 metadata deletion; asynchronous cleanup is not instant capability revocation.
 
 No sessions, Trip data, authorization, response cache, notifications, or user
-job state are stored in Redis.
+job state are stored in Redis. BullMQ is durable work delivery backed by the
+PostgreSQL outbox; the Socket.IO Streams adapter is non-durable freshness
+transport whose missed messages are repaired by reconnect and refetch.

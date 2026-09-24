@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { TripRealtimePublisher } from "../realtime/trip-realtime.publisher";
 import { ItineraryItemsRepository } from "./itinerary-items.repository";
 import {
   hasValidItineraryOrderStructure,
@@ -28,6 +29,7 @@ function createSubject() {
     service: new ItineraryItemsService(
       repository as unknown as ItineraryItemsRepository,
       permissions as unknown as TripPermissionsService,
+      new TripRealtimePublisher(),
     ),
   };
 }

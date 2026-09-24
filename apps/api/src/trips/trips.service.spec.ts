@@ -1,6 +1,7 @@
 import type { Trip } from "@tripforge/contracts";
 import { describe, expect, it, vi } from "vitest";
 
+import { TripRealtimePublisher } from "../realtime/trip-realtime.publisher";
 import { TripDateChangeConflictError, TripsRepository } from "./trips.repository";
 import { TripsService } from "./trips.service";
 
@@ -31,7 +32,10 @@ function createSubject() {
 
   return {
     repository,
-    service: new TripsService(repository as unknown as TripsRepository),
+    service: new TripsService(
+      repository as unknown as TripsRepository,
+      new TripRealtimePublisher(),
+    ),
   };
 }
 
