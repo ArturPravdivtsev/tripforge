@@ -28,6 +28,14 @@ component tests, with progressively fewer integration and browser tests.
   and cross-user ownership against the same PostgreSQL image.
 - **Browser E2E tests:** critical user journeys only. They are not implemented yet.
 
+Trip search adds a dedicated real-PostgreSQL integration suite. It applies the
+committed migration and checks extension/index catalogs, generated-column
+updates, all allowed fields, typo and full-text paths, ranking and stable order,
+filters/limits, ready-document publication, RBAC and cross-Trip isolation,
+hostile query text, and an index-aware `EXPLAIN`. Focused component tests cover
+debounce, cancellation wiring, filters, accessible results, typed navigation,
+query keys, and realtime invalidation mapping.
+
 Stage 8 covers browser authentication with React Testing Library component
 tests, mocked Fetch client tests, Nest CORS/browser-policy HTTP tests, real
 PostgreSQL authentication integration tests, and manual browser QA. Installing

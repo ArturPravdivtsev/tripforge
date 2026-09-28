@@ -61,6 +61,13 @@ must update it explicitly.
 valid with both columns null. Spatial extensions and indexes are intentionally
 deferred until the server performs spatial queries.
 
+Searchable domain tables own stored generated `tsvector` columns using the
+PostgreSQL `simple` configuration. GIN vector indexes and selective `pg_trgm`
+GIN indexes support Trip-wide full-text and typo matching without duplicating
+domain rows. Ready-document partial indexes match the publication boundary.
+Migration `0013` installs `pg_trgm` idempotently before creating its indexes.
+See [Trip-wide search](./search.md).
+
 ## Migration workflow
 
 ```text

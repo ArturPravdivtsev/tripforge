@@ -12,6 +12,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 import { itineraryItems } from "./itinerary-items";
+import { searchVector } from "./search-vector";
 import { tripExpenses } from "./trip-expenses";
 import { tripReservations } from "./trip-reservations";
 import { trips } from "./trips";
@@ -52,6 +53,9 @@ export const tripDocuments = pgTable(
     status: tripDocumentStatus("status").default("pending").notNull(),
     title: varchar("title", { length: 200 }).notNull(),
     originalFileName: varchar("original_file_name", { length: 255 }).notNull(),
+    searchVector: searchVector("search_vector").generatedAlwaysAs(
+      sql`setweight(to_tsvector('simple'::regconfig, coalesce("title", '')), 'A') || setweight(to_tsvector('simple'::regconfig, coalesce("original_file_name", '')), 'B')`,
+    ),
     contentType: varchar("content_type", { length: 64 }).notNull(),
     sizeBytes: bigint("size_bytes", { mode: "number" }).notNull(),
     storageKey: varchar("storage_key", { length: 500 }).notNull(),
@@ -77,6 +81,15 @@ export const tripDocuments = pgTable(
     index("trip_documents_reservation_idx").on(table.reservationId),
     index("trip_documents_expense_idx").on(table.expenseId),
     index("trip_documents_uploader_idx").on(table.uploadedByUserId),
+    index("trip_documents_search_vector_idx")
+      .using("gin", table.searchVector)
+      .where(sql`${table.status} = 'ready'`),
+    index("trip_documents_title_trgm_idx")
+      .using("gin", table.title.op("gin_trgm_ops"))
+      .where(sql`${table.status} = 'ready'`),
+    index("trip_documents_file_name_trgm_idx")
+      .using("gin", table.originalFileName.op("gin_trgm_ops"))
+      .where(sql`${table.status} = 'ready'`),
     uniqueIndex("trip_documents_storage_key_unique").on(table.storageKey),
     check(
       "trip_documents_title_not_blank_check",

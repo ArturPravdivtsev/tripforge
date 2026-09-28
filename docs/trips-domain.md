@@ -62,6 +62,7 @@ transport role derived from `trips.owner_id`, not a stored membership value.
 | Create/update/delete expenses | ✓ | ✓ | — |
 | List/download ready documents | ✓ | ✓ | ✓ |
 | Upload/update/delete documents | ✓ | ✓ | — |
+| Search Trip resources | ✓ | ✓ | ✓ |
 
 Authentication establishes the user identity only. Every request resolves the
 current Trip permission from PostgreSQL, so downgrade and revocation take effect
@@ -154,3 +155,9 @@ Selected membership and activity mutations also create durable, recipient-
 scoped notifications in their domain transaction. Historical copy uses Trip and
 actor snapshots, while linkability always follows current access. See
 [Persistent notifications](./notifications.md).
+
+Trip-wide search is a read-only projection over destinations, itinerary,
+reservations, expenses, and ready documents. It uses the same effective-role
+lookup and anti-enumerating `404` policy as every other Trip read. Search adds no
+new ownership or lifecycle rules and stores no copied business rows. See
+[Trip-wide search](./search.md).

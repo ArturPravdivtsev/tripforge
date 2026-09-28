@@ -16,9 +16,14 @@ describe("realtime query invalidation", () => {
     ]);
     expect(queryKeysForRealtimeResource("trip", "expenses")).toEqual([
       tripKeys.expenses("trip"),
+      tripKeys.searches("trip"),
     ]);
     expect(queryKeysForRealtimeResource("trip", "reservations")).toEqual([
       tripKeys.reservations("trip"),
+      tripKeys.searches("trip"),
+    ]);
+    expect(queryKeysForRealtimeResource("trip", "routes")).toEqual([
+      tripKeys.routes("trip"),
     ]);
   });
 

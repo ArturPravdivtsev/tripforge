@@ -123,6 +123,7 @@ Trip resources use conventional HTTP semantics:
 | read own unread count | `GET /api/notifications/unread-count` | `200` count |
 | set own notification read state | `PATCH /api/notifications/:notificationId` | `200` notification |
 | mark all own notifications read | `POST /api/notifications/read-all` | `201` updated count |
+| search one accessible Trip | `GET /api/trips/:tripId/search?q=&types=&limit=` | `200` relevance-ordered results |
 
 All routes require the existing server session. Ownership is derived from
 `trips.owner_id`, and editor/viewer access from `trip_members`; neither comes from
@@ -130,6 +131,13 @@ client input or session claims. Trip responses include the current user's
 effective `accessRole`. A known member lacking a capability receives `403
 INSUFFICIENT_TRIP_PERMISSION`; an unrelated user or nonexistent Trip receives
 `404 TRIP_NOT_FOUND`. Member management is owner-only.
+
+Trip search allows every readable role and performs the same current
+PostgreSQL-backed access check before querying source rows. Query length is
+2–100 after trimming, result types are a closed optional comma-separated set,
+and the limit defaults to 20 with a maximum of 50. Unknown types are rejected;
+unrelated and missing Trips remain indistinguishable `404` responses. See
+[Trip-wide search](./search.md).
 
 Destination and Day reads allow every accessible role. Their mutations allow
 owners and editors; viewers receive `403 INSUFFICIENT_TRIP_PERMISSION`. Unknown

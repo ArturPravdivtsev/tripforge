@@ -13,19 +13,19 @@ export function queryKeysForRealtimeResource(
     case "members":
       return [tripKeys.members(tripId)];
     case "destinations":
-      return [tripKeys.destinations(tripId)];
+      return [tripKeys.destinations(tripId), tripKeys.searches(tripId)];
     case "days":
       return [tripKeys.days(tripId)];
     case "itinerary":
-      return [tripKeys.itinerary(tripId)];
+      return [tripKeys.itinerary(tripId), tripKeys.searches(tripId)];
     case "routes":
       return [tripKeys.routes(tripId)];
     case "reservations":
-      return [tripKeys.reservations(tripId)];
+      return [tripKeys.reservations(tripId), tripKeys.searches(tripId)];
     case "expenses":
-      return [tripKeys.expenses(tripId)];
+      return [tripKeys.expenses(tripId), tripKeys.searches(tripId)];
     case "documents":
-      return [tripKeys.documents(tripId)];
+      return [tripKeys.documents(tripId), tripKeys.searches(tripId)];
   }
 }
 

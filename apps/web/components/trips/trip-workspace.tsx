@@ -76,6 +76,7 @@ export function TripWorkspace({ tripId }: TripWorkspaceProps) {
         </div>
         <nav aria-label="Trip actions" className="flex flex-wrap gap-3">
           <Link className={linkClasses} href="/trips">All trips</Link>
+          <Link className={linkClasses} href={`/trips/${tripId}/search`}>Search</Link>
           {canEdit ? <Link className={linkClasses} href={`/trips/${tripId}/edit`}>Edit</Link> : null}
           <Link className={linkClasses} href={`/trips/${tripId}/documents`}>Documents</Link>
           <Link className={linkClasses} href={`/trips/${tripId}/expenses`}>Expenses</Link>

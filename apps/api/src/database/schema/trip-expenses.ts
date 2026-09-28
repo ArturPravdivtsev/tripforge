@@ -14,6 +14,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 import { tripReservations } from "./trip-reservations";
+import { searchVector } from "./search-vector";
 import { trips } from "./trips";
 import { users } from "./users";
 
@@ -52,6 +53,9 @@ export const tripExpenses = pgTable(
       .references(() => users.id),
     splitMethod: tripExpenseSplitMethod("split_method").notNull(),
     notes: text("notes"),
+    searchVector: searchVector("search_vector").generatedAlwaysAs(
+      sql`setweight(to_tsvector('simple'::regconfig, coalesce("title", '')), 'A') || setweight(to_tsvector('simple'::regconfig, coalesce("notes", '')), 'D')`,
+    ),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -63,6 +67,14 @@ export const tripExpenses = pgTable(
     index("trip_expenses_trip_idx").on(table.tripId),
     index("trip_expenses_reservation_idx").on(table.reservationId),
     index("trip_expenses_payer_idx").on(table.paidByUserId),
+    index("trip_expenses_search_vector_idx").using(
+      "gin",
+      table.searchVector,
+    ),
+    index("trip_expenses_title_trgm_idx").using(
+      "gin",
+      table.title.op("gin_trgm_ops"),
+    ),
     index("trip_expenses_list_idx").on(
       table.tripId,
       table.spentOn,

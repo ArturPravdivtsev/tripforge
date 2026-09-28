@@ -14,6 +14,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 import { tripDays } from "./trip-days";
+import { searchVector } from "./search-vector";
 
 export const itineraryItemKind = pgEnum("itinerary_item_kind", [
   "activity",
@@ -40,6 +41,9 @@ export const itineraryItems = pgTable(
     placeLongitude: doublePrecision("place_longitude"),
     placeProvider: varchar("place_provider", { length: 32 }),
     placeProviderRef: varchar("place_provider_ref", { length: 300 }),
+    searchVector: searchVector("search_vector").generatedAlwaysAs(
+      sql`setweight(to_tsvector('simple'::regconfig, coalesce("title", '')), 'A') || setweight(to_tsvector('simple'::regconfig, coalesce("place_name", '') || ' ' || coalesce("place_address", '')), 'B') || setweight(to_tsvector('simple'::regconfig, coalesce("notes", '')), 'D')`,
+    ),
     position: integer("position").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
@@ -53,6 +57,18 @@ export const itineraryItems = pgTable(
       table.tripDayId,
       table.position,
       table.id,
+    ),
+    index("itinerary_items_search_vector_idx").using(
+      "gin",
+      table.searchVector,
+    ),
+    index("itinerary_items_title_trgm_idx").using(
+      "gin",
+      table.title.op("gin_trgm_ops"),
+    ),
+    index("itinerary_items_place_name_trgm_idx").using(
+      "gin",
+      table.placeName.op("gin_trgm_ops"),
     ),
     check(
       "itinerary_items_title_not_blank_check",

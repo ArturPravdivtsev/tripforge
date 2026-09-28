@@ -555,6 +555,73 @@ export interface UpdateTripDocumentRequest {
   link?: TripDocumentLink;
 }
 
+export const TRIP_SEARCH_RESULT_TYPES = [
+  "destination",
+  "itinerary",
+  "reservation",
+  "expense",
+  "document",
+] as const;
+
+export type TripSearchResultType = (typeof TRIP_SEARCH_RESULT_TYPES)[number];
+
+export type TripSearchTarget =
+  | { type: "trip"; tripId: string }
+  | { type: "reservations"; tripId: string }
+  | { type: "expenses"; tripId: string }
+  | { type: "documents"; tripId: string };
+
+type TripSearchResultCommon = {
+  id: string;
+  title: string;
+  subtitle: string;
+};
+
+export type TripSearchResult =
+  | (TripSearchResultCommon & {
+      type: "destination";
+      target: Extract<TripSearchTarget, { type: "trip" }>;
+      context: { latitude: number | null; longitude: number | null };
+    })
+  | (TripSearchResultCommon & {
+      type: "itinerary";
+      target: Extract<TripSearchTarget, { type: "trip" }>;
+      context: {
+        date: string;
+        kind: ItineraryItemKind;
+        startTime: string | null;
+        placeName: string | null;
+      };
+    })
+  | (TripSearchResultCommon & {
+      type: "reservation";
+      target: Extract<TripSearchTarget, { type: "reservations" }>;
+      context: {
+        kind: TripReservationKind;
+        startDate: string;
+        serviceNumber: string | null;
+      };
+    })
+  | (TripSearchResultCommon & {
+      type: "expense";
+      target: Extract<TripSearchTarget, { type: "expenses" }>;
+      context: { category: TripExpenseCategory; spentOn: string };
+    })
+  | (TripSearchResultCommon & {
+      type: "document";
+      target: Extract<TripSearchTarget, { type: "documents" }>;
+      context: {
+        contentType: TripDocumentContentType;
+        fileName: string;
+        kind: TripDocumentKind;
+      };
+    });
+
+export interface TripSearchResponse {
+  query: string;
+  results: TripSearchResult[];
+}
+
 export const TRIP_REALTIME_RESOURCES = [
   "trip",
   "members",

@@ -21,6 +21,10 @@ export const tripKeys = {
     [...tripKeys.expenses(tripId), "balances"] as const,
   documents: (tripId: string) =>
     [...tripKeys.detail(tripId), "documents"] as const,
+  searches: (tripId: string) =>
+    [...tripKeys.detail(tripId), "search"] as const,
+  search: (tripId: string, query: string, types: string, limit = 20) =>
+    [...tripKeys.searches(tripId), { limit, query, types }] as const,
   lists: () => [...tripKeys.all, "list"] as const,
   list: (page: number, pageSize: number) =>
     [...tripKeys.lists(), { page, pageSize }] as const,

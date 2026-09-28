@@ -32,6 +32,7 @@ failures receive at most one retry.
 ["trips", "detail", tripId, "expenses", "detail", expenseId]
 ["trips", "detail", tripId, "expenses", "balances"]
 ["trips", "detail", tripId, "documents"]
+["trips", "detail", tripId, "search", { limit, query, types }]
 ["notifications"]
 ["notifications", "list"]
 ["notifications", "unread-count"]
@@ -83,6 +84,10 @@ paginated lists without clearing unrelated cache entries.
   are deliberately absent from it. Metadata/link update and delete invalidate
   that exact list after server success. Download URLs are requested on demand
   and are never cached as durable document state.
+- Trip search uses a 30-second stale time, a query/filter/limit-complete key, and
+  the query function's `AbortSignal`. It performs no request below two trimmed
+  characters. Relevant realtime domain changes invalidate the search prefix;
+  local input and filter state remain untouched.
 - Logout, login, registration, or guest discovery: cancel and remove all Trip
   and notification queries so data cannot cross user identities.
 - Notification list pages use the opaque backend cursor through an infinite
@@ -106,13 +111,13 @@ maps them to query prefixes as follows:
 | --- | --- |
 | `trip` | exact detail plus all Trip lists |
 | `members` | Trip members |
-| `destinations` | Trip destinations |
+| `destinations` | Trip destinations plus Trip search |
 | `days` | Trip Days |
-| `itinerary` | Trip itinerary |
+| `itinerary` | Trip itinerary plus Trip search |
 | `routes` | Trip routes |
-| `reservations` | reservation subtree |
-| `expenses` | expense subtree, including details/balances |
-| `documents` | Trip documents |
+| `reservations` | reservation subtree plus Trip search |
+| `expenses` | expense subtree, including details/balances, plus Trip search |
+| `documents` | Trip documents plus Trip search |
 
 Invalidations batch active-query refetches and remain harmless when duplicated
 or delivered out of order. On each successful join or reconnect, the bridge
@@ -164,6 +169,10 @@ failed-finalization retry affordance are local transient state. Raw bytes bypass
 the API only through the presigned capability; the API remains authoritative for
 publication and access. Authentication transitions clear documents with the
 root `['trips']` cache tree.
+
+`TripSearchResponse` is disposable server state. Search text and the active
+filter are local interaction state; neither is persisted or synchronized to the
+URL. Authentication transitions remove results through the root Trip tree.
 
 `NotificationPage` and unread count are private server state. Bell visibility,
 the temporary optimistic snapshots, and loading/error affordances are local UI

@@ -14,6 +14,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 import { itineraryItems } from "./itinerary-items";
+import { searchVector } from "./search-vector";
 import { trips } from "./trips";
 
 export const tripReservationKind = pgEnum("trip_reservation_kind", [
@@ -60,6 +61,9 @@ export const tripReservations = pgTable(
     endTime: time("end_time", { precision: 0 }),
     locationName: varchar("location_name", { length: 200 }),
     notes: text("notes"),
+    searchVector: searchVector("search_vector").generatedAlwaysAs(
+      sql`setweight(to_tsvector('simple'::regconfig, coalesce("title", '')), 'A') || setweight(to_tsvector('simple'::regconfig, coalesce("provider_name", '') || ' ' || coalesce("location_name", '')), 'B') || setweight(to_tsvector('simple'::regconfig, coalesce("notes", '')), 'D')`,
+    ),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -70,6 +74,14 @@ export const tripReservations = pgTable(
   (table) => [
     index("trip_reservations_trip_idx").on(table.tripId),
     index("trip_reservations_itinerary_item_idx").on(table.itineraryItemId),
+    index("trip_reservations_search_vector_idx").using(
+      "gin",
+      table.searchVector,
+    ),
+    index("trip_reservations_title_trgm_idx").using(
+      "gin",
+      table.title.op("gin_trgm_ops"),
+    ),
     index("trip_reservations_schedule_idx").on(
       table.tripId,
       table.startDate,
@@ -123,9 +135,20 @@ export const reservationTransportDetails = pgTable(
     serviceNumber: varchar("service_number", { length: 120 }),
     originName: varchar("origin_name", { length: 200 }).notNull(),
     destinationName: varchar("destination_name", { length: 200 }).notNull(),
+    searchVector: searchVector("search_vector").generatedAlwaysAs(
+      sql`setweight(to_tsvector('simple'::regconfig, coalesce("service_number", '')), 'A') || setweight(to_tsvector('simple'::regconfig, coalesce("operator_name", '') || ' ' || coalesce("origin_name", '') || ' ' || coalesce("destination_name", '')), 'B')`,
+    ),
   },
   (table) => [
     primaryKey({ columns: [table.reservationId] }),
+    index("reservation_transport_search_vector_idx").using(
+      "gin",
+      table.searchVector,
+    ),
+    index("reservation_transport_service_number_trgm_idx").using(
+      "gin",
+      table.serviceNumber.op("gin_trgm_ops"),
+    ),
     check(
       "reservation_transport_operator_not_blank_check",
       sql`${table.operatorName} is null or length(btrim(${table.operatorName})) > 0`,

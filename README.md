@@ -14,6 +14,8 @@ REST remains the only mutation path.
 PostgreSQL-backed, user-scoped notifications provide a durable inbox for Trip
 sharing, access changes, and selected reservation, expense, and document events;
 Socket.IO carries only best-effort cache invalidations.
+Each Trip also has permission-safe PostgreSQL full-text and typo-tolerant search
+across destinations, itinerary, reservations, expenses, and ready documents.
 
 ## Structure
 
@@ -104,6 +106,8 @@ at-least-once processing, retries, and failure recovery. See
 best-effort invalidations, presence, reconnect semantics, and Redis Streams
 fan-out. See [Notifications](docs/notifications.md) for inbox durability,
 transactional fan-out, cursor pagination, snapshots, and optimistic read state.
+See [Trip-wide search](docs/search.md) for indexed fields, ranking, access scope,
+browser behavior, and intentionally deferred search features.
 
 The separate worker validates the database/S3 settings above plus `REDIS_URL`;
 it does not require `WEB_ORIGIN`. The API opens an independently configured

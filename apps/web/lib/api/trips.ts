@@ -21,6 +21,8 @@ import type {
   TripParticipant,
   TripRouteSegment,
   TripReservation,
+  TripSearchResponse,
+  TripSearchResultType,
   TripsPage,
   UpdateTripDayRequest,
   UpdateTripDocumentRequest,
@@ -128,6 +130,24 @@ export const tripsApi = {
     options: RequestOptions = {},
   ): Promise<TripDocument[]> {
     return apiFetch(`/api/trips/${tripId}/documents`, {
+      signal: options.signal,
+    });
+  },
+
+  search(
+    tripId: string,
+    params: Readonly<{
+      limit?: number;
+      q: string;
+      types?: readonly TripSearchResultType[];
+    }>,
+    options: RequestOptions = {},
+  ): Promise<TripSearchResponse> {
+    const query = new URLSearchParams({ q: params.q });
+    if (params.types?.length) query.set("types", params.types.join(","));
+    if (params.limit !== undefined) query.set("limit", String(params.limit));
+
+    return apiFetch(`/api/trips/${tripId}/search?${query.toString()}`, {
       signal: options.signal,
     });
   },

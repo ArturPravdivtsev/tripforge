@@ -31,5 +31,12 @@ describe("Trip query keys", () => {
       "trip-id",
       "documents",
     ]);
+    expect(tripKeys.search("trip-id", "Kyoto", "all")).toEqual([
+      "trips",
+      "detail",
+      "trip-id",
+      "search",
+      { limit: 20, query: "Kyoto", types: "all" },
+    ]);
   });
 });

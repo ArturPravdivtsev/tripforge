@@ -79,6 +79,12 @@ infinite cursor query and optimistic read/read-all mutations. Presentation copy
 and safe internal targets are derived from discriminated shared contracts; raw
 payload fields never become arbitrary links.
 
+`TripSearchScreen` is a focused client leaf at `/trips/[tripId]/search`. It owns
+only search text and the selected resource filter, debounces requests by 250 ms,
+and forwards TanStack Query cancellation through `tripsApi`. Results use closed
+typed domain targets mapped to internal routes; response data cannot introduce
+an arbitrary URL. Query text is not persisted or URL-synchronized.
+
 `DocumentsScreen` is the client leaf for document metadata and the two-phase
 upload state machine. Nest creates a pending row and returns a presigned URL;
 `lib/documents/upload-file.ts` performs only the raw S3 PUT with XHR so progress

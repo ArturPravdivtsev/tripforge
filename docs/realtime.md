@@ -81,6 +81,11 @@ does not expose TanStack query keys or broadcast full entity snapshots.
 Duplicate and out-of-order invalidations are safe because each means only
 "authoritative state may have changed."
 
+The browser also maps `destinations`, `itinerary`, `reservations`, `expenses`,
+and `documents` to the active Trip search query prefix. `routes`, `days`,
+`members`, and `trip` do not affect indexed search sources. Search remains a
+REST refetch; realtime never transports queries or result snapshots.
+
 The mutation mapping is intentionally small:
 
 | Committed mutation | Resources/event |

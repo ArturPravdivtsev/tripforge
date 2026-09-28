@@ -116,6 +116,12 @@ Neither may be logged or persisted in raw form.
 | Failed notification write leaves partial domain state | Domain change and notification insert share one PostgreSQL transaction |
 | Redis loss drops an inbox item | PostgreSQL stores the item; Redis carries only an empty best-effort invalidation |
 | Cached inbox crosses accounts | Every authentication transition removes the `['notifications']` query tree |
+| User searches a guessed Trip UUID | Current Trip readability is checked before source-table search; inaccessible and missing Trips return the same `404` |
+| Search leaks another Trip's row | Every SQL branch has an explicit parent Trip predicate, including itinerary through its Day |
+| Search exposes sensitive booking/financial/storage data | Confirmation codes, money/share/payer/balance data, storage metadata, file content, and pending documents are absent from vectors and results |
+| Search query injects SQL or tsquery syntax | Drizzle parameters plus `websearch_to_tsquery` treat input as data; hostile syntax is integration-tested |
+| Search result redirects off-site | Shared contracts expose only closed typed domain targets; the browser maps them to internal routes |
+| Cached search crosses accounts | Search lives below `['trips']`, which every authentication transition cancels and removes |
 
 ## Residual and deferred risk
 

@@ -35,3 +35,9 @@ snapshot display context and compute recipients set-wise; they do not call HTTP,
 Redis, or BullMQ. Repository reads batch current Trip-access resolution so list
 serialization does not create an N+1 query pattern. See
 [Persistent notifications](./notifications.md).
+
+Trip search follows the same controller → service/RBAC → repository boundary.
+The repository owns one parameterized PostgreSQL `UNION ALL` query over source
+tables and maps rows explicitly to shared discriminated contracts. Generated
+vectors and indexes are persistence concerns; no search copy or background
+indexing pipeline exists. See [Trip-wide search](./search.md).

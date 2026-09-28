@@ -12,6 +12,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 import { trips } from "./trips";
+import { searchVector } from "./search-vector";
 
 export const tripDestinations = pgTable(
   "trip_destinations",
@@ -21,6 +22,9 @@ export const tripDestinations = pgTable(
       .notNull()
       .references(() => trips.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 160 }).notNull(),
+    searchVector: searchVector("search_vector").generatedAlwaysAs(
+      sql`setweight(to_tsvector('simple'::regconfig, coalesce("name", '')), 'A')`,
+    ),
     latitude: doublePrecision("latitude"),
     longitude: doublePrecision("longitude"),
     position: integer("position").notNull(),
@@ -36,6 +40,14 @@ export const tripDestinations = pgTable(
       table.tripId,
       table.position,
       table.id,
+    ),
+    index("trip_destinations_search_vector_idx").using(
+      "gin",
+      table.searchVector,
+    ),
+    index("trip_destinations_name_trgm_idx").using(
+      "gin",
+      table.name.op("gin_trgm_ops"),
     ),
     unique("trip_destinations_trip_id_id_unique").on(table.tripId, table.id),
     check(
