@@ -1,6 +1,8 @@
 import { Injectable, Logger } from "@nestjs/common";
 import {
+  NOTIFICATION_REALTIME_EVENTS,
   TRIP_REALTIME_EVENTS,
+  type NotificationsInvalidateEvent,
   type TripAccessRevokedEvent,
   type TripDeletedEvent,
   type TripInvalidateEvent,
@@ -69,6 +71,18 @@ export class TripRealtimePublisher {
     this.publish(() => {
       this.server?.in(sessionRoom(sessionId)).disconnectSockets(true);
     }, "session:disconnect");
+  }
+
+  notificationsChanged(userIds: readonly string[]): void {
+    const payload: NotificationsInvalidateEvent = {};
+
+    for (const userId of new Set(userIds)) {
+      this.publish(() => {
+        this.server
+          ?.to(userRoom(userId))
+          .emit(NOTIFICATION_REALTIME_EVENTS.invalidate, payload);
+      }, NOTIFICATION_REALTIME_EVENTS.invalidate);
+    }
   }
 
   async publishPresence(tripId: string): Promise<void> {

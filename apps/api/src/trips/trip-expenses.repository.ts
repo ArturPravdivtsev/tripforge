@@ -15,6 +15,7 @@ import {
   tripReservations,
   users,
 } from "../database/schema";
+import { writeActivityNotifications } from "../notifications/notification-writer";
 
 export type ExpenseShareState = Readonly<{
   userId: string;
@@ -127,8 +128,12 @@ export class TripExpensesRepository {
     return Boolean(row);
   }
 
-  async create(tripId: string, state: ExpenseState): Promise<TripExpense> {
-    const expenseId = await this.database.transaction(async (transaction) => {
+  async create(
+    tripId: string,
+    actorUserId: string,
+    state: ExpenseState,
+  ): Promise<{ expense: TripExpense; notificationUserIds: string[] }> {
+    const result = await this.database.transaction(async (transaction) => {
       const [row] = await transaction
         .insert(tripExpenses)
         .values({
@@ -153,12 +158,18 @@ export class TripExpensesRepository {
           userId: share.userId,
         })),
       );
-      return row.id;
+      const notificationUserIds = await writeActivityNotifications(transaction, {
+        actorUserId,
+        title: state.title,
+        tripId,
+        type: "expense_added",
+      });
+      return { expenseId: row.id, notificationUserIds };
     });
 
-    const created = await this.find(tripId, expenseId);
+    const created = await this.find(tripId, result.expenseId);
     if (!created) throw new Error("Created expense could not be loaded");
-    return created;
+    return { expense: created, notificationUserIds: result.notificationUserIds };
   }
 
   async update(

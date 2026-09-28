@@ -160,10 +160,14 @@ export class TripsService {
   }
 
   async delete(userId: string, tripId: string): Promise<void> {
-    const deleted = await this.tripsRepository.deleteOwned(userId, tripId);
+    const notificationUserIds = await this.tripsRepository.deleteOwned(
+      userId,
+      tripId,
+    );
 
-    if (deleted) {
+    if (notificationUserIds) {
       this.realtime.tripDeleted(tripId);
+      this.realtime.notificationsChanged(notificationUserIds);
       return;
     }
 
@@ -219,6 +223,7 @@ export class TripsService {
 
     const inserted = await this.tripsRepository.addMember(
       tripId,
+      userId,
       invitee.id,
       input.role,
     );
@@ -234,6 +239,7 @@ export class TripsService {
     }
 
     this.realtime.invalidate(tripId, ["members", "trip"]);
+    this.realtime.notificationsChanged([invitee.id]);
     return { role: input.role, user: invitee };
   }
 
@@ -255,13 +261,14 @@ export class TripsService {
       );
     }
 
-    const updated = await this.tripsRepository.updateMemberRole(
+    const result = await this.tripsRepository.updateMemberRole(
       tripId,
+      userId,
       memberUserId,
       role,
     );
 
-    if (!updated) {
+    if (!result.found) {
       throw this.memberNotFound();
     }
 
@@ -274,7 +281,10 @@ export class TripsService {
       throw this.memberNotFound();
     }
 
-    this.realtime.invalidate(tripId, ["members", "trip"]);
+    if (result.changed) {
+      this.realtime.invalidate(tripId, ["members", "trip"]);
+      this.realtime.notificationsChanged([memberUserId]);
+    }
     return participant;
   }
 
@@ -297,6 +307,7 @@ export class TripsService {
 
     const removed = await this.tripsRepository.removeMember(
       tripId,
+      userId,
       memberUserId,
     );
 
@@ -306,6 +317,7 @@ export class TripsService {
 
     this.realtime.accessRevoked(tripId, memberUserId);
     this.realtime.invalidate(tripId, ["members", "trip"]);
+    this.realtime.notificationsChanged([memberUserId]);
   }
 
   private async requireAccess(

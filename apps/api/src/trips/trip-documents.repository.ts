@@ -21,6 +21,7 @@ import {
   trips,
   users,
 } from "../database/schema";
+import { writeActivityNotifications } from "../notifications/notification-writer";
 
 export type PendingDocumentState = Readonly<{
   id: string;
@@ -148,20 +149,30 @@ export class TripDocumentsRepository {
   async markReady(
     tripId: string,
     documentId: string,
+    actorUserId: string,
     etag: string | null,
-  ): Promise<DocumentRecord | undefined> {
-    const rows = await this.database
-      .update(tripDocuments)
-      .set({ etag, readyAt: new Date(), status: "ready", updatedAt: new Date() })
-      .where(
-        and(
-          eq(tripDocuments.tripId, tripId),
-          eq(tripDocuments.id, documentId),
-          eq(tripDocuments.status, "pending"),
-        ),
-      )
-      .returning({ id: tripDocuments.id });
-    return rows.length > 0 ? this.find(tripId, documentId) : undefined;
+  ): Promise<{ notificationUserIds: string[] } | undefined> {
+    return this.database.transaction(async (transaction) => {
+      const [row] = await transaction
+        .update(tripDocuments)
+        .set({ etag, readyAt: new Date(), status: "ready", updatedAt: new Date() })
+        .where(
+          and(
+            eq(tripDocuments.tripId, tripId),
+            eq(tripDocuments.id, documentId),
+            eq(tripDocuments.status, "pending"),
+          ),
+        )
+        .returning({ title: tripDocuments.title });
+      if (!row) return undefined;
+      const notificationUserIds = await writeActivityNotifications(transaction, {
+        actorUserId,
+        title: row.title,
+        tripId,
+        type: "document_ready",
+      });
+      return { notificationUserIds };
+    });
   }
 
   async updateMetadata(

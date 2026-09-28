@@ -72,6 +72,8 @@ browser:
 - `trip:access-revoked` targets the removed user's room, redirects that user,
   and server-side evicts their sockets from the Trip room;
 - `trip:presence` contains a current room snapshot deduplicated by user ID.
+- `notifications:invalidate` is an empty user-room hint to refetch the durable
+  inbox and unread count.
 
 The finite invalidation resources are `trip`, `members`, `destinations`, `days`,
 `itinerary`, `routes`, `reservations`, `expenses`, and `documents`. The backend
@@ -96,6 +98,7 @@ The mutation mapping is intentionally small:
 | Reservation CRUD | `reservations` |
 | Expense CRUD | `expenses` |
 | Document completion/update/delete | `documents` |
+| Notification-producing commit | targeted `notifications:invalidate` |
 
 Publication happens only after repository work and its SQL transaction have
 successfully returned. Redis calls never run inside SQL transactions. A publish
@@ -141,6 +144,12 @@ Redis serves two isolated purposes:
 
 Realtime events therefore do not use the Stage 20 transactional outbox and the
 adapter stream is not audit storage.
+
+Persistent notifications do not change that boundary. Their rows are committed
+with the originating domain mutation in PostgreSQL; only the empty invalidate
+hint crosses Redis. Missing, duplicate, and out-of-order hints are safe because
+the browser refetches the whole notification query tree on an event and after
+reconnect. See [Persistent notifications](./notifications.md).
 
 ## Verification
 

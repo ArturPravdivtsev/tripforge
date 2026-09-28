@@ -10,11 +10,11 @@ import { useForm } from "react-hook-form";
 
 import { authApi } from "@/lib/api/auth";
 import { ApiClientError } from "@/lib/api/errors";
+import { clearAuthenticatedCache } from "@/lib/auth/cache";
 import {
   registerSchema,
   type RegisterFormValues,
 } from "@/lib/auth/schemas";
-import { clearTripCache } from "@/lib/trips/cache";
 
 function registerErrorMessage(error: unknown): string {
   if (error instanceof ApiClientError && error.code === "ACCOUNT_ALREADY_EXISTS") {
@@ -44,7 +44,7 @@ export function RegisterForm() {
     try {
       const parsed = registerSchema.parse(values);
       await authApi.register(parsed);
-      await clearTripCache(queryClient);
+      await clearAuthenticatedCache(queryClient);
       reset();
       router.replace("/");
       router.refresh();

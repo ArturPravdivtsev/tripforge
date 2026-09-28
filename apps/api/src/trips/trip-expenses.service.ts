@@ -84,8 +84,13 @@ export class TripExpensesService {
       splitMethod: input.split.method,
       title: input.title.trim(),
     };
-    const expense = await this.expenses.create(tripId, state);
+    const { expense, notificationUserIds } = await this.expenses.create(
+      tripId,
+      userId,
+      state,
+    );
     this.realtime.invalidate(tripId, ["expenses"]);
+    this.realtime.notificationsChanged(notificationUserIds);
     return expense;
   }
 

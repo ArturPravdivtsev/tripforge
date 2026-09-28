@@ -6,9 +6,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { AuthUser } from "@tripforge/contracts";
 import { Button } from "@tripforge/ui";
 
+import { NotificationBell } from "@/components/notifications/notification-bell";
+import { AuthenticatedRealtimeBridge } from "@/components/realtime/authenticated-realtime-bridge";
 import { authApi } from "@/lib/api/auth";
 import { ApiClientError } from "@/lib/api/errors";
-import { clearTripCache } from "@/lib/trips/cache";
+import { clearAuthenticatedCache } from "@/lib/auth/cache";
 
 type AuthState =
   | { status: "loading" }
@@ -44,7 +46,7 @@ export function AuthStatus() {
     void resolveAuthState().then((state) => {
       if (active) {
         if (state.status === "guest") {
-          void clearTripCache(queryClient);
+          void clearAuthenticatedCache(queryClient);
         }
         setAuthState(state);
       }
@@ -60,11 +62,11 @@ export function AuthStatus() {
 
     try {
       await authApi.logout();
-      await clearTripCache(queryClient);
+      await clearAuthenticatedCache(queryClient);
       setAuthState({ status: "guest" });
     } catch (error) {
       if (error instanceof ApiClientError && error.status === 401) {
-        await clearTripCache(queryClient);
+        await clearAuthenticatedCache(queryClient);
         setAuthState({ status: "guest" });
       } else {
         setAuthState({ status: "error" });
@@ -112,18 +114,22 @@ export function AuthStatus() {
   }
 
   return (
-    <div className="flex min-w-0 items-center gap-2">
-      <span className="hidden max-w-44 truncate text-sm font-medium sm:inline">
-        {authState.user.displayName ?? authState.user.email}
-      </span>
-      <Button
-        size="sm"
-        variant="secondary"
-        disabled={isLoggingOut}
-        onClick={() => void logout()}
-      >
-        {isLoggingOut ? "Logging out…" : "Logout"}
-      </Button>
-    </div>
+    <>
+      <AuthenticatedRealtimeBridge />
+      <div className="flex min-w-0 items-center gap-2">
+        <NotificationBell />
+        <span className="hidden max-w-44 truncate text-sm font-medium sm:inline">
+          {authState.user.displayName ?? authState.user.email}
+        </span>
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={isLoggingOut}
+          onClick={() => void logout()}
+        >
+          {isLoggingOut ? "Logging out…" : "Logout"}
+        </Button>
+      </div>
+    </>
   );
 }

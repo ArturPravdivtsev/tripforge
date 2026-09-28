@@ -10,8 +10,8 @@ import { useForm } from "react-hook-form";
 
 import { authApi } from "@/lib/api/auth";
 import { ApiClientError } from "@/lib/api/errors";
+import { clearAuthenticatedCache } from "@/lib/auth/cache";
 import { loginSchema, type LoginFormValues } from "@/lib/auth/schemas";
-import { clearTripCache } from "@/lib/trips/cache";
 
 function loginErrorMessage(error: unknown): string {
   if (error instanceof ApiClientError && error.code === "INVALID_CREDENTIALS") {
@@ -41,7 +41,7 @@ export function LoginForm() {
     try {
       const parsed = loginSchema.parse(values);
       await authApi.login(parsed);
-      await clearTripCache(queryClient);
+      await clearAuthenticatedCache(queryClient);
       reset();
       router.replace("/");
       router.refresh();

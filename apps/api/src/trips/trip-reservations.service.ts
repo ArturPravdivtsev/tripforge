@@ -61,8 +61,13 @@ export class TripReservationsService {
 
     validateReservationState(state);
     await this.validateItineraryLink(tripId, state.itineraryItemId);
-    const reservation = await this.reservations.create(tripId, state);
+    const { notificationUserIds, reservation } = await this.reservations.create(
+      tripId,
+      userId,
+      state,
+    );
     this.realtime.invalidate(tripId, ["reservations"]);
+    this.realtime.notificationsChanged(notificationUserIds);
     return reservation;
   }
 

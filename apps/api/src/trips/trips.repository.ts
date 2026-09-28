@@ -31,6 +31,12 @@ import {
   trips,
   users,
 } from "../database/schema";
+import {
+  writeAccessRevokedNotification,
+  writeRoleChangedNotification,
+  writeTripDeletedNotifications,
+  writeTripSharedNotification,
+} from "../notifications/notification-writer";
 
 const tripSelection = {
   createdAt: trips.createdAt,
@@ -310,7 +316,7 @@ export class TripsRepository {
     });
   }
 
-  async deleteOwned(ownerId: string, tripId: string): Promise<boolean> {
+  async deleteOwned(ownerId: string, tripId: string): Promise<string[] | undefined> {
     return this.database.transaction(async (transaction) => {
       const [owned] = await transaction
         .select({ id: trips.id })
@@ -318,7 +324,13 @@ export class TripsRepository {
         .where(and(eq(trips.id, tripId), eq(trips.ownerId, ownerId)))
         .for("update")
         .limit(1);
-      if (!owned) return false;
+      if (!owned) return undefined;
+
+      const notificationUserIds = await writeTripDeletedNotifications(
+        transaction,
+        tripId,
+        ownerId,
+      );
 
       const documents = await transaction
         .select({ storageKey: tripDocuments.storageKey })
@@ -341,7 +353,7 @@ export class TripsRepository {
         .delete(trips)
         .where(and(eq(trips.id, tripId), eq(trips.ownerId, ownerId)))
         .returning({ id: trips.id });
-      return deleted.length > 0;
+      return deleted.length > 0 ? notificationUserIds : undefined;
     });
   }
 
@@ -399,42 +411,100 @@ export class TripsRepository {
 
   async addMember(
     tripId: string,
-    userId: string,
+    actorUserId: string,
+    memberUserId: string,
     role: TripMemberRole,
   ): Promise<boolean> {
-    const inserted = await this.database
-      .insert(tripMembers)
-      .values({ role, tripId, userId })
-      .onConflictDoNothing()
-      .returning({ userId: tripMembers.userId });
-
-    return inserted.length > 0;
+    return this.database.transaction(async (transaction) => {
+      const inserted = await transaction
+        .insert(tripMembers)
+        .values({ role, tripId, userId: memberUserId })
+        .onConflictDoNothing()
+        .returning({ userId: tripMembers.userId });
+      if (inserted.length === 0) return false;
+      await writeTripSharedNotification(transaction, {
+        actorUserId,
+        recipientUserId: memberUserId,
+        role,
+        tripId,
+      });
+      return true;
+    });
   }
 
   async updateMemberRole(
     tripId: string,
-    userId: string,
+    actorUserId: string,
+    memberUserId: string,
     role: TripMemberRole,
-  ): Promise<boolean> {
-    const updated = await this.database
-      .update(tripMembers)
-      .set({ role, updatedAt: new Date() })
-      .where(
-        and(eq(tripMembers.tripId, tripId), eq(tripMembers.userId, userId)),
-      )
-      .returning({ userId: tripMembers.userId });
+  ): Promise<{ changed: boolean; found: boolean }> {
+    return this.database.transaction(async (transaction) => {
+      const [current] = await transaction
+        .select({ role: tripMembers.role })
+        .from(tripMembers)
+        .where(
+          and(
+            eq(tripMembers.tripId, tripId),
+            eq(tripMembers.userId, memberUserId),
+          ),
+        )
+        .for("update")
+        .limit(1);
+      if (!current) return { changed: false, found: false };
+      if (current.role === role) return { changed: false, found: true };
 
-    return updated.length > 0;
+      await transaction
+        .update(tripMembers)
+        .set({ role, updatedAt: new Date() })
+        .where(
+          and(
+            eq(tripMembers.tripId, tripId),
+            eq(tripMembers.userId, memberUserId),
+          ),
+        );
+      await writeRoleChangedNotification(transaction, {
+        actorUserId,
+        nextRole: role,
+        previousRole: current.role,
+        recipientUserId: memberUserId,
+        tripId,
+      });
+      return { changed: true, found: true };
+    });
   }
 
-  async removeMember(tripId: string, userId: string): Promise<boolean> {
-    const removed = await this.database
-      .delete(tripMembers)
-      .where(
-        and(eq(tripMembers.tripId, tripId), eq(tripMembers.userId, userId)),
-      )
-      .returning({ userId: tripMembers.userId });
-
-    return removed.length > 0;
+  async removeMember(
+    tripId: string,
+    actorUserId: string,
+    memberUserId: string,
+  ): Promise<boolean> {
+    return this.database.transaction(async (transaction) => {
+      const [member] = await transaction
+        .select({ userId: tripMembers.userId })
+        .from(tripMembers)
+        .where(
+          and(
+            eq(tripMembers.tripId, tripId),
+            eq(tripMembers.userId, memberUserId),
+          ),
+        )
+        .for("update")
+        .limit(1);
+      if (!member) return false;
+      await writeAccessRevokedNotification(transaction, {
+        actorUserId,
+        recipientUserId: memberUserId,
+        tripId,
+      });
+      await transaction
+        .delete(tripMembers)
+        .where(
+          and(
+            eq(tripMembers.tripId, tripId),
+            eq(tripMembers.userId, memberUserId),
+          ),
+        );
+      return true;
+    });
   }
 }

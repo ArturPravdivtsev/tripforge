@@ -126,13 +126,16 @@ describe("TripDocumentsService", () => {
   it("verifies HEAD metadata and makes completion idempotent", async () => {
     const pending = record();
     const ready = record({ readyAt: "2027-01-01T00:00:00.000Z", status: "ready" });
-    documents.find.mockResolvedValueOnce(pending).mockResolvedValueOnce(ready);
+    documents.find
+      .mockResolvedValueOnce(pending)
+      .mockResolvedValueOnce(ready)
+      .mockResolvedValueOnce(ready);
     storage.headObject.mockResolvedValue({
       contentLength: 42,
       contentType: "application/pdf",
       etag: '"etag"',
     });
-    documents.markReady.mockResolvedValue(ready);
+    documents.markReady.mockResolvedValue({ notificationUserIds: [] });
 
     await expect(service.complete("user", "trip", "document")).resolves.toEqual(
       ready.document,

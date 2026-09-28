@@ -27,7 +27,10 @@ const reservation: TripReservation = {
 
 function subject(existing: TripReservation | undefined = reservation) {
   const repository = {
-    create: vi.fn(async (_tripId, state) => ({ ...reservation, ...state })),
+    create: vi.fn(async (_tripId, _actorUserId, state) => ({
+      notificationUserIds: [],
+      reservation: { ...reservation, ...state },
+    })),
     delete: vi.fn().mockResolvedValue(true),
     find: vi.fn().mockResolvedValue(existing),
     itineraryItemBelongsToTrip: vi.fn().mockResolvedValue(true),
@@ -72,6 +75,7 @@ describe("TripReservationsService", () => {
     );
     expect(repository.create).toHaveBeenCalledWith(
       "trip",
+      "editor",
       expect.objectContaining({
         confirmationCode: "ABC123",
         notes: null,

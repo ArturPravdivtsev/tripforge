@@ -108,6 +108,14 @@ Neither may be logged or persisted in raw form.
 | Malformed realtime payload corrupts UI | Browser Zod schemas reject unknown or invalid event payloads |
 | Redis becomes an authorization source | PostgreSQL remains authoritative; Redis carries only best-effort invalidation/presence traffic |
 | Presence discloses private profile data | Only user ID and display name are sent to already authorized Trip room members |
+| User reads another inbox | Every notification query and mutation is scoped by the authenticated user ID |
+| User guesses a notification UUID | Foreign and unknown IDs both return `NOTIFICATION_NOT_FOUND` |
+| Revoked user follows an old notification | Targets are derived from current PostgreSQL Trip access; inaccessible targets are null |
+| Trip/user deletion destroys notification context | Non-sensitive Trip and actor display snapshots are persisted before nullable FKs are cleared |
+| Notification payload leaks sensitive domain data | Closed payload variants omit money, confirmation codes, object keys, signed URLs, and raw records |
+| Failed notification write leaves partial domain state | Domain change and notification insert share one PostgreSQL transaction |
+| Redis loss drops an inbox item | PostgreSQL stores the item; Redis carries only an empty best-effort invalidation |
+| Cached inbox crosses accounts | Every authentication transition removes the `['notifications']` query tree |
 
 ## Residual and deferred risk
 
@@ -138,7 +146,8 @@ Neither may be logged or persisted in raw form.
 - Presence is approximate room membership, not durable online status. It has no
   database history, last-seen value, cursor, typing, or activity semantics.
 - Networks that block WebSockets lose realtime freshness because Stage 21 has
-  no polling fallback; authenticated REST behavior remains available.
+  no polling fallback; authenticated REST behavior remains available. The
+  notification inbox still refreshes on navigation and ordinary query lifecycle.
 
 ## Operational rules
 

@@ -11,6 +11,9 @@ Durable background cleanup uses a PostgreSQL transactional outbox, BullMQ v6,
 and an AOF-backed Redis worker process. Authenticated Socket.IO collaboration
 uses the same Redis service as an isolated inter-node Streams transport while
 REST remains the only mutation path.
+PostgreSQL-backed, user-scoped notifications provide a durable inbox for Trip
+sharing, access changes, and selected reservation, expense, and document events;
+Socket.IO carries only best-effort cache invalidations.
 
 ## Structure
 
@@ -99,7 +102,8 @@ two-phase uploads, and distributed deletion. See
 at-least-once processing, retries, and failure recovery. See
 [Realtime collaboration](docs/realtime.md) for authenticated Trip rooms,
 best-effort invalidations, presence, reconnect semantics, and Redis Streams
-fan-out.
+fan-out. See [Notifications](docs/notifications.md) for inbox durability,
+transactional fan-out, cursor pagination, snapshots, and optimistic read state.
 
 The separate worker validates the database/S3 settings above plus `REDIS_URL`;
 it does not require `WEB_ORIGIN`. The API opens an independently configured

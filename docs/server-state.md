@@ -32,6 +32,9 @@ failures receive at most one retry.
 ["trips", "detail", tripId, "expenses", "detail", expenseId]
 ["trips", "detail", tripId, "expenses", "balances"]
 ["trips", "detail", tripId, "documents"]
+["notifications"]
+["notifications", "list"]
+["notifications", "unread-count"]
 ["place-search", "maptiler", { query, proximity }]
 ```
 
@@ -81,7 +84,11 @@ paginated lists without clearing unrelated cache entries.
   that exact list after server success. Download URLs are requested on demand
   and are never cached as durable document state.
 - Logout, login, registration, or guest discovery: cancel and remove all Trip
-  queries so data cannot cross user identities.
+  and notification queries so data cannot cross user identities.
+- Notification list pages use the opaque backend cursor through an infinite
+  query. Set-read and read-all mutations optimistically update every cached page
+  plus the unread count, restore both snapshots on failure, and invalidate the
+  notification root after settlement. Pages defensively deduplicate IDs.
 - MapTiler autocomplete uses a separate public external-state tree, a 60-second
   stale time, five-minute garbage collection, and no persistent storage. Its
   query function forwards TanStack Query's `AbortSignal` to `fetch`, so obsolete
@@ -112,6 +119,9 @@ or delivered out of order. On each successful join or reconnect, the bridge
 invalidates all resources to repair any event gap. During active itinerary DnD,
 only itinerary refetch is deferred; unrelated resources remain live. Form
 values remain client state and are not replaced by background query updates.
+The global authenticated bridge treats `notifications:invalidate` as a root
+notification invalidation. It repeats that invalidation on reconnect because
+the event stream is not durable.
 
 ## Client state vs server state
 
@@ -154,3 +164,8 @@ failed-finalization retry affordance are local transient state. Raw bytes bypass
 the API only through the presigned capability; the API remains authoritative for
 publication and access. Authentication transitions clear documents with the
 root `['trips']` cache tree.
+
+`NotificationPage` and unread count are private server state. Bell visibility,
+the temporary optimistic snapshots, and loading/error affordances are local UI
+state. Authentication transitions remove the entire `['notifications']` tree;
+there is no persisted browser inbox.

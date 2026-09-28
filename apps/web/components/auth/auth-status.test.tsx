@@ -4,10 +4,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { authApi } from "@/lib/api/auth";
 import { ApiClientError } from "@/lib/api/errors";
+import { notificationKeys } from "@/lib/notifications/query-keys";
 import { tripKeys } from "@/lib/trips/query-keys";
 import { renderWithQueryClient } from "@/test-utils";
 
 import { AuthStatus } from "./auth-status";
+
+vi.mock("@/components/realtime/authenticated-realtime-bridge", () => ({
+  AuthenticatedRealtimeBridge: () => null,
+}));
+
+vi.mock("@/components/notifications/notification-bell", () => ({
+  NotificationBell: () => <span>Notifications</span>,
+}));
 
 describe("AuthStatus", () => {
   beforeEach(() => {
@@ -53,6 +62,7 @@ describe("AuthStatus", () => {
       tripKeys.reservation("trip-id", "reservation-id"),
       { id: "reservation-id" },
     );
+    queryClient.setQueryData(notificationKeys.unreadCount(), { unreadCount: 3 });
 
     await user.click(await screen.findByRole("button", { name: "Logout" }));
 
@@ -70,6 +80,7 @@ describe("AuthStatus", () => {
         tripKeys.reservation("trip-id", "reservation-id"),
       ),
     ).toBeUndefined();
+    expect(queryClient.getQueryData(notificationKeys.unreadCount())).toBeUndefined();
   });
 
   it("shows a recoverable state for server or network failures", async () => {

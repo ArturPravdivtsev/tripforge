@@ -119,11 +119,15 @@ export class TripDocumentsService {
     const ready = await this.documents.markReady(
       tripId,
       documentId,
+      userId,
       head.etag,
     );
     if (ready) {
+      const completed = await this.documents.find(tripId, documentId);
+      if (!completed) throw documentNotFound();
       this.realtime.invalidate(tripId, ["documents"]);
-      return ready.document;
+      this.realtime.notificationsChanged(ready.notificationUserIds);
+      return completed.document;
     }
     const concurrent = await this.documents.find(tripId, documentId);
     if (concurrent?.document.status === "ready") return concurrent.document;

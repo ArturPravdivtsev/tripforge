@@ -628,3 +628,67 @@ export interface TripPresenceEvent {
   tripId: string;
   users: TripPresenceUser[];
 }
+
+export const USER_NOTIFICATION_TYPES = [
+  "trip_shared",
+  "trip_role_changed",
+  "trip_access_revoked",
+  "trip_deleted",
+  "reservation_added",
+  "expense_added",
+  "document_ready",
+] as const;
+
+export type UserNotificationType = (typeof USER_NOTIFICATION_TYPES)[number];
+
+export type NotificationPayload =
+  | { type: "trip_shared"; data: { role: TripMemberRole } }
+  | {
+      type: "trip_role_changed";
+      data: { previousRole: TripMemberRole; nextRole: TripMemberRole };
+    }
+  | { type: "trip_access_revoked"; data: Record<string, never> }
+  | { type: "trip_deleted"; data: Record<string, never> }
+  | { type: "reservation_added"; data: { title: string } }
+  | { type: "expense_added"; data: { title: string } }
+  | { type: "document_ready"; data: { title: string } };
+
+export type NotificationTarget =
+  | { type: "trip"; tripId: string }
+  | { type: "reservations"; tripId: string }
+  | { type: "expenses"; tripId: string }
+  | { type: "documents"; tripId: string };
+
+type UserNotificationCommon = {
+  id: string;
+  trip: { id: string | null; name: string };
+  actor: { userId: string | null; displayName: string | null } | null;
+  target: NotificationTarget | null;
+  readAt: string | null;
+  createdAt: string;
+};
+
+export type UserNotification = UserNotificationCommon & NotificationPayload;
+
+export interface NotificationPage {
+  items: UserNotification[];
+  nextCursor: string | null;
+}
+
+export interface NotificationUnreadCount {
+  unreadCount: number;
+}
+
+export interface UpdateNotificationRequest {
+  read: boolean;
+}
+
+export interface MarkAllNotificationsReadResponse {
+  updatedCount: number;
+}
+
+export const NOTIFICATION_REALTIME_EVENTS = {
+  invalidate: "notifications:invalidate",
+} as const;
+
+export type NotificationsInvalidateEvent = Record<string, never>;

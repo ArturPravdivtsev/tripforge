@@ -11,10 +11,11 @@ failure cannot undo or fail durable business state.
 
 ```text
 REST controller → service/RBAC → repository transaction → PostgreSQL commit
-                                                    │
-                                                    └→ realtime publisher
+                                  ├→ domain row + durable notifications
+                                  │
+                                  └─ after commit → realtime publisher
                                                         → Redis Streams
-                                                        → API nodes/Trip room
+                                                        → API nodes/rooms
 ```
 
 The default Socket.IO namespace authenticates the existing HttpOnly session,
@@ -26,3 +27,11 @@ The worker remains a separate Nest application context. Its BullMQ connections
 and durable PostgreSQL outbox are independent from the API's best-effort
 realtime adapter; a failure in either Redis consumer does not make Redis the
 source of business truth.
+
+The notification module exposes a user-scoped inbox, compound cursor
+pagination, unread count, and read-state mutations. Domain repositories call
+focused notification writers inside their existing SQL transactions. Writers
+snapshot display context and compute recipients set-wise; they do not call HTTP,
+Redis, or BullMQ. Repository reads batch current Trip-access resolution so list
+serialization does not create an N+1 query pattern. See
+[Persistent notifications](./notifications.md).

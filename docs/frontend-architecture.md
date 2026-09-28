@@ -64,14 +64,20 @@ exact HTTP(S) origin. `apiFetch` centralizes JSON decoding, sanitized API errors
 current operations: register, login, current-user discovery, and logout.
 
 `AuthStatus` owns localized loading, guest, authenticated, and recoverable error
-state. The HttpOnly cookie is the sole session source of truth; there is no auth
-context, global store, or local/session storage persistence.
+state. While authenticated it also mounts the single global realtime owner and
+notification bell. The HttpOnly cookie is the sole session source of truth;
+there is no auth context, global store, or local/session storage persistence.
 
 `tripsApi` reuses the same boundary for authenticated CRUD. TanStack Query owns
 the temporary Trip server-state representation. React Hook Form owns form input,
 and component state owns inline delete confirmation and safe error messages.
-Successful login, registration, logout, and guest discovery remove Trip queries
-so cached data cannot cross authentication identities.
+Successful login, registration, logout, and guest discovery remove Trip and
+notification queries so cached data cannot cross authentication identities.
+
+`NotificationsScreen` is a focused client leaf at `/notifications`. It owns the
+infinite cursor query and optimistic read/read-all mutations. Presentation copy
+and safe internal targets are derived from discriminated shared contracts; raw
+payload fields never become arbitrary links.
 
 `DocumentsScreen` is the client leaf for document metadata and the two-phase
 upload state machine. Nest creates a pending row and returns a presigned URL;
@@ -89,20 +95,22 @@ The key is intentionally browser-visible. MapTiler search uses direct browser
 
 ## Realtime boundary
 
-`app/trips/[tripId]/layout.tsx` mounts one `TripRealtimeBridge` around every
-active Trip subroute. The client-only socket module derives its URL from the
-existing API origin, creates no connection during SSR, and uses one
-WebSocket-only Socket.IO singleton with credentials. The bridge explicitly
-joins the Trip after connect, runtime-validates all inbound payloads, and maps
-finite backend resource names to TanStack Query keys.
+The authenticated shell mounts one `AuthenticatedRealtimeBridge`. It owns the
+singleton socket connect/disconnect lifecycle, invalidates notifications on the
+minimal user-room event, and invalidates them again after reconnect to repair a
+gap. `app/trips/[tripId]/layout.tsx` mounts `TripRealtimeBridge` only for active
+Trip room join/leave, Trip event validation, and resource-to-query mapping. The
+client-only socket module derives its URL from the existing API origin, creates
+no connection during SSR, and uses WebSocket-only Socket.IO with credentials.
 
 Reconnect repeats authentication and Trip authorization, then actively
 refetches the whole Trip resource set. Delete or access-revoked events remove
 the detail subtree and navigate to `/trips`. A compact fixed status/presence
 indicator reports `Reconnecting`, `Live`, or `Unavailable` without expanding
 Trip headers on narrow screens. Listener registration and cleanup use the same
-function references and disconnect on unmount, making the boundary safe under
-React Strict Mode.
+function references, making both boundaries safe under React Strict Mode.
+Logging out unmounts the global owner, disconnects the socket, and prevents
+reconnect under the guest identity.
 
 Remote itinerary invalidations are deferred while a drag/reorder operation is
 active, then flushed after it settles. Query refetches do not reset unsaved

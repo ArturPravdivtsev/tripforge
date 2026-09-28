@@ -27,4 +27,5 @@ export {
   tripExpenseSplits,
 } from "./trip-expenses";
 export { trips } from "./trips";
+export { userNotifications, userNotificationType } from "./user-notifications";
 export { users } from "./users";

@@ -119,6 +119,10 @@ Trip resources use conventional HTTP semantics:
 | request document download | `GET /api/trips/:tripId/documents/:documentId/download` | `200` presigned GET |
 | update document metadata/link | `PATCH /api/trips/:tripId/documents/:documentId` | `200` document |
 | delete document metadata and enqueue durable object cleanup | `DELETE /api/trips/:tripId/documents/:documentId` | `204` empty body |
+| list own notifications | `GET /api/notifications` | `200` cursor page |
+| read own unread count | `GET /api/notifications/unread-count` | `200` count |
+| set own notification read state | `PATCH /api/notifications/:notificationId` | `200` notification |
+| mark all own notifications read | `POST /api/notifications/read-all` | `201` updated count |
 
 All routes require the existing server session. Ownership is derived from
 `trips.owner_id`, and editor/viewer access from `trip_members`; neither comes from

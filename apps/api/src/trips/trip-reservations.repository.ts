@@ -16,6 +16,7 @@ import {
   tripDays,
   tripReservations,
 } from "../database/schema";
+import { writeActivityNotifications } from "../notifications/notification-writer";
 
 const reservationSelection = {
   confirmationCode: tripReservations.confirmationCode,
@@ -131,7 +132,14 @@ export class TripReservationsRepository {
     return Boolean(row);
   }
 
-  async create(tripId: string, state: ReservationState): Promise<TripReservation> {
+  async create(
+    tripId: string,
+    actorUserId: string,
+    state: ReservationState,
+  ): Promise<{
+    notificationUserIds: string[];
+    reservation: TripReservation;
+  }> {
     return this.database.transaction(async (transaction) => {
       const [row] = await transaction
         .insert(tripReservations)
@@ -162,7 +170,13 @@ export class TripReservationsRepository {
 
       const created = await selectReservation(transaction, tripId, row.id);
       if (!created) throw new Error("Created reservation could not be loaded");
-      return created;
+      const notificationUserIds = await writeActivityNotifications(transaction, {
+        actorUserId,
+        title: state.title,
+        tripId,
+        type: "reservation_added",
+      });
+      return { notificationUserIds, reservation: created };
     });
   }
 

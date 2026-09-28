@@ -110,7 +110,7 @@ export function TripRealtimeBridge({
     socket.on(TRIP_REALTIME_EVENTS.presence, onPresence);
     socket.on(TRIP_REALTIME_EVENTS.deleted, onDeleted);
     socket.on(TRIP_REALTIME_EVENTS.accessRevoked, onAccessRevoked);
-    socket.connect();
+    if (socket.connected) join();
 
     return () => {
       active = false;
@@ -125,7 +125,6 @@ export function TripRealtimeBridge({
       socket.off(TRIP_REALTIME_EVENTS.presence, onPresence);
       socket.off(TRIP_REALTIME_EVENTS.deleted, onDeleted);
       socket.off(TRIP_REALTIME_EVENTS.accessRevoked, onAccessRevoked);
-      socket.disconnect();
     };
   }, [queryClient, router, tripId]);
 

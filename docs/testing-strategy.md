@@ -130,6 +130,16 @@ deletion, logout disconnect, reconnect/rejoin, invalid-session rejection, and
 REST continuity plus later broadcast recovery during a temporary Redis
 command-processing pause. Mocked gateway tests alone are not the Stage 21 gate.
 
+Stage 22 adds cursor and discriminated-payload unit tests; service tests for
+post-commit notification invalidation and no-op suppression; RTL coverage for
+the bell, list states, pagination/deduplication, optimistic rollback, mark-all,
+reconnect, cleanup, and cache isolation; and real PostgreSQL tests for inbox
+scope, equal-timestamp cursor pagination, read idempotency, snapshots, access-
+aware targets, fan-out/self-exclusion, document-ready idempotency, transaction
+rollback, and direct enum/FK/CHECK enforcement. The realtime suite additionally
+proves cross-node `notifications:invalidate` delivery and durable rows while
+Redis command processing is paused.
+
 TripForge should avoid testing implementation details and should not rely only
 on expensive browser E2E tests.
 

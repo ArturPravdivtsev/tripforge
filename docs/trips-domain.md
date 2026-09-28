@@ -8,6 +8,8 @@ User ───── owns ─────> Trip
    \── TripMember ───/
         editor | viewer
 
+User ── owns many private UserNotification
+
 Trip
 ├── owns many TripDestination
 │
@@ -84,7 +86,8 @@ TRIP_NOT_FOUND` to preserve anti-enumeration behavior.
 - An owner cannot be added as a member or removed through member endpoints.
 - POST never overwrites an existing membership; PATCH changes `role` and
   explicitly updates `updated_at`.
-- Adding a member is one atomic SQL INSERT, so no explicit transaction is needed.
+- Adding, changing, or removing a member and its recipient notification share
+  one SQL transaction. A no-op role PATCH creates no history row or notification.
 - Ownership transfer, pending invitations, and role history are deferred.
 
 The existing-account lookup intentionally reveals to an authenticated Trip owner
@@ -146,3 +149,8 @@ repository operation returns. They do not publish entity snapshots or create a
 second write path. Ordinary concurrent writes remain last-committed-write-wins,
 subject to existing transaction and conflict rules. See
 [Realtime collaboration](./realtime.md) for the mutation matrix and presence.
+
+Selected membership and activity mutations also create durable, recipient-
+scoped notifications in their domain transaction. Historical copy uses Trip and
+actor snapshots, while linkability always follows current access. See
+[Persistent notifications](./notifications.md).

@@ -41,7 +41,7 @@ describe("TripRealtimeBridge", () => {
     mocks.handlers.clear();
     mocks.managerHandlers.clear();
     mocks.replace.mockReset();
-    mocks.socket.connected = false;
+    mocks.socket.connected = true;
     mocks.socket.connect.mockReset().mockImplementation(() => {
       mocks.socket.connected = true;
       mocks.handlers.get("connect")?.();
@@ -102,7 +102,12 @@ describe("TripRealtimeBridge", () => {
     });
 
     view.unmount();
-    expect(mocks.socket.disconnect).toHaveBeenCalledOnce();
+    expect(mocks.socket.disconnect).not.toHaveBeenCalled();
+    expect(mocks.socket.emit).toHaveBeenCalledWith(
+      "trip:leave",
+      { tripId: TRIP_ID },
+      expect.any(Function),
+    );
     expect(mocks.handlers.size).toBe(0);
     expect(mocks.managerHandlers.size).toBe(0);
   });

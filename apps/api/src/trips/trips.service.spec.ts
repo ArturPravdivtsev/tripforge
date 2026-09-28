@@ -29,12 +29,19 @@ function createSubject() {
     updateAccessible: vi.fn(),
     updateMemberRole: vi.fn(),
   };
+  const realtime = {
+    accessRevoked: vi.fn(),
+    invalidate: vi.fn(),
+    notificationsChanged: vi.fn(),
+    tripDeleted: vi.fn(),
+  };
 
   return {
+    realtime,
     repository,
     service: new TripsService(
       repository as unknown as TripsRepository,
-      new TripRealtimePublisher(),
+      realtime as unknown as TripRealtimePublisher,
     ),
   };
 }
@@ -232,5 +239,55 @@ describe("TripsService", () => {
     ).rejects.toMatchObject({
       response: { code: "TRIP_MEMBER_ALREADY_EXISTS" },
     });
+  });
+
+  it("publishes notification invalidation only after a member is added", async () => {
+    const { realtime, repository, service } = createSubject();
+    repository.findAccess.mockResolvedValue({ ownerId: "owner", role: "owner" });
+    repository.findUserByEmail.mockResolvedValue({
+      displayName: "Viewer",
+      email: "viewer@example.com",
+      id: "viewer",
+    });
+    repository.addMember.mockResolvedValue(true);
+
+    await service.addMember("owner", trip.id, {
+      email: "viewer@example.com",
+      role: "viewer",
+    });
+
+    expect(realtime.notificationsChanged).toHaveBeenCalledWith(["viewer"]);
+    expect(realtime.invalidate).toHaveBeenCalledWith(trip.id, [
+      "members",
+      "trip",
+    ]);
+  });
+
+  it("does not publish a notification for a no-op role update", async () => {
+    const { realtime, repository, service } = createSubject();
+    repository.findAccess.mockResolvedValue({ ownerId: "owner", role: "owner" });
+    repository.updateMemberRole.mockResolvedValue({ changed: false, found: true });
+    repository.listParticipants.mockResolvedValue([
+      { role: "owner", user: { displayName: "Owner", email: "o@x.io", id: "owner" } },
+      { role: "viewer", user: { displayName: "Viewer", email: "v@x.io", id: "viewer" } },
+    ]);
+
+    await service.updateMemberRole("owner", trip.id, "viewer", "viewer");
+
+    expect(realtime.notificationsChanged).not.toHaveBeenCalled();
+    expect(realtime.invalidate).not.toHaveBeenCalled();
+  });
+
+  it("publishes deletion and inbox invalidation after a committed delete", async () => {
+    const { realtime, repository, service } = createSubject();
+    repository.deleteOwned.mockResolvedValue(["editor", "viewer"]);
+
+    await service.delete("owner", trip.id);
+
+    expect(realtime.tripDeleted).toHaveBeenCalledWith(trip.id);
+    expect(realtime.notificationsChanged).toHaveBeenCalledWith([
+      "editor",
+      "viewer",
+    ]);
   });
 });

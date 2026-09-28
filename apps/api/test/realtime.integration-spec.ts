@@ -187,6 +187,10 @@ describe("Socket.IO collaboration with PostgreSQL and Redis Streams", () => {
       await join(memberSocket, tripId);
 
       const roleChanged = waitForEvent(memberSocket, "trip:invalidate");
+      const notificationChanged = waitForEvent(
+        memberSocket,
+        "notifications:invalidate",
+      );
       const downgrade = await browserPatch(
         apiA,
         `/api/trips/${tripId}/members/${member.id}`,
@@ -196,6 +200,7 @@ describe("Socket.IO collaboration with PostgreSQL and Redis Streams", () => {
       await expect(roleChanged).resolves.toMatchObject({
         resources: ["members", "trip"],
       });
+      await expect(notificationChanged).resolves.toEqual({});
       const forbidden = await browserPatch(
         apiB,
         `/api/trips/${tripId}`,
@@ -204,6 +209,10 @@ describe("Socket.IO collaboration with PostgreSQL and Redis Streams", () => {
       expect(forbidden.status).toBe(403);
 
       const revoked = waitForEvent(memberSocket, "trip:access-revoked");
+      const revocationNotification = waitForEvent(
+        memberSocket,
+        "notifications:invalidate",
+      );
       const removal = await browserDelete(
         apiA,
         `/api/trips/${tripId}/members/${member.id}`,
@@ -211,6 +220,7 @@ describe("Socket.IO collaboration with PostgreSQL and Redis Streams", () => {
       );
       expect(removal.status).toBe(204);
       await expect(revoked).resolves.toEqual({ tripId });
+      await expect(revocationNotification).resolves.toEqual({});
       await expect(join(memberSocket, tripId)).resolves.toMatchObject({
         error: { code: "TRIP_ACCESS_DENIED" },
         ok: false,
@@ -221,6 +231,10 @@ describe("Socket.IO collaboration with PostgreSQL and Redis Streams", () => {
       await join(ownerSocket, secondTripId);
       await join(memberSocket, secondTripId);
       const deleted = waitForEvent(memberSocket, "trip:deleted");
+      const deletionNotification = waitForEvent(
+        memberSocket,
+        "notifications:invalidate",
+      );
       const deletion = await browserDelete(
         apiA,
         `/api/trips/${secondTripId}`,
@@ -228,6 +242,7 @@ describe("Socket.IO collaboration with PostgreSQL and Redis Streams", () => {
       );
       expect(deletion.status).toBe(204);
       await expect(deleted).resolves.toEqual({ tripId: secondTripId });
+      await expect(deletionNotification).resolves.toEqual({});
 
       const disconnected = waitForDisconnect(memberSocket);
       const logout = await browserPost(apiA, "/api/auth/logout", member.cookie);
@@ -259,24 +274,35 @@ describe("Socket.IO collaboration with PostgreSQL and Redis Streams", () => {
       expect(pause.exitCode).toBe(0);
       const mutation = await browserPatch(
         apiA,
-        `/api/trips/${tripId}`,
+        `/api/trips/${tripId}/members/${editor.id}`,
         owner.cookie,
-      ).send({ endsOn: "2027-04-17", startsOn: "2027-04-12" });
+      ).send({ role: "viewer" });
       expect(mutation.status).toBe(200);
+      const durable = await pool.query<{ total: number }>(
+        "SELECT count(*)::int AS total FROM user_notifications WHERE user_id = $1 AND type = 'trip_role_changed'",
+        [editor.id],
+      );
+      expect(durable.rows[0]?.total).toBe(1);
       await waitForRedis(redisUrl);
       await new Promise((resolveWait) => setTimeout(resolveWait, 250));
 
       const invalidation = waitForEvent(editorSocket, "trip:invalidate", 15_000);
+      const notification = waitForEvent(
+        editorSocket,
+        "notifications:invalidate",
+        15_000,
+      );
       const recovered = await browserPatch(
         apiA,
-        `/api/trips/${tripId}`,
+        `/api/trips/${tripId}/members/${editor.id}`,
         owner.cookie,
-      ).send({ name: "Broadcast recovered" });
+      ).send({ role: "editor" });
       expect(recovered.status).toBe(200);
       await expect(invalidation).resolves.toEqual({
-        resources: ["trip"],
+        resources: ["members", "trip"],
         tripId,
       });
+      await expect(notification).resolves.toEqual({});
     } finally {
       editorSocket.disconnect();
     }

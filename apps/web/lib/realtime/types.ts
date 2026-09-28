@@ -1,4 +1,5 @@
 import type {
+  NotificationsInvalidateEvent,
   TripAccessRevokedEvent,
   TripDeletedEvent,
   TripInvalidateEvent,
@@ -21,6 +22,7 @@ export interface ClientToServerEvents {
 }
 
 export interface ServerToClientEvents {
+  "notifications:invalidate": (event: NotificationsInvalidateEvent) => void;
   "trip:access-revoked": (event: TripAccessRevokedEvent) => void;
   "trip:deleted": (event: TripDeletedEvent) => void;
   "trip:invalidate": (event: TripInvalidateEvent) => void;
