@@ -7,7 +7,10 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "TripForge",
+  title: {
+    default: "TripForge",
+    template: "%s | TripForge",
+  },
   description: "Collaborative travel planner",
 };
 

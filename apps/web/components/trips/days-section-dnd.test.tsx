@@ -9,7 +9,7 @@ import { DaysSection } from "./days-section";
 
 type DragHandlers = {
   onDragEnd?: (event: unknown) => void;
-  onDragStart?: () => void;
+  onDragStart?: (event: unknown) => void;
 };
 
 const drag = vi.hoisted(() => ({ current: {} as DragHandlers }));
@@ -82,11 +82,12 @@ describe("DaysSection drag-and-drop", () => {
     expect(within(dayTwo).queryByText("B")).not.toBeInTheDocument();
 
     act(() => {
-      drag.current.onDragStart?.();
+      drag.current.onDragStart?.({ operation: { source: { id: "B" } } });
       drag.current.onDragEnd?.({
         canceled: false,
         operation: {
           source: {
+            id: "B",
             group: "day-2",
             index: 0,
             initialGroup: "day-1",

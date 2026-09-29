@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { notificationsApi } from "@/lib/api/notifications";
 import { renderWithQueryClient } from "@/test-utils";
+import { expectNoAxeViolations } from "@/test/accessibility";
 
 import { NotificationsScreen } from "./notifications-screen";
 
@@ -81,7 +82,7 @@ describe("NotificationsScreen", () => {
       ),
     );
     const user = userEvent.setup();
-    renderWithQueryClient(<NotificationsScreen />);
+    const { container } = renderWithQueryClient(<NotificationsScreen />);
 
     expect(await screen.findByText(/shared “Japan”/)).toBeVisible();
     await user.click(screen.getByRole("button", { name: "Load more" }));
@@ -90,9 +91,10 @@ describe("NotificationsScreen", () => {
     expect(screen.queryByRole("button", { name: "Load more" })).not.toBeInTheDocument();
     expect(
       screen
-        .getAllByRole("link", { name: "Open" })
+        .getAllByRole("link", { name: /^Open / })
         .find((link) => link.getAttribute("href") === "/trips/trip-1"),
     ).toBeDefined();
+    await expectNoAxeViolations(container);
   });
 
   it("optimistically toggles read state and rolls back on failure", async () => {
@@ -111,15 +113,15 @@ describe("NotificationsScreen", () => {
     renderWithQueryClient(<NotificationsScreen />);
 
     await user.click(
-      await screen.findByRole("button", { name: "Mark as read" }),
+      await screen.findByRole("button", { name: /^Mark as read:/ }),
     );
-    expect(screen.getByRole("button", { name: "Mark as unread" })).toBeVisible();
+    expect(screen.getByRole("button", { name: /^Mark as unread:/ })).toBeVisible();
 
     await act(async () => rejectMutation(new Error("offline")));
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "previous state was restored",
     );
-    expect(screen.getByRole("button", { name: "Mark as read" })).toBeVisible();
+    expect(screen.getByRole("button", { name: /^Mark as read:/ })).toBeVisible();
   });
 
   it("optimistically marks all cached notifications read", async () => {
@@ -138,7 +140,7 @@ describe("NotificationsScreen", () => {
     renderWithQueryClient(<NotificationsScreen />);
 
     await user.click(await screen.findByRole("button", { name: "Mark all as read" }));
-    expect(screen.getByRole("button", { name: "Mark as unread" })).toBeVisible();
+    expect(screen.getByRole("button", { name: /^Mark as unread:/ })).toBeVisible();
     await act(async () => resolveMutation({ updatedCount: 1 }));
   });
 });

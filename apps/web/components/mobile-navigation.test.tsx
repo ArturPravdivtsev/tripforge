@@ -14,7 +14,7 @@ describe("MobileNavigation", () => {
       screen.queryByRole("navigation", { name: "Mobile navigation" }),
     ).not.toBeInTheDocument();
 
-    const trigger = screen.getByRole("button", { name: "Open navigation" });
+    const trigger = screen.getByRole("button", { name: "Menu, open navigation" });
     await user.click(trigger);
 
     const navigation = screen.getByRole("navigation", {

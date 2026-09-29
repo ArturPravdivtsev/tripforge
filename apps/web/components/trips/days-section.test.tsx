@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { tripsApi } from "@/lib/api/trips";
 import { renderWithQueryClient } from "@/test-utils";
+import { expectNoAxeViolations } from "@/test/accessibility";
 
 import { DaysSection } from "./days-section";
 
@@ -132,9 +133,42 @@ describe("DaysSection", () => {
     vi.spyOn(tripsApi, "listItineraryItems").mockResolvedValue([item]);
     renderWithQueryClient(<DaysSection canEdit tripId={tripId} />);
 
-    expect(await screen.findByRole("button", { name: "Move “Dinner in Shibuya”" })).toBeVisible();
+    expect(await screen.findByRole("button", { name: "Reorder “Dinner in Shibuya” by drag or keyboard" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Move “Dinner in Shibuya” without dragging" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Edit “Dinner in Shibuya”" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Delete “Dinner in Shibuya”" })).toBeVisible();
+  });
+
+  it("moves an item across Days with ordinary click controls", async () => {
+    vi.spyOn(tripsApi, "listDays").mockResolvedValue(days);
+    vi.spyOn(tripsApi, "listItineraryItems").mockResolvedValue([item]);
+    const moved = { ...item, dayId: days[1]!.id, position: 0 };
+    const reorder = vi
+      .spyOn(tripsApi, "reorderItineraryItems")
+      .mockResolvedValue([moved]);
+    const user = userEvent.setup();
+    const { container } = renderWithQueryClient(<DaysSection canEdit tripId={tripId} />);
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Move “Dinner in Shibuya” without dragging",
+      }),
+    );
+    const day = screen.getByLabelText("Target Day");
+    expect(day).toHaveFocus();
+    await expectNoAxeViolations(container);
+    await user.selectOptions(day, days[1]!.id);
+    await user.selectOptions(screen.getByLabelText("Target position"), "0");
+    await user.click(screen.getByRole("button", { name: "Move item" }));
+
+    await waitFor(() =>
+      expect(reorder).toHaveBeenCalledWith(tripId, {
+        days: [
+          { dayId: days[0]!.id, itemIds: [] },
+          { dayId: days[1]!.id, itemIds: [item.id] },
+        ],
+      }),
+    );
   });
 
   it("synchronizes a located item card with shared map selection", async () => {

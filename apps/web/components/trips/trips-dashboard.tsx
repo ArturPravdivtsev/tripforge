@@ -141,8 +141,10 @@ const primaryLinkClasses =
 function TripsLoading() {
   return (
     <div aria-label="Loading trips" className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3" role="status">
+      <span className="sr-only">Loading trips…</span>
       {[0, 1, 2].map((item) => (
         <div
+          aria-hidden="true"
           className="h-44 animate-pulse rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)]"
           key={item}
         />
@@ -176,7 +178,7 @@ function StateCard({
   return (
     <Card className="mx-auto max-w-2xl text-center">
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
+        <CardTitle as="h1">{title}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">{children}</CardContent>
     </Card>

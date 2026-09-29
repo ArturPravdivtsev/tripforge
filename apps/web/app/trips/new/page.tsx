@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Container } from "@tripforge/ui";
 
 import { AppShell } from "@/components/app-shell";
 import { CreateTripForm } from "@/components/trips/create-trip-form";
+
+export const metadata: Metadata = { title: "Create trip" };
 
 export default function NewTripPage() {
   return (
@@ -9,7 +12,7 @@ export default function NewTripPage() {
       <Container className="py-8 sm:py-12">
         <Card className="mx-auto max-w-2xl">
           <CardHeader>
-            <CardTitle>Create trip</CardTitle>
+            <CardTitle as="h1">Create trip</CardTitle>
             <CardDescription>Start with a name and optional travel dates.</CardDescription>
           </CardHeader>
           <CardContent>

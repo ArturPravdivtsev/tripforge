@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import {
   Card,
   CardContent,
@@ -10,6 +11,8 @@ import {
 import { AppShell } from "@/components/app-shell";
 import { EditExpenseScreen } from "@/components/trips/edit-expense-screen";
 
+export const metadata: Metadata = { title: "Edit expense" };
+
 type EditExpensePageProps = Readonly<{
   params: Promise<{ expenseId: string; tripId: string }>;
 }>;
@@ -21,7 +24,7 @@ export default async function EditExpensePage({ params }: EditExpensePageProps) 
       <Container className="py-8 sm:py-12">
         <Card className="mx-auto max-w-4xl">
           <CardHeader>
-            <CardTitle>Edit expense</CardTitle>
+            <CardTitle as="h1">Edit expense</CardTitle>
             <CardDescription>
               Update the amount, payer and exact participant shares.
             </CardDescription>

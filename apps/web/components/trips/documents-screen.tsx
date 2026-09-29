@@ -254,7 +254,7 @@ function DocumentUploadForm({
 
   return (
     <Card>
-      <CardHeader><CardTitle>Upload document</CardTitle></CardHeader>
+      <CardHeader><CardTitle as="h2">Upload document</CardTitle></CardHeader>
       <CardContent>
         <form className="grid gap-4 md:grid-cols-2" onSubmit={(event) => void submit(event)}>
           <div className="space-y-2 md:col-span-2">
@@ -262,11 +262,15 @@ function DocumentUploadForm({
             <Input
               ref={fileInput}
               accept="application/pdf,image/jpeg,image/png,image/webp"
+              aria-describedby="document-file-help"
               disabled={busy}
               id="document-file"
               type="file"
               onChange={(event) => chooseFile(event.target.files?.[0])}
             />
+            <p className="text-sm text-[var(--muted-foreground)]" id="document-file-help">
+              PDF, JPEG, PNG or WebP; maximum 25 MiB.
+            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="document-title">Title</Label>
@@ -294,13 +298,14 @@ function DocumentUploadForm({
           </div>
 
           {state === "uploading" ? (
-            <div className="space-y-2 md:col-span-2" role="status">
-              <p>Uploading… {progress}%</p>
-              <progress className="h-3 w-full" max={100} value={progress}>{progress}%</progress>
+            <div className="space-y-2 md:col-span-2">
+              <p id="document-upload-progress">Uploading… {progress}%</p>
+              <progress aria-labelledby="document-upload-progress" className="h-3 w-full" max={100} value={progress}>{progress}%</progress>
+              <p className="sr-only" role="status">Uploading document.</p>
             </div>
           ) : null}
           {state === "finalizing" ? <p className="md:col-span-2" role="status">Finalizing…</p> : null}
-          {state === "success" ? <Alert className="md:col-span-2">Document uploaded.</Alert> : null}
+          {state === "success" ? <Alert className="md:col-span-2" role="status">Document uploaded.</Alert> : null}
           {error ? <Alert className="md:col-span-2" role="alert">{error}</Alert> : null}
 
           <div className="flex flex-wrap gap-3 md:col-span-2">
@@ -428,9 +433,9 @@ function DocumentList({
                 ) : null}
 
                 <div className="flex flex-wrap gap-2 border-t border-[var(--border)] pt-4">
-                  <Button disabled={pendingId === document.id} size="sm" variant="secondary" onClick={() => void download(document)}>Download</Button>
-                  {canEdit ? <Button disabled={pendingId === document.id} size="sm" variant="secondary" onClick={() => { setEditingId(document.id); setEditTitle(document.title); setEditKind(document.kind); setEditLink(document.link ? linkToValue(document.link) : ""); }}>Edit</Button> : null}
-                  {canEdit ? <Button className="text-[var(--danger)]" disabled={pendingId === document.id} size="sm" variant="ghost" onClick={() => void remove(document)}>Delete</Button> : null}
+                  <Button aria-label={`Download ${document.title}`} disabled={pendingId === document.id} size="sm" variant="secondary" onClick={() => void download(document)}>Download</Button>
+                  {canEdit ? <Button aria-label={`Edit ${document.title}`} disabled={pendingId === document.id} size="sm" variant="secondary" onClick={() => { setEditingId(document.id); setEditTitle(document.title); setEditKind(document.kind); setEditLink(document.link ? linkToValue(document.link) : ""); }}>Edit</Button> : null}
+                  {canEdit ? <Button aria-label={`Delete ${document.title}`} className="text-[var(--danger)]" disabled={pendingId === document.id} size="sm" variant="ghost" onClick={() => void remove(document)}>Delete</Button> : null}
                 </div>
               </CardContent>
             </Card>
@@ -479,7 +484,7 @@ function participantName(document: TripDocument): string {
 }
 
 function DocumentState({ children, loading, title }: Readonly<{ children?: React.ReactNode; loading?: boolean; title: string }>) {
-  return <Card><CardContent className="space-y-4 py-10 text-center"><p className="font-semibold" role={loading ? "status" : undefined}>{title}</p>{children}</CardContent></Card>;
+  return <Card><CardContent className="space-y-4 py-10 text-center"><h1 className="font-semibold" aria-live={loading ? "polite" : undefined}>{title}</h1>{children}</CardContent></Card>;
 }
 
 const selectClasses = "min-h-11 w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[var(--foreground)] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] disabled:opacity-50";

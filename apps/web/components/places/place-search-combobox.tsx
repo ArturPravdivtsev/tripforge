@@ -66,7 +66,7 @@ export function PlaceSearchCombobox({
   if (selected && !changing) {
     return (
       <div className="space-y-2">
-        <Label>Place (optional)</Label>
+        <p className="text-sm font-medium">Place (optional)</p>
         <div className="min-w-0 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-muted)] p-3">
           <p className="break-words font-semibold">{selected.name}</p>
           {selected.address ? (
@@ -113,10 +113,12 @@ export function PlaceSearchCombobox({
       <div className="relative min-w-0">
         <Input
           aria-activedescendant={
-            activeIndex >= 0 ? `${id}-option-${activeIndex}` : undefined
+            activeIndex >= 0 && activeIndex < results.length
+              ? `${id}-option-${activeIndex}`
+              : undefined
           }
           aria-autocomplete="list"
-          aria-controls={listboxId}
+          aria-controls={showList ? listboxId : undefined}
           aria-expanded={showList}
           autoComplete="off"
           disabled={disabled || !key}
@@ -134,6 +136,7 @@ export function PlaceSearchCombobox({
           onKeyDown={(event) => {
             if (event.key === "Escape") {
               setIsOpen(false);
+              setActiveIndex(-1);
               return;
             }
             if (event.key === "ArrowDown") {
@@ -157,8 +160,6 @@ export function PlaceSearchCombobox({
         {showList ? (
           <div
             className="absolute z-20 mt-1 max-h-72 w-full min-w-0 overflow-y-auto rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] p-1 shadow-lg"
-            id={listboxId}
-            role="listbox"
           >
             {isDebouncing || query.isFetching ? (
               <p className="px-3 py-2 text-sm text-[var(--muted-foreground)]" role="status">
@@ -172,8 +173,14 @@ export function PlaceSearchCombobox({
               <p className="px-3 py-2 text-sm text-[var(--muted-foreground)]" role="status">
                 No places found.
               </p>
-            ) : (
-              results.map((result, index) => (
+            ) : null}
+            <div
+              aria-busy={isDebouncing || query.isFetching}
+              id={listboxId}
+              role="listbox"
+            >
+              {!isDebouncing && !query.isFetching && !query.isError
+                ? results.map((result, index) => (
                 <button
                   aria-selected={activeIndex === index}
                   className={`block w-full min-w-0 rounded-[var(--radius-sm)] px-3 py-2 text-left text-sm ${
@@ -194,8 +201,9 @@ export function PlaceSearchCombobox({
                     </span>
                   ) : null}
                 </button>
-              ))
-            )}
+                  ))
+                : null}
+            </div>
             {query.data ? <SearchAttribution /> : null}
           </div>
         ) : null}

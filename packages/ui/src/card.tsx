@@ -1,4 +1,4 @@
-import type { ComponentPropsWithoutRef } from "react";
+import type { ComponentPropsWithoutRef, ElementType } from "react";
 
 import { joinClassNames } from "./class-names";
 
@@ -27,11 +27,12 @@ export function CardHeader({
 }
 
 export function CardTitle({
+  as: Component = "h3",
   className,
   ...props
-}: ComponentPropsWithoutRef<"h3">) {
+}: ComponentPropsWithoutRef<"h3"> & { as?: Extract<ElementType, "h1" | "h2" | "h3"> }) {
   return (
-    <h3
+    <Component
       className={joinClassNames(
         "text-xl font-semibold tracking-tight",
         className,

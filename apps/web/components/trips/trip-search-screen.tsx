@@ -183,9 +183,14 @@ function SearchResults({
 
   return (
     <section aria-label="Search results" className="space-y-3">
-      <p aria-live="polite" className="text-sm text-[var(--muted-foreground)]" role="status">
+      <p className="text-sm text-[var(--muted-foreground)]">
         {loading ? "Updating results…" : `${results?.length ?? 0} results`}
       </p>
+      {!loading ? (
+        <p aria-live="polite" className="sr-only" role="status">
+          {results?.length ?? 0} results found.
+        </p>
+      ) : null}
       <ul className="space-y-3">
         {results?.map((result) => (
           <li key={`${result.type}:${result.id}`}>

@@ -15,6 +15,7 @@ import Map, {
 import { Button } from "@tripforge/ui";
 import type { TripRouteSegment } from "@tripforge/contracts";
 
+import { usePrefersReducedMotion } from "@/lib/accessibility/use-prefers-reduced-motion";
 import { calculateBounds, type MapPoint } from "@/lib/maps/bounds";
 import { DEFAULT_MAP_VIEW } from "@/lib/maps/config";
 import {
@@ -61,6 +62,7 @@ export function TripMap({
   selectedMapPoint,
   selectedRouteId,
 }: TripMapProps) {
+  const prefersReducedMotion = usePrefersReducedMotion();
   const mapRef = useRef<MapRef>(null);
   const lastAutoFitSignature = useRef<string | undefined>(undefined);
   const lastSelectedRouteSignature = useRef<string | undefined>(undefined);
@@ -83,7 +85,7 @@ export function TripMap({
     if (allCoordinates.length === 1) {
       map.easeTo({
         center: [allCoordinates[0]!.longitude, allCoordinates[0]!.latitude],
-        duration: 500,
+        duration: prefersReducedMotion ? 0 : 500,
         zoom: SINGLE_DESTINATION_ZOOM,
       });
       return;
@@ -96,9 +98,9 @@ export function TripMap({
         [bounds.west, bounds.south],
         [bounds.east, bounds.north],
       ],
-      { duration: 500, maxZoom: 12, padding: 48 },
+      { duration: prefersReducedMotion ? 0 : 500, maxZoom: 12, padding: 48 },
     );
-  }, [allCoordinates]);
+  }, [allCoordinates, prefersReducedMotion]);
 
   useEffect(() => {
     if (lastAutoFitSignature.current === coordinateSignature) return;
@@ -116,10 +118,10 @@ export function TripMap({
     if (selectedLatitude === undefined || selectedLongitude === undefined) return;
     mapRef.current?.easeTo({
       center: [selectedLongitude, selectedLatitude],
-      duration: 400,
+      duration: prefersReducedMotion ? 0 : 400,
       zoom: Math.max(mapRef.current.getZoom(), SINGLE_DESTINATION_ZOOM),
     });
-  }, [selectedMapPoint, selectedLatitude, selectedLongitude]);
+  }, [prefersReducedMotion, selectedMapPoint, selectedLatitude, selectedLongitude]);
 
   useEffect(() => {
     const route = routes.find(({ id }) => id === selectedRouteId);
@@ -140,16 +142,20 @@ export function TripMap({
     if (!bounds) return;
     map.fitBounds(
       [[bounds.west, bounds.south], [bounds.east, bounds.north]],
-      { duration: 400, maxZoom: 14, padding: 64 },
+      { duration: prefersReducedMotion ? 0 : 400, maxZoom: 14, padding: 64 },
     );
-  }, [routes, selectedRouteId]);
+  }, [prefersReducedMotion, routes, selectedRouteId]);
 
   if (failed) {
     return <MapFailure />;
   }
 
   return (
-    <div className="relative h-80 overflow-hidden rounded-[var(--radius-md)] border border-[var(--border)] sm:h-96">
+    <div
+      aria-label="Trip map"
+      className="relative h-80 overflow-hidden rounded-[var(--radius-md)] border border-[var(--border)] sm:h-96"
+      role="region"
+    >
       <Map
         cooperativeGestures
         dragRotate={false}
@@ -274,8 +280,13 @@ export function TripMap({
         </p>
       ) : null}
       {editingDestinationId ? (
-        <p className="absolute bottom-3 right-3 max-w-56 rounded-[var(--radius-sm)] bg-[var(--surface)] px-3 py-2 text-xs shadow-md">
-          Select a point on the map, then save it below.
+        <p
+          className="absolute bottom-3 right-3 max-w-64 rounded-[var(--radius-sm)] bg-[var(--surface)] px-3 py-2 text-xs shadow-md"
+          role="status"
+        >
+          {preview
+            ? `Location selected. Latitude ${preview.latitude.toFixed(5)}, longitude ${preview.longitude.toFixed(5)}. Save below to apply it.`
+            : "Select a point on the map, then save it below."}
         </p>
       ) : null}
     </div>

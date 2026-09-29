@@ -151,6 +151,30 @@ Redis command processing is paused.
 TripForge should avoid testing implementation details and should not rely only
 on expensive browser E2E tests.
 
+## Accessibility testing pyramid
+
+TripForge targets WCAG 2.2 AA through complementary layers:
+
+```text
+ESLint / static semantics
+          ↓
+RTL semantic, keyboard, pointer and focus tests
+          ↓
+axe-core component tests in JSDOM
+          ↓
+real-browser axe and manual visual checks
+          ↓
+screen-reader manual checks
+```
+
+`pnpm test:a11y` runs representative initial and dynamic component states with
+`axe-core@4.13.0`; it does not replace explicit interaction tests. JSDOM cannot
+verify CSS contrast, layout/reflow, focus obstruction, forced colors, or real
+browser focus, so these stay in the reusable manual checklist. The repository
+has no Playwright runner yet; browser axe remains deferred rather than silently
+skipped. See [Accessibility](./accessibility.md) and the
+[manual checklist](./accessibility-manual-qa.md).
+
 ## Commands
 
 ```text
@@ -159,6 +183,9 @@ pnpm test
 
 pnpm test:integration
   -> Docker + Testcontainers persistence tests
+
+pnpm test:a11y
+  -> representative WCAG-tagged axe + semantic/interaction component tests
 
 pnpm check
   -> fast developer gate: lint + typecheck + test + build

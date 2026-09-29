@@ -95,8 +95,10 @@ export function ReservationForm({
         <Input
           id={`${formId}-title`}
           autoComplete="off"
+          aria-describedby={errors.title ? `${formId}-title-error` : undefined}
           aria-invalid={Boolean(errors.title)}
           disabled={isPending}
+          required
           {...register("title")}
         />
       </Field>
@@ -110,6 +112,8 @@ export function ReservationForm({
           <Input
             id={`${formId}-provider`}
             autoComplete="organization"
+            aria-describedby={errors.providerName ? `${formId}-provider-error` : undefined}
+            aria-invalid={Boolean(errors.providerName)}
             disabled={isPending}
             {...register("providerName")}
           />
@@ -122,6 +126,8 @@ export function ReservationForm({
           <Input
             id={`${formId}-confirmation`}
             autoComplete="off"
+            aria-describedby={errors.confirmationCode ? `${formId}-confirmation-error` : undefined}
+            aria-invalid={Boolean(errors.confirmationCode)}
             disabled={isPending}
             {...register("confirmationCode")}
           />
@@ -137,7 +143,10 @@ export function ReservationForm({
           <Input
             id={`${formId}-start-date`}
             type="date"
+            aria-describedby={errors.startDate ? `${formId}-start-date-error` : undefined}
+            aria-invalid={Boolean(errors.startDate)}
             disabled={isPending}
+            required
             {...register("startDate")}
           />
         </Field>
@@ -149,6 +158,8 @@ export function ReservationForm({
           <Input
             id={`${formId}-start-time`}
             type="time"
+            aria-describedby={errors.startTime ? `${formId}-start-time-error` : undefined}
+            aria-invalid={Boolean(errors.startTime)}
             disabled={isPending}
             {...register("startTime")}
           />
@@ -161,6 +172,8 @@ export function ReservationForm({
           <Input
             id={`${formId}-end-date`}
             type="date"
+            aria-describedby={errors.endDate ? `${formId}-end-date-error` : undefined}
+            aria-invalid={Boolean(errors.endDate)}
             disabled={isPending}
             {...register("endDate")}
           />
@@ -173,6 +186,8 @@ export function ReservationForm({
           <Input
             id={`${formId}-end-time`}
             type="time"
+            aria-describedby={errors.endTime ? `${formId}-end-time-error` : undefined}
+            aria-invalid={Boolean(errors.endTime)}
             disabled={isPending}
             {...register("endTime")}
           />
@@ -188,6 +203,8 @@ export function ReservationForm({
           <Input
             id={`${formId}-location`}
             autoComplete="off"
+            aria-describedby={errors.locationName ? `${formId}-location-error` : undefined}
+            aria-invalid={Boolean(errors.locationName)}
             disabled={isPending}
             {...register("locationName")}
           />
@@ -200,6 +217,8 @@ export function ReservationForm({
           <select
             id={`${formId}-item`}
             className={selectClasses}
+            aria-describedby={errors.itineraryItemId ? `${formId}-item-error` : undefined}
+            aria-invalid={Boolean(errors.itineraryItemId)}
             disabled={isPending}
             {...register("itineraryItemId")}
           >
@@ -242,6 +261,8 @@ export function ReservationForm({
             >
               <Input
                 id={`${formId}-operator`}
+                aria-describedby={errors.transport?.operatorName ? `${formId}-operator-error` : undefined}
+                aria-invalid={Boolean(errors.transport?.operatorName)}
                 disabled={isPending}
                 {...register("transport.operatorName")}
               />
@@ -253,6 +274,8 @@ export function ReservationForm({
             >
               <Input
                 id={`${formId}-service`}
+                aria-describedby={errors.transport?.serviceNumber ? `${formId}-service-error` : undefined}
+                aria-invalid={Boolean(errors.transport?.serviceNumber)}
                 disabled={isPending}
                 {...register("transport.serviceNumber")}
               />
@@ -266,7 +289,10 @@ export function ReservationForm({
             >
               <Input
                 id={`${formId}-origin`}
+                aria-describedby={errors.transport?.originName ? `${formId}-origin-error` : undefined}
+                aria-invalid={Boolean(errors.transport?.originName)}
                 disabled={isPending}
+                required
                 {...register("transport.originName")}
               />
             </Field>
@@ -277,7 +303,10 @@ export function ReservationForm({
             >
               <Input
                 id={`${formId}-destination`}
+                aria-describedby={errors.transport?.destinationName ? `${formId}-destination-error` : undefined}
+                aria-invalid={Boolean(errors.transport?.destinationName)}
                 disabled={isPending}
+                required
                 {...register("transport.destinationName")}
               />
             </Field>
@@ -288,6 +317,8 @@ export function ReservationForm({
       <Field label="Notes" id={`${formId}-notes`} error={errors.notes?.message}>
         <Textarea
           id={`${formId}-notes`}
+          aria-describedby={errors.notes ? `${formId}-notes-error` : undefined}
+          aria-invalid={Boolean(errors.notes)}
           disabled={isPending}
           {...register("notes")}
         />
@@ -320,7 +351,7 @@ function Field({
     <div className="min-w-0 space-y-2">
       <Label htmlFor={id}>{label}</Label>
       {children}
-      {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
+      {error ? <p className="text-sm text-[var(--danger)]" id={`${id}-error`}>{error}</p> : null}
     </div>
   );
 }

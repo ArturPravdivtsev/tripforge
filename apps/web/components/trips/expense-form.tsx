@@ -7,6 +7,7 @@ import type { ExpenseParticipant, TripReservation } from "@tripforge/contracts";
 import {
   allocateEqualSplit,
   formatMinorAmount,
+  getCurrencyMinorUnitDigits,
   getSupportedCurrencyCodes,
   parseMajorAmountToMinor,
 } from "@tripforge/contracts";
@@ -74,6 +75,7 @@ export function ExpenseForm({
   const customMismatch =
     splitMethod === "custom" &&
     (amountMinor === null || splitPreview.allocatedMinor !== amountMinor);
+  const minorUnitDigits = getCurrencyMinorUnitDigits(currency);
 
   return (
     <form
@@ -88,8 +90,10 @@ export function ExpenseForm({
         <Input
           id={`${formId}-title`}
           autoComplete="off"
+          aria-describedby={errors.title ? `${formId}-title-error` : undefined}
           aria-invalid={Boolean(errors.title)}
           disabled={isPending}
+          required
           {...register("title")}
         />
       </Field>
@@ -100,6 +104,8 @@ export function ExpenseForm({
             id={`${formId}-category`}
             className={selectClasses}
             disabled={isPending}
+            aria-describedby={errors.category ? `${formId}-category-error` : undefined}
+            aria-invalid={Boolean(errors.category)}
             {...register("category")}
           >
             <option value="accommodation">Accommodation</option>
@@ -114,6 +120,8 @@ export function ExpenseForm({
           <Input
             id={`${formId}-date`}
             type="date"
+            aria-describedby={errors.spentOn ? `${formId}-date-error` : undefined}
+            aria-invalid={Boolean(errors.spentOn)}
             disabled={isPending}
             {...register("spentOn")}
           />
@@ -126,6 +134,8 @@ export function ExpenseForm({
             id={`${formId}-currency`}
             className={selectClasses}
             disabled={isPending}
+            aria-describedby={errors.currency ? `${formId}-currency-error` : undefined}
+            aria-invalid={Boolean(errors.currency)}
             {...register("currency")}
           >
             {currencyCodes.map((code) => (
@@ -137,16 +147,21 @@ export function ExpenseForm({
           <Input
             id={`${formId}-amount`}
             autoComplete="off"
+            aria-describedby={`${formId}-amount-help${errors.amount ? ` ${formId}-amount-error` : ""}`}
+            aria-invalid={Boolean(errors.amount)}
             inputMode="decimal"
             placeholder="12.50"
             disabled={isPending}
+            required
             {...register("amount")}
           />
         </Field>
       </div>
-      <p className="text-sm text-[var(--muted-foreground)]">
-        Use a period as the decimal separator. Changing currency does not convert
-        the amount.
+      <p className="text-sm text-[var(--muted-foreground)]" id={`${formId}-amount-help`}>
+        {minorUnitDigits === 0
+          ? `${currency} uses whole amounts and does not support decimal minor units.`
+          : `${currency} allows up to ${minorUnitDigits} decimal ${minorUnitDigits === 1 ? "place" : "places"}.`} {" "}
+        Use a period as the decimal separator. Changing currency does not convert the amount.
       </p>
 
       <Field label="Paid by" id={`${formId}-payer`} error={errors.paidByUserId?.message}>
@@ -154,6 +169,8 @@ export function ExpenseForm({
           id={`${formId}-payer`}
           className={selectClasses}
           disabled={isPending}
+          aria-describedby={errors.paidByUserId ? `${formId}-payer-error` : undefined}
+          aria-invalid={Boolean(errors.paidByUserId)}
           {...register("paidByUserId")}
         >
           {participants.map((participant) => (
@@ -165,7 +182,10 @@ export function ExpenseForm({
         </select>
       </Field>
 
-      <fieldset className="space-y-4 rounded-[var(--radius-md)] border border-[var(--border)] p-4">
+      <fieldset
+        aria-describedby={errors.participantUserIds?.message ? `${formId}-participants-error` : undefined}
+        className="space-y-4 rounded-[var(--radius-md)] border border-[var(--border)] p-4"
+      >
         <legend className="px-1 font-semibold">Split</legend>
         <div className="flex flex-wrap gap-5">
           <label className="flex min-h-11 items-center gap-2">
@@ -219,7 +239,7 @@ export function ExpenseForm({
           })}
         </div>
         {errors.participantUserIds?.message ? (
-          <p className="text-sm font-medium text-[var(--danger)]" role="alert">
+          <p className="text-sm font-medium text-[var(--danger)]" id={`${formId}-participants-error`} role="alert">
             {errors.participantUserIds.message}
           </p>
         ) : null}
@@ -241,8 +261,12 @@ export function ExpenseForm({
               </div>
             ))}
             {splitMethod === "custom" && amountMinor !== null ? (
-              <p className={customMismatch ? "font-medium text-[var(--danger)]" : "text-[var(--muted-foreground)]"}>
-                Allocated {displayMinor(splitPreview.allocatedMinor, currency)} of {displayMinor(amountMinor, currency)}
+              <p
+                aria-live="polite"
+                className={customMismatch ? "font-medium text-[var(--danger)]" : "text-[var(--muted-foreground)]"}
+                role="status"
+              >
+                Allocated {displayMinor(splitPreview.allocatedMinor, currency)} of {displayMinor(amountMinor, currency)}. {displayMinor(Math.abs(amountMinor - splitPreview.allocatedMinor), currency)} {amountMinor >= splitPreview.allocatedMinor ? "remaining" : "over allocated"}.
               </p>
             ) : null}
           </div>
@@ -258,6 +282,8 @@ export function ExpenseForm({
           id={`${formId}-reservation`}
           className={selectClasses}
           disabled={isPending}
+          aria-describedby={errors.reservationId ? `${formId}-reservation-error` : undefined}
+          aria-invalid={Boolean(errors.reservationId)}
           {...register("reservationId")}
         >
           <option value="">Not linked to reservation</option>
@@ -272,6 +298,8 @@ export function ExpenseForm({
       <Field label="Notes" id={`${formId}-notes`} error={errors.notes?.message}>
         <Textarea
           id={`${formId}-notes`}
+          aria-describedby={errors.notes ? `${formId}-notes-error` : undefined}
+          aria-invalid={Boolean(errors.notes)}
           rows={4}
           disabled={isPending}
           {...register("notes")}
@@ -344,7 +372,7 @@ function Field({
     <div className="min-w-0 space-y-2">
       <Label htmlFor={id}>{label}</Label>
       {children}
-      {error ? <p className="text-sm font-medium text-[var(--danger)]" role="alert">{error}</p> : null}
+      {error ? <p className="text-sm font-medium text-[var(--danger)]" id={`${id}-error`}>{error}</p> : null}
     </div>
   );
 }

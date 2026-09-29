@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { tripsApi } from "@/lib/api/trips";
 import { renderWithQueryClient } from "@/test-utils";
+import { expectNoAxeViolations } from "@/test/accessibility";
 
 import { TripSearchScreen } from "./trip-search-screen";
 
@@ -42,7 +43,7 @@ describe("TripSearchScreen", () => {
   it("debounces search, renders semantic results, and navigates by typed target", async () => {
     const user = userEvent.setup();
     const search = vi.spyOn(tripsApi, "search");
-    renderWithQueryClient(<TripSearchScreen tripId={trip.id} />);
+    const { container } = renderWithQueryClient(<TripSearchScreen tripId={trip.id} />);
 
     const input = await screen.findByRole("searchbox", { name: "Search this trip" });
     await user.type(input, "Kyoto");
@@ -58,6 +59,7 @@ describe("TripSearchScreen", () => {
       `/trips/${trip.id}`,
     );
     expect(screen.getByRole("status")).toHaveTextContent("1 results");
+    await expectNoAxeViolations(container);
   });
 
   it("keeps short queries local and applies a resource filter", async () => {

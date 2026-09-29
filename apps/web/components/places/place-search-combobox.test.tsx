@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { renderWithQueryClient } from "@/test-utils";
+import { expectNoAxeViolations } from "@/test/accessibility";
 
 import { PlaceSearchCombobox } from "./place-search-combobox";
 
@@ -58,7 +59,7 @@ describe("PlaceSearchCombobox", () => {
       ),
     );
     const onChange = vi.fn();
-    renderWithQueryClient(
+    const { container } = renderWithQueryClient(
       <PlaceSearchCombobox onChange={onChange} selected={null} />,
     );
     const input = screen.getByRole("combobox");
@@ -66,6 +67,7 @@ describe("PlaceSearchCombobox", () => {
     fireEvent.change(input, { target: { value: "Senso" } });
     expect(await screen.findByRole("option", { name: /Senso-ji, Tokyo/ })).toBeVisible();
     expect(screen.getByText("MapTiler")).toBeVisible();
+    await expectNoAxeViolations(container);
 
     fireEvent.keyDown(input, { key: "ArrowDown" });
     fireEvent.keyDown(input, { key: "ArrowDown" });

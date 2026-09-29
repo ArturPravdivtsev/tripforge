@@ -12,6 +12,7 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "test:a11y": "pnpm --filter @tripforge/web test:a11y",
     "test:integration": "pnpm --filter @tripforge/api test:integration",
     "test:coverage": "turbo run test:coverage",
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",

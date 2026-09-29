@@ -62,6 +62,7 @@ export function ItineraryItemForm({
           aria-describedby={errors.title ? `${formId}-title-error` : undefined}
           aria-invalid={Boolean(errors.title)}
           disabled={isPending}
+          required
           {...register("title")}
         />
         {errors.title ? (

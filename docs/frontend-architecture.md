@@ -128,3 +128,19 @@ browser mutation API. See [Realtime collaboration](./realtime.md).
 `packages/ui` contains presentation primitives only. It must not import from
 `apps/web`, know about TripForge domain concepts, access APIs, or own application
 state. Application shell and domain-specific components stay in `apps/web`.
+
+## Accessibility architecture
+
+Accessibility is part of the primary interface, not a separate mode. Native
+HTML is preferred over ARIA, every pointer workflow has keyboard access, and
+dragging workflows additionally provide an ordinary click/tap alternative.
+Universal focus/target/input behavior belongs in shared primitives and global
+tokens; Trip-, route-, expense-, and map-specific names/status stay in
+`apps/web`.
+
+The graphical map is supplementary: destination, itinerary, and route lists
+remain canonical. Live regions are small and restrained; important failures are
+assertive, while settled results, upload/reorder completion, and prolonged
+realtime outage/recovery are polite. Route pages expose one main landmark,
+meaningful headings/titles, uniquely labelled navigation, and a skip link.
+See [Accessibility](./accessibility.md).

@@ -87,9 +87,12 @@ function MapLoading() {
   return (
     <div
       aria-label="Loading map"
+      aria-busy="true"
       className="h-80 animate-pulse rounded-[var(--radius-md)] bg-[var(--muted)] sm:h-96"
       role="status"
-    />
+    >
+      <span className="sr-only">Loading map…</span>
+    </div>
   );
 }
 

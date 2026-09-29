@@ -179,7 +179,7 @@ export function MembersScreen({ tripId }: MembersScreenProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle>People with access</CardTitle>
+          <CardTitle as="h2">People with access</CardTitle>
         </CardHeader>
         <CardContent>
           <ul className="divide-y divide-[var(--border)]">
@@ -230,7 +230,7 @@ function AddMemberCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Add member</CardTitle>
+        <CardTitle as="h2">Add member</CardTitle>
       </CardHeader>
       <CardContent>
         <form
@@ -247,12 +247,14 @@ function AddMemberCard({
               id="member-email"
               type="email"
               autoComplete="email"
+              aria-describedby={errors.email ? "member-email-error" : undefined}
               aria-invalid={Boolean(errors.email)}
               disabled={isPending}
+              required
               {...register("email")}
             />
             {errors.email ? (
-              <p className="text-sm text-[var(--danger)]">{errors.email.message}</p>
+              <p className="text-sm text-[var(--danger)]" id="member-email-error">{errors.email.message}</p>
             ) : null}
           </div>
           <div className="space-y-2">
@@ -354,8 +356,9 @@ function ParticipantRow({
 function MembersSkeleton() {
   return (
     <div aria-label="Loading trip members" className="mx-auto max-w-3xl space-y-5" role="status">
-      <div className="h-20 animate-pulse rounded-[var(--radius-md)] bg-[var(--muted)]" />
-      <div className="h-64 animate-pulse rounded-[var(--radius-lg)] bg-[var(--muted)]" />
+      <span className="sr-only">Loading trip members…</span>
+      <div aria-hidden="true" className="h-20 animate-pulse rounded-[var(--radius-md)] bg-[var(--muted)]" />
+      <div aria-hidden="true" className="h-64 animate-pulse rounded-[var(--radius-lg)] bg-[var(--muted)]" />
     </div>
   );
 }
@@ -366,7 +369,7 @@ function StateCard({
 }: Readonly<{ children: React.ReactNode; title: string }>) {
   return (
     <Card className="mx-auto max-w-2xl text-center">
-      <CardHeader><CardTitle>{title}</CardTitle></CardHeader>
+      <CardHeader><CardTitle as="h1">{title}</CardTitle></CardHeader>
       <CardContent>{children}</CardContent>
     </Card>
   );

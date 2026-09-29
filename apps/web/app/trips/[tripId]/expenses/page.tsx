@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import { Container } from "@tripforge/ui";
 
 import { AppShell } from "@/components/app-shell";
 import { ExpensesScreen } from "@/components/trips/expenses-screen";
+
+export const metadata: Metadata = { title: "Expenses" };
 
 type ExpensesPageProps = Readonly<{
   params: Promise<{ tripId: string }>;

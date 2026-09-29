@@ -123,10 +123,11 @@ export function TripWorkspace({ tripId }: TripWorkspaceProps) {
 function WorkspaceSkeleton() {
   return (
     <div aria-label="Loading trip workspace" className="space-y-6" role="status">
-      <div className="h-36 animate-pulse rounded-[var(--radius-lg)] bg-[var(--muted)]" />
+      <span className="sr-only">Loading trip workspace…</span>
+      <div aria-hidden="true" className="h-36 animate-pulse rounded-[var(--radius-lg)] bg-[var(--muted)]" />
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="h-72 animate-pulse rounded-[var(--radius-lg)] bg-[var(--muted)]" />
-        <div className="h-72 animate-pulse rounded-[var(--radius-lg)] bg-[var(--muted)]" />
+        <div aria-hidden="true" className="h-72 animate-pulse rounded-[var(--radius-lg)] bg-[var(--muted)]" />
+        <div aria-hidden="true" className="h-72 animate-pulse rounded-[var(--radius-lg)] bg-[var(--muted)]" />
       </div>
     </div>
   );
@@ -135,7 +136,7 @@ function WorkspaceSkeleton() {
 function StateCard({ children, title }: Readonly<{ children: React.ReactNode; title: string }>) {
   return (
     <Card className="mx-auto max-w-2xl text-center">
-      <CardHeader><CardTitle>{title}</CardTitle></CardHeader>
+      <CardHeader><CardTitle as="h1">{title}</CardTitle></CardHeader>
       <CardContent>{children}</CardContent>
     </Card>
   );

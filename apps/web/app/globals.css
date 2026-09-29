@@ -7,7 +7,7 @@
   --foreground: #172033;
   --surface: #ffffff;
   --surface-muted: #eef2f7;
-  --border: #d9e0ea;
+  --border: #8793a5;
   --primary: #2457d6;
   --primary-foreground: #ffffff;
   --muted: #e8edf5;
@@ -32,6 +32,7 @@
 
 html {
   min-width: 20rem;
+  scroll-padding-top: 5.5rem;
   background: var(--background);
 }
 
@@ -67,4 +68,43 @@ a {
 :focus-visible {
   outline: 3px solid var(--focus-ring);
   outline-offset: 3px;
+}
+
+.maplibregl-ctrl button {
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+}
+
+.maplibregl-ctrl button:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+#main-content,
+[id] {
+  scroll-margin-top: 5.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (forced-colors: active) {
+  :focus-visible {
+    outline-color: Highlight;
+  }
+
+  [aria-current="page"],
+  [aria-pressed="true"],
+  [aria-selected="true"] {
+    outline: 2px solid currentColor;
+    outline-offset: 1px;
+  }
 }

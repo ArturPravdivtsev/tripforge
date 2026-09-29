@@ -184,7 +184,7 @@ function NotificationItem({
           <div className="min-w-0 space-y-1">
             <div className="flex items-start gap-2">
               {unread ? (
-                <span className="mt-2 size-2 shrink-0 rounded-full bg-[var(--primary)]" />
+                <span aria-hidden="true" className="mt-2 size-2 shrink-0 rounded-full bg-[var(--primary)]" />
               ) : null}
               <p className={unread ? "font-semibold" : "font-medium"}>
                 {notificationCopy(notification)}
@@ -199,7 +199,8 @@ function NotificationItem({
             {href ? (
               <Link
                 href={href}
-                className="inline-flex min-h-9 items-center rounded-[var(--radius-md)] bg-[var(--primary)] px-3 text-sm font-semibold text-[var(--primary-foreground)]"
+                aria-label={`Open ${notificationCopy(notification)}`}
+                className="inline-flex min-h-10 items-center rounded-[var(--radius-md)] bg-[var(--primary)] px-3 text-sm font-semibold text-[var(--primary-foreground)]"
                 onClick={() => {
                   if (unread) onReadChange(true);
                 }}
@@ -208,6 +209,7 @@ function NotificationItem({
               </Link>
             ) : null}
             <Button
+              aria-label={`${unread ? "Mark as read" : "Mark as unread"}: ${notificationCopy(notification)}`}
               size="sm"
               variant="secondary"
               disabled={isUpdating}

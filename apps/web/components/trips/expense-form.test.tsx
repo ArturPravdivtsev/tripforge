@@ -10,6 +10,7 @@ import {
 } from "@/lib/trips/expense-form-values";
 import { expenseFormSchema } from "@/lib/trips/expense-schema";
 import { renderWithQueryClient } from "@/test-utils";
+import { expectNoAxeViolations } from "@/test/accessibility";
 
 import { ExpenseForm } from "./expense-form";
 
@@ -48,7 +49,7 @@ describe("ExpenseForm", () => {
     const values = emptyExpenseForm([owner, anna], "2027-04-14");
     values.amount = "100.00";
     values.title = "Dinner";
-    renderWithQueryClient(
+    const { container } = renderWithQueryClient(
       <ExpenseForm
         cancelHref="/expenses"
         currentParticipantIds={[owner.userId, anna.userId]}
@@ -67,6 +68,7 @@ describe("ExpenseForm", () => {
     await user.type(shares[1]!, "60.00");
     expect(screen.getByText(/Allocated €100\.00 of €100\.00/)).toBeVisible();
     expect(screen.getByRole("button", { name: "Create expense" })).toBeEnabled();
+    await expectNoAxeViolations(container);
   });
 
   it("preserves and labels historical payer and share", () => {

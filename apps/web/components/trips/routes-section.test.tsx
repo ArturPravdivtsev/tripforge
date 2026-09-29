@@ -9,6 +9,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { tripsApi } from "@/lib/api/trips";
 import { renderWithQueryClient } from "@/test-utils";
+import { expectNoAxeViolations } from "@/test/accessibility";
 
 import { RoutesSection } from "./routes-section";
 
@@ -41,11 +42,12 @@ describe("RoutesSection", () => {
   });
 
   it("shows summaries and hides mutations from viewers", async () => {
-    renderWithQueryClient(<RoutesSection canEdit={false} tripId={tripId} />);
+    const { container } = renderWithQueryClient(<RoutesSection canEdit={false} tripId={tripId} />);
     expect(await screen.findByText("Walking · 2.4 km · 31 min")).toBeVisible();
     expect(screen.getByText("Senso-ji → Tokyo Skytree")).toBeVisible();
     expect(screen.queryByRole("button", { name: "Recalculate" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Calculate route" })).not.toBeInTheDocument();
+    await expectNoAxeViolations(container);
   });
 
   it("creates a route from understandable endpoint labels", async () => {

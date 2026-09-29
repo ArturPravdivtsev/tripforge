@@ -2,12 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import { Button, Container } from "@tripforge/ui";
 
 import { navigationItems } from "./navigation-items";
 
 export function MobileNavigation() {
+  const pathname = usePathname() ?? "";
   const [isOpen, setIsOpen] = useState(false);
   const firstLinkRef = useRef<HTMLAnchorElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -44,10 +46,10 @@ export function MobileNavigation() {
         variant="ghost"
         size="sm"
         className="md:hidden"
-        aria-controls="mobile-navigation"
+        aria-controls={isOpen ? "mobile-navigation" : undefined}
         aria-expanded={isOpen}
-        aria-label="Open navigation"
-        onClick={() => setIsOpen(true)}
+        aria-label={isOpen ? "Menu, close navigation" : "Menu, open navigation"}
+        onClick={() => (isOpen ? closeNavigation() : setIsOpen(true))}
       >
         Menu
       </Button>
@@ -76,6 +78,11 @@ export function MobileNavigation() {
                   <li key={item.label}>
                     <Link
                       ref={index === 0 ? firstLinkRef : undefined}
+                      aria-current={
+                        pathname === item.href || pathname.startsWith(`${item.href}/`)
+                          ? "page"
+                          : undefined
+                      }
                       href={item.href}
                       className="block rounded-[var(--radius-md)] bg-[var(--surface-muted)] px-4 py-3 font-semibold transition hover:bg-[var(--muted)]"
                       onClick={closeNavigation}

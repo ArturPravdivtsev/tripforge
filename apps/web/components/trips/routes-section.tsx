@@ -148,11 +148,11 @@ export function RoutesSection({
 
   return (
     <Card>
-      <CardHeader><CardTitle>Routes</CardTitle></CardHeader>
+      <CardHeader><CardTitle as="h2">Routes</CardTitle></CardHeader>
       <CardContent className="space-y-5">
         {mutationError ? <Alert role="alert">{mutationError}</Alert> : null}
         {routesQuery.isPending || itemsQuery.isPending || daysQuery.isPending ? (
-          <div aria-label="Loading routes" className="h-24 animate-pulse rounded-[var(--radius-md)] bg-[var(--muted)]" role="status" />
+          <div aria-label="Loading routes" className="h-24 animate-pulse rounded-[var(--radius-md)] bg-[var(--muted)]" role="status"><span className="sr-only">Loading routes…</span></div>
         ) : routesQuery.isError || itemsQuery.isError || daysQuery.isError ? (
           <div className="space-y-3">
             <p>Unable to load routes.</p>
@@ -169,7 +169,12 @@ export function RoutesSection({
                     className={`rounded-[var(--radius-md)] border p-4 ${selectedRouteId === route.id ? "border-[var(--primary)] bg-[var(--surface-muted)]" : "border-[var(--border)]"}`}
                     key={route.id}
                   >
-                    <button className="w-full min-w-0 text-left" onClick={() => onSelectRoute(route.id)} type="button">
+                    <button
+                      aria-pressed={selectedRouteId === route.id}
+                      className="min-h-10 w-full min-w-0 rounded-[var(--radius-sm)] text-left"
+                      onClick={() => onSelectRoute(route.id)}
+                      type="button"
+                    >
                       <span className="block truncate font-semibold">
                         {names.get(route.fromItemId) ?? "Unknown place"} → {names.get(route.toItemId) ?? "Unknown place"}
                       </span>

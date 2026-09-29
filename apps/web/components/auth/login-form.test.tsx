@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { authApi } from "@/lib/api/auth";
 import { ApiClientError } from "@/lib/api/errors";
 import { renderWithQueryClient } from "@/test-utils";
+import { expectNoAxeViolations } from "@/test/accessibility";
 
 import { LoginForm } from "./login-form";
 
@@ -24,11 +25,12 @@ describe("LoginForm", () => {
 
   it("renders accessible fields and validates required input", async () => {
     const user = userEvent.setup();
-    renderWithQueryClient(<LoginForm />);
+    const { container } = renderWithQueryClient(<LoginForm />);
 
-    expect(screen.getByRole("textbox", { name: "Email" })).toHaveAttribute(
+    const email = screen.getByRole("textbox", { name: "Email" });
+    expect(email).toHaveAttribute(
       "autocomplete",
-      "email",
+      "username",
     );
     expect(screen.getByLabelText("Password")).toHaveAttribute(
       "autocomplete",
@@ -37,6 +39,8 @@ describe("LoginForm", () => {
     await user.click(screen.getByRole("button", { name: "Sign in" }));
     expect(await screen.findByText("Enter your email address.")).toBeVisible();
     expect(screen.getByText("Enter your password.")).toBeVisible();
+    expect(email).toHaveFocus();
+    await expectNoAxeViolations(container);
   });
 
   it("submits and navigates after a successful login", async () => {

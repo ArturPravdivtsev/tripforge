@@ -1,6 +1,7 @@
 "use client";
 
 import { useSortable } from "@dnd-kit/react/sortable";
+import type { RefCallback } from "react";
 import type { ItineraryItem } from "@tripforge/contracts";
 import { Button } from "@tripforge/ui";
 
@@ -9,8 +10,11 @@ type ItineraryItemCardProps = Readonly<{
   dayId: string;
   index: number;
   item: ItineraryItem;
+  moveActionRef?: RefCallback<HTMLButtonElement>;
+  moveInstructionsId?: string;
   onDelete: (item: ItineraryItem) => void;
   onEdit: (item: ItineraryItem) => void;
+  onMove: (item: ItineraryItem) => void;
   onSelectPlace?: (itemId: string) => void;
   selected?: boolean;
 }>;
@@ -20,8 +24,11 @@ export function ItineraryItemCard({
   dayId,
   index,
   item,
+  moveActionRef,
+  moveInstructionsId,
   onDelete,
   onEdit,
+  onMove,
   onSelectPlace,
   selected,
 }: ItineraryItemCardProps) {
@@ -47,7 +54,8 @@ export function ItineraryItemCard({
         {canEdit ? (
           <Button
             ref={handleRef}
-            aria-label={`Move “${item.title}”`}
+            aria-describedby={moveInstructionsId}
+            aria-label={`Reorder “${item.title}” by drag or keyboard`}
             className="shrink-0 px-2"
             size="sm"
             variant="ghost"
@@ -58,7 +66,7 @@ export function ItineraryItemCard({
 
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-            <h4 className="min-w-0 flex-1 break-words font-semibold">{item.title}</h4>
+            <h3 className="min-w-0 flex-1 break-words font-semibold">{item.title}</h3>
             {item.startTime ? (
               <time className="shrink-0 text-sm font-semibold" dateTime={item.startTime}>
                 {item.startTime}
@@ -94,6 +102,16 @@ export function ItineraryItemCard({
 
         {canEdit ? (
           <div className="flex shrink-0 gap-1">
+            <Button
+              ref={moveActionRef}
+              aria-label={`Move “${item.title}” without dragging`}
+              className="px-2"
+              size="sm"
+              variant="ghost"
+              onClick={() => onMove(item)}
+            >
+              Move
+            </Button>
             <Button
               aria-label={`Edit “${item.title}”`}
               className="px-2"

@@ -62,8 +62,8 @@ describe("DestinationsSection", () => {
     renderWithQueryClient(<DestinationsSection canEdit tripId={tripId} />);
 
     expect(await screen.findByText("Tokyo")).toBeVisible();
-    const moveUp = screen.getAllByRole("button", { name: "Move up" });
-    const moveDown = screen.getAllByRole("button", { name: "Move down" });
+    const moveUp = screen.getAllByRole("button", { name: /Move .+ up/ });
+    const moveDown = screen.getAllByRole("button", { name: /Move .+ down/ });
     expect(moveUp[0]).toBeDisabled();
     expect(moveUp[1]).toBeEnabled();
     expect(moveDown[0]).toBeEnabled();
@@ -149,7 +149,7 @@ describe("DestinationsSection", () => {
     renderWithQueryClient(<DestinationsSection canEdit tripId={tripId} />);
 
     await screen.findByText("Tokyo");
-    await user.click(screen.getAllByRole("button", { name: "Move down" })[0]!);
+    await user.click(screen.getAllByRole("button", { name: /Move .+ down/ })[0]!);
     expect(reorder).toHaveBeenCalledWith(tripId, {
       destinationIds: [destinations[1]!.id, destinations[0]!.id],
     });

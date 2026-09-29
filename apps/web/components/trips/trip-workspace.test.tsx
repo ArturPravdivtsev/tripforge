@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiClientError } from "@/lib/api/errors";
 import { tripsApi } from "@/lib/api/trips";
 import { renderWithQueryClient } from "@/test-utils";
+import { expectNoAxeViolations } from "@/test/accessibility";
 
 import { TripWorkspace } from "./trip-workspace";
 
@@ -32,7 +33,7 @@ describe("TripWorkspace", () => {
     vi.spyOn(tripsApi, "get").mockImplementation(
       () => new Promise((resolve) => (resolveTrip = resolve)),
     );
-    renderWithQueryClient(<TripWorkspace tripId={trip.id} />);
+    const { container } = renderWithQueryClient(<TripWorkspace tripId={trip.id} />);
 
     expect(
       screen.getByRole("status", { name: "Loading trip workspace" }),
@@ -51,6 +52,7 @@ describe("TripWorkspace", () => {
       "href",
       `/trips/${trip.id}/members`,
     );
+    await expectNoAxeViolations(container);
   });
 
   it("gives editors full destination/day controls", async () => {

@@ -71,6 +71,7 @@ export function RegisterForm() {
           aria-describedby={errors.displayName ? "display-name-error" : undefined}
           aria-invalid={Boolean(errors.displayName)}
           disabled={isSubmitting}
+          required
           {...register("displayName")}
         />
         {errors.displayName ? (
@@ -89,6 +90,7 @@ export function RegisterForm() {
           aria-describedby={errors.email ? "register-email-error" : undefined}
           aria-invalid={Boolean(errors.email)}
           disabled={isSubmitting}
+          required
           {...register("email")}
         />
         {errors.email ? (
@@ -104,9 +106,14 @@ export function RegisterForm() {
           id="register-password"
           type="password"
           autoComplete="new-password"
-          aria-describedby="register-password-help register-password-error"
+          aria-describedby={
+            errors.password
+              ? "register-password-help register-password-error"
+              : "register-password-help"
+          }
           aria-invalid={Boolean(errors.password)}
           disabled={isSubmitting}
+          required
           {...register("password")}
         />
         <p id="register-password-help" className="text-sm text-[var(--muted-foreground)]">

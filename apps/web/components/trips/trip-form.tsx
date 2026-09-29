@@ -54,6 +54,7 @@ export function TripForm({
           aria-describedby={errors.name ? "trip-name-error" : undefined}
           aria-invalid={Boolean(errors.name)}
           disabled={isPending}
+          required
           {...register("name")}
         />
         {errors.name ? (

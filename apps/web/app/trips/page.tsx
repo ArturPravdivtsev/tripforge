@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Container } from "@tripforge/ui";
 
 import { AppShell } from "@/components/app-shell";
 import { TripsDashboard } from "@/components/trips/trips-dashboard";
+
+export const metadata: Metadata = { title: "Trips" };
 import { parseTripsPage } from "@/lib/trips/pagination";
 
 type TripsPageProps = Readonly<{

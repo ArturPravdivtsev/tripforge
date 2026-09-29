@@ -64,10 +64,11 @@ export function LoginForm() {
         <Input
           id="login-email"
           type="email"
-          autoComplete="email"
+          autoComplete="username"
           aria-describedby={errors.email ? "login-email-error" : undefined}
           aria-invalid={Boolean(errors.email)}
           disabled={isSubmitting}
+          required
           {...register("email")}
         />
         {errors.email ? (
@@ -86,6 +87,7 @@ export function LoginForm() {
           aria-describedby={errors.password ? "login-password-error" : undefined}
           aria-invalid={Boolean(errors.password)}
           disabled={isSubmitting}
+          required
           {...register("password")}
         />
         {errors.password ? (

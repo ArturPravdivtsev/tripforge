@@ -8,6 +8,7 @@ import {
 } from "@/lib/trips/reservation-form-values";
 import { reservationFormSchema } from "@/lib/trips/reservation-schema";
 import { renderWithQueryClient } from "@/test-utils";
+import { expectNoAxeViolations } from "@/test/accessibility";
 
 import { ReservationForm } from "./reservation-form";
 
@@ -53,7 +54,7 @@ describe("ReservationForm", () => {
   it("shows and requires typed transport fields conditionally", async () => {
     const user = userEvent.setup();
     const submit = vi.fn().mockResolvedValue(undefined);
-    renderWithQueryClient(
+    const { container } = renderWithQueryClient(
       <ReservationForm
         cancelHref="/reservations"
         days={[]}
@@ -71,6 +72,7 @@ describe("ReservationForm", () => {
     expect(await screen.findByText("Enter an origin.")).toBeVisible();
     expect(screen.getByText("Enter a destination.")).toBeVisible();
     expect(submit).not.toHaveBeenCalled();
+    await expectNoAxeViolations(container);
   });
 
   it("does not send stale hidden transport details after kind switching", () => {

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { DragDropProvider, type DragEndEvent } from "@dnd-kit/react";
 import { isSortableOperation, useSortable } from "@dnd-kit/react/sortable";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -41,8 +41,10 @@ type DaysSectionProps = Readonly<{
 }>;
 
 type ReorderVariables = Readonly<{
+  focusItemId?: string;
   optimisticItems: ItineraryItem[];
   request: ReorderItineraryItemsRequest;
+  successMessage?: string;
 }>;
 
 const emptyItemValues: ItineraryItemFormValues = {
@@ -64,9 +66,14 @@ export function DaysSection({
     { dayId: string; item?: ItineraryItem } | undefined
   >();
   const [mutationError, setMutationError] = useState<string>();
+  const [moveAnnouncement, setMoveAnnouncement] = useState("");
+  const [movingItem, setMovingItem] = useState<ItineraryItem>();
   const [pendingDelete, setPendingDelete] = useState<ItineraryItem>();
   const [localGroups, setLocalGroups] = useState<ItineraryGroups>();
+  const addButtonRefs = useRef(new Map<string, HTMLButtonElement>());
   const dragSnapshot = useRef<ItineraryGroups | undefined>(undefined);
+  const moveButtonRefs = useRef(new Map<string, HTMLButtonElement>());
+  const moveInstructionsId = useId();
   const daysKey = tripKeys.days(tripId);
   const itineraryKey = tripKeys.itinerary(tripId);
 
@@ -144,7 +151,7 @@ export function DaysSection({
       queryClient.setQueryData(itineraryKey, optimisticItems);
       return { previousItems };
     },
-    onError: (_error, _variables, context) => {
+    onError: (_error, variables, context) => {
       if (context?.previousItems) {
         queryClient.setQueryData(itineraryKey, context.previousItems);
         if (daysQuery.data) {
@@ -152,10 +159,18 @@ export function DaysSection({
         }
       }
       setMutationError("Unable to save the new itinerary order. Your changes were restored.");
+      setMoveAnnouncement("The itinerary move could not be saved. The previous order was restored.");
+      if (variables.focusItemId) {
+        requestAnimationFrame(() => moveButtonRefs.current.get(variables.focusItemId!)?.focus());
+      }
     },
-    onSuccess: (items) => {
+    onSuccess: (items, variables) => {
       queryClient.setQueryData(itineraryKey, items);
       if (daysQuery.data) setLocalGroups(groupItineraryItems(daysQuery.data, items));
+      if (variables.successMessage) setMoveAnnouncement(variables.successMessage);
+      if (variables.focusItemId) {
+        requestAnimationFrame(() => moveButtonRefs.current.get(variables.focusItemId!)?.focus());
+      }
     },
     onSettled: async () => {
       await queryClient.invalidateQueries({ queryKey: itineraryKey });
@@ -194,9 +209,22 @@ export function DaysSection({
 
   async function removeItem(item: ItineraryItem) {
     setMutationError(undefined);
+    const orderedItems = daysQuery.data
+      ? flattenItineraryGroups(daysQuery.data, groups)
+      : [];
+    const deletedIndex = orderedItems.findIndex(({ id }) => id === item.id);
+    const focusItem =
+      orderedItems[deletedIndex + 1] ?? orderedItems[deletedIndex - 1];
     try {
       await deleteItem.mutateAsync(item.id);
       setPendingDelete(undefined);
+      requestAnimationFrame(() => {
+        if (focusItem) {
+          moveButtonRefs.current.get(focusItem.id)?.focus();
+        } else {
+          addButtonRefs.current.get(item.dayId)?.focus();
+        }
+      });
     } catch {
       setMutationError("Unable to delete the itinerary item. Please try again.");
     }
@@ -210,6 +238,7 @@ export function DaysSection({
       !isSortableOperation(operation)
     ) {
       setLocalGroups(undefined);
+      setMoveAnnouncement(canceled ? "Reordering cancelled." : "The item was not moved.");
       endItineraryReorder(tripId);
       return;
     }
@@ -241,8 +270,49 @@ export function DaysSection({
     setMutationError(undefined);
     setLocalGroups(after);
     reorderItems.mutate({
+      focusItemId: String(source.id),
       optimisticItems: flattenItineraryGroups(daysQuery.data, after),
       request,
+      successMessage: `Dropped itinerary item in Day ${
+        daysQuery.data.findIndex(({ id }) => id === targetDayId) + 1
+      }, position ${source.index + 1}.`,
+    });
+  }
+
+  function moveWithoutDragging(
+    item: ItineraryItem,
+    targetDayId: string,
+    targetIndex: number,
+  ) {
+    if (!daysQuery.data) return;
+    const sourceItems = groups[item.dayId] ?? [];
+    const sourceIndex = sourceItems.findIndex(({ id }) => id === item.id);
+    if (sourceIndex < 0) return;
+    const after = moveItineraryItem(
+      groups,
+      item.dayId,
+      sourceIndex,
+      targetDayId,
+      targetIndex,
+    );
+    const request = buildItineraryReorderRequest(groups, after);
+    setMovingItem(undefined);
+    if (request.days.length === 0) {
+      requestAnimationFrame(() => moveButtonRefs.current.get(item.id)?.focus());
+      return;
+    }
+
+    beginItineraryReorder(tripId);
+    dragSnapshot.current = groups;
+    setMutationError(undefined);
+    setLocalGroups(after);
+    const targetDayNumber =
+      daysQuery.data.findIndex(({ id }) => id === targetDayId) + 1;
+    reorderItems.mutate({
+      focusItemId: item.id,
+      optimisticItems: flattenItineraryGroups(daysQuery.data, after),
+      request,
+      successMessage: `Moved “${item.title}” to Day ${targetDayNumber}, position ${targetIndex + 1}.`,
     });
   }
 
@@ -252,14 +322,19 @@ export function DaysSection({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Itinerary</CardTitle>
+        <CardTitle as="h2">Itinerary</CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
+        <p className="sr-only" id={moveInstructionsId}>
+          Press Space to pick up this item, use the arrow keys to choose a position, then press Space to drop. Use the adjacent Move button for a non-drag alternative.
+        </p>
+        <p aria-live="polite" className="sr-only">{moveAnnouncement}</p>
         {mutationError ? <Alert role="alert">{mutationError}</Alert> : null}
         {isPending ? (
           <div aria-label="Loading itinerary" className="grid gap-4 sm:grid-cols-2" role="status">
-            <div className="h-48 animate-pulse rounded-[var(--radius-md)] bg-[var(--muted)]" />
-            <div className="h-48 animate-pulse rounded-[var(--radius-md)] bg-[var(--muted)]" />
+            <span className="sr-only">Loading itinerary…</span>
+            <div aria-hidden="true" className="h-48 animate-pulse rounded-[var(--radius-md)] bg-[var(--muted)]" />
+            <div aria-hidden="true" className="h-48 animate-pulse rounded-[var(--radius-md)] bg-[var(--muted)]" />
           </div>
         ) : isError ? (
           <div className="space-y-3">
@@ -291,10 +366,29 @@ export function DaysSection({
         ) : (
           <DragDropProvider
             onDragEnd={handleDragEnd}
-            onDragStart={() => {
+            onDragOver={({ operation }) => {
+              if (!isSortableOperation(operation)) return;
+              const source = operation.source;
+              if (!source?.group) return;
+              const dayNumber =
+                daysQuery.data.findIndex(({ id }) => id === String(source.group)) + 1;
+              if (dayNumber > 0) {
+                setMoveAnnouncement(
+                  `Moved to position ${source.index + 1} in Day ${dayNumber}.`,
+                );
+              }
+            }}
+            onDragStart={({ operation }) => {
               beginItineraryReorder(tripId);
               dragSnapshot.current = groups;
               setLocalGroups(groups);
+              const itemId = String(operation.source?.id ?? "");
+              const item = flattenItineraryGroups(daysQuery.data, groups).find(
+                ({ id }) => id === itemId,
+              );
+              setMoveAnnouncement(
+                item ? `Picked up “${item.title}”.` : "Picked up itinerary item.",
+              );
             }}
           >
             <ol className="grid items-start gap-4 lg:grid-cols-2">
@@ -327,6 +421,10 @@ export function DaysSection({
                       </div>
                       {canEdit ? (
                         <Button
+                          ref={(element) => {
+                            if (element) addButtonRefs.current.set(day.id, element);
+                            else addButtonRefs.current.delete(day.id);
+                          }}
                           aria-label={`Add item to Day ${index + 1}`}
                           className="shrink-0"
                           size="sm"
@@ -383,16 +481,37 @@ export function DaysSection({
                               dayId={day.id}
                               index={itemIndex}
                               item={item}
+                              moveActionRef={(element) => {
+                                if (element) moveButtonRefs.current.set(item.id, element);
+                                else moveButtonRefs.current.delete(item.id);
+                              }}
+                              moveInstructionsId={moveInstructionsId}
                               selected={
                                 selectedMapPoint?.type === "itinerary" &&
                                 selectedMapPoint.id === item.id
                               }
                               onDelete={setPendingDelete}
                               onEdit={(selected) => setActiveForm({ dayId: day.id, item: selected })}
+                              onMove={setMovingItem}
                               onSelectPlace={(id) =>
                                 onSelectMapPoint({ id, type: "itinerary" })
                               }
                             />
+                            {movingItem?.id === item.id ? (
+                              <MoveItineraryItem
+                                days={daysQuery.data}
+                                groups={groups}
+                                item={item}
+                                pending={reorderItems.isPending}
+                                onCancel={() => {
+                                  setMovingItem(undefined);
+                                  requestAnimationFrame(() => moveButtonRefs.current.get(item.id)?.focus());
+                                }}
+                                onMove={(targetDayId, targetIndex) =>
+                                  moveWithoutDragging(item, targetDayId, targetIndex)
+                                }
+                              />
+                            ) : null}
                             {pendingDelete?.id === item.id ? (
                               <div
                                 aria-label={`Confirm deletion of ${item.title}`}
@@ -446,6 +565,94 @@ export function DaysSection({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function MoveItineraryItem({
+  days,
+  groups,
+  item,
+  onCancel,
+  onMove,
+  pending,
+}: Readonly<{
+  days: readonly TripDay[];
+  groups: ItineraryGroups;
+  item: ItineraryItem;
+  onCancel: () => void;
+  onMove: (targetDayId: string, targetIndex: number) => void;
+  pending: boolean;
+}>) {
+  const id = useId();
+  const daySelectRef = useRef<HTMLSelectElement>(null);
+  const initialIndex = (groups[item.dayId] ?? []).findIndex(({ id: itemId }) => itemId === item.id);
+  const [targetDayId, setTargetDayId] = useState(item.dayId);
+  const [targetIndex, setTargetIndex] = useState(Math.max(0, initialIndex));
+  const targetCount = (groups[targetDayId] ?? []).length;
+  const positionCount = targetDayId === item.dayId ? targetCount : targetCount + 1;
+
+  useEffect(() => {
+    daySelectRef.current?.focus();
+  }, []);
+
+  return (
+    <fieldset className="space-y-3 rounded-[var(--radius-md)] border border-[var(--primary)] bg-[var(--surface)] p-3">
+      <legend className="px-1 text-sm font-semibold">
+        Move “{item.title}” without dragging
+      </legend>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1">
+          <Label htmlFor={`${id}-day`}>Target Day</Label>
+          <select
+            ref={daySelectRef}
+            className={selectClasses}
+            disabled={pending}
+            id={`${id}-day`}
+            value={targetDayId}
+            onChange={(event) => {
+              setTargetDayId(event.target.value);
+              setTargetIndex(0);
+            }}
+          >
+            {days.map((day, index) => (
+              <option key={day.id} value={day.id}>
+                Day {index + 1} · {formatCalendarDate(day.date)}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor={`${id}-position`}>Target position</Label>
+          <select
+            className={selectClasses}
+            disabled={pending}
+            id={`${id}-position`}
+            value={targetIndex}
+            onChange={(event) => setTargetIndex(Number(event.target.value))}
+          >
+            {Array.from({ length: Math.max(positionCount, 1) }, (_, index) => (
+              <option key={index} value={index}>
+                Position {index + 1}
+                {index === 0 && positionCount > 1 ? " (first)" : ""}
+                {index === positionCount - 1 && positionCount > 1 ? " (last)" : ""}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button disabled={pending} size="sm" variant="ghost" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button
+          disabled={pending}
+          size="sm"
+          onClick={() => onMove(targetDayId, targetIndex)}
+        >
+          {pending ? "Moving…" : "Move item"}
+        </Button>
+      </div>
+    </fieldset>
   );
 }
 

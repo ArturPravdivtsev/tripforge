@@ -20,7 +20,7 @@ export function TripCard({ isDeleting, onDelete, trip }: TripCardProps) {
     <Card className="flex min-w-0 flex-col">
       <CardHeader className="min-w-0 flex-1">
         <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
-          <CardTitle className="min-w-0 break-words">{trip.name}</CardTitle>
+          <CardTitle as="h2" className="min-w-0 break-words">{trip.name}</CardTitle>
           {trip.accessRole !== "owner" ? (
             <span className="rounded-full bg-[var(--surface-muted)] px-2.5 py-1 text-xs font-semibold capitalize text-[var(--muted-foreground)]">
               {trip.accessRole}
@@ -59,27 +59,31 @@ export function TripCard({ isDeleting, onDelete, trip }: TripCardProps) {
         ) : (
           <div className="flex flex-wrap gap-2">
             <Link
-              className="inline-flex min-h-9 items-center justify-center rounded-[var(--radius-md)] bg-[var(--primary)] px-3 py-1.5 text-sm font-semibold text-[var(--primary-foreground)] transition hover:brightness-95"
+              aria-label={`Open ${trip.name}`}
+              className="inline-flex min-h-10 items-center justify-center rounded-[var(--radius-md)] bg-[var(--primary)] px-3 py-1.5 text-sm font-semibold text-[var(--primary-foreground)] transition hover:brightness-95"
               href={`/trips/${trip.id}`}
             >
               Open
             </Link>
             {trip.accessRole !== "viewer" ? (
               <Link
-                className="inline-flex min-h-9 items-center justify-center rounded-[var(--radius-md)] bg-[var(--surface-muted)] px-3 py-1.5 text-sm font-semibold transition hover:bg-[var(--muted)]"
+                aria-label={`Edit ${trip.name}`}
+                className="inline-flex min-h-10 items-center justify-center rounded-[var(--radius-md)] bg-[var(--surface-muted)] px-3 py-1.5 text-sm font-semibold transition hover:bg-[var(--muted)]"
                 href={`/trips/${trip.id}/edit`}
               >
                 Edit
               </Link>
             ) : null}
             <Link
-              className="inline-flex min-h-9 items-center justify-center rounded-[var(--radius-md)] bg-[var(--surface-muted)] px-3 py-1.5 text-sm font-semibold transition hover:bg-[var(--muted)]"
+              aria-label={`Members for ${trip.name}`}
+              className="inline-flex min-h-10 items-center justify-center rounded-[var(--radius-md)] bg-[var(--surface-muted)] px-3 py-1.5 text-sm font-semibold transition hover:bg-[var(--muted)]"
               href={`/trips/${trip.id}/members`}
             >
               Members
             </Link>
             {trip.accessRole === "owner" ? (
               <Button
+                aria-label={`Delete ${trip.name}`}
                 size="sm"
                 variant="ghost"
                 onClick={() => setIsConfirming(true)}

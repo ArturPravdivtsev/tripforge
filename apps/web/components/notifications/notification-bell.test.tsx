@@ -25,7 +25,9 @@ describe("NotificationBell", () => {
     renderWithQueryClient(<NotificationBell />);
 
     const link = await screen.findByRole("link", {
-      name: count > 0 ? `Notifications, ${count} unread` : "Notifications",
+      name: count > 0
+        ? `Notifications, ${count} unread`
+        : "Notifications, no unread notifications",
     });
     expect(link).toHaveAttribute("href", "/notifications");
     if (badge) expect(screen.getByText(badge)).toBeVisible();

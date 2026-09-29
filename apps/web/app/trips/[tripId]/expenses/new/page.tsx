@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import {
   Card,
   CardContent,
@@ -10,6 +11,8 @@ import {
 import { AppShell } from "@/components/app-shell";
 import { NewExpenseScreen } from "@/components/trips/new-expense-screen";
 
+export const metadata: Metadata = { title: "New expense" };
+
 type NewExpensePageProps = Readonly<{
   params: Promise<{ tripId: string }>;
 }>;
@@ -21,7 +24,7 @@ export default async function NewExpensePage({ params }: NewExpensePageProps) {
       <Container className="py-8 sm:py-12">
         <Card className="mx-auto max-w-4xl">
           <CardHeader>
-            <CardTitle>New expense</CardTitle>
+            <CardTitle as="h1">New expense</CardTitle>
             <CardDescription>
               Record an exact shared cost. TripForge never converts currencies.
             </CardDescription>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -35,6 +35,18 @@ export function TripRealtimeBridge({
   const router = useRouter();
   const [presence, setPresence] = useState<TripPresenceUser[]>([]);
   const [status, setStatus] = useState<RealtimeStatus>("reconnecting");
+  const [statusAnnouncement, setStatusAnnouncement] = useState("");
+  const previousStatus = useRef<RealtimeStatus>("reconnecting");
+
+  const updateStatus = useCallback((nextStatus: RealtimeStatus) => {
+    if (nextStatus === "unavailable") {
+      setStatusAnnouncement("Realtime collaboration is unavailable.");
+    } else if (nextStatus === "live" && previousStatus.current === "unavailable") {
+      setStatusAnnouncement("Realtime collaboration has been restored.");
+    }
+    previousStatus.current = nextStatus;
+    setStatus(nextStatus);
+  }, []);
 
   useEffect(() => {
     const socket = getRealtimeSocket();
@@ -47,15 +59,15 @@ export function TripRealtimeBridge({
     };
     const join = () => {
       if (!active) return;
-      setStatus("reconnecting");
+      updateStatus("reconnecting");
       socket.emit(TRIP_REALTIME_EVENTS.join, { tripId }, (response) => {
         if (!active) return;
         if (!response.ok) {
-          setStatus("unavailable");
+          updateStatus("unavailable");
           if (response.error.code === "TRIP_ACCESS_DENIED") redirectFromTrip();
           return;
         }
-        setStatus("live");
+        updateStatus("live");
         void invalidateRealtimeResources(
           queryClient,
           tripId,
@@ -64,13 +76,13 @@ export function TripRealtimeBridge({
       });
     };
     const onDisconnect = () => {
-      if (active) setStatus("reconnecting");
+      if (active) updateStatus("reconnecting");
     };
     const onConnectError = () => {
-      if (active) setStatus("unavailable");
+      if (active) updateStatus("unavailable");
     };
     const onReconnectAttempt = () => {
-      if (active) setStatus("reconnecting");
+      if (active) updateStatus("reconnecting");
     };
     const onInvalidate = (raw: unknown) => {
       const parsed = tripInvalidateEventSchema.safeParse(raw);
@@ -126,13 +138,16 @@ export function TripRealtimeBridge({
       socket.off(TRIP_REALTIME_EVENTS.deleted, onDeleted);
       socket.off(TRIP_REALTIME_EVENTS.accessRevoked, onAccessRevoked);
     };
-  }, [queryClient, router, tripId]);
+  }, [queryClient, router, tripId, updateStatus]);
 
   return (
     <>
       {children}
+      <p aria-live="polite" className="sr-only">
+        {statusAnnouncement}
+      </p>
       <aside
-        aria-live="polite"
+        aria-label="Collaboration status"
         className="fixed bottom-3 right-3 z-40 max-w-[calc(100vw-1.5rem)] rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs shadow-sm sm:bottom-4 sm:right-4"
       >
         <div className="flex min-w-0 items-center gap-2">

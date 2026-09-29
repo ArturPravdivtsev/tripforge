@@ -218,14 +218,15 @@ export function DestinationsSection({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Destinations</CardTitle>
+        <CardTitle as="h2">Destinations</CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
         {mutationError ? <Alert role="alert">{mutationError}</Alert> : null}
         {destinationsQuery.isPending ? (
           <div aria-label="Loading destinations" className="space-y-3" role="status">
-            <div className="h-14 animate-pulse rounded-[var(--radius-md)] bg-[var(--muted)]" />
-            <div className="h-14 animate-pulse rounded-[var(--radius-md)] bg-[var(--muted)]" />
+            <span className="sr-only">Loading destinations…</span>
+            <div aria-hidden="true" className="h-14 animate-pulse rounded-[var(--radius-md)] bg-[var(--muted)]" />
+            <div aria-hidden="true" className="h-14 animate-pulse rounded-[var(--radius-md)] bg-[var(--muted)]" />
           </div>
         ) : destinationsQuery.isError ? (
           <div className="space-y-3">
@@ -306,6 +307,7 @@ export function DestinationsSection({
             {canEdit ? (
               <form
                 className="space-y-3 border-t border-[var(--border)] pt-5"
+                noValidate
                 onSubmit={(event) => {
                   event.preventDefault();
                   void addDestination();
@@ -318,13 +320,15 @@ export function DestinationsSection({
                     value={newName}
                     disabled={createDestination.isPending}
                     aria-invalid={Boolean(formError)}
+                    aria-describedby={formError ? "new-destination-error" : undefined}
+                    required
                     onChange={(event) => setNewName(event.target.value)}
                   />
                   <Button type="submit" disabled={createDestination.isPending}>
                     {createDestination.isPending ? "Adding…" : "Add destination"}
                   </Button>
                 </div>
-                {formError ? <p className="text-sm text-[var(--danger)]">{formError}</p> : null}
+                {formError ? <p className="text-sm text-[var(--danger)]" id="new-destination-error">{formError}</p> : null}
               </form>
             ) : null}
 
@@ -425,9 +429,11 @@ function DestinationRow({
             value={editingName}
             disabled={isPending}
             aria-invalid={Boolean(formError)}
+            aria-describedby={formError ? `destination-${destination.id}-error` : undefined}
+            required
             onChange={(event) => onChangeName(event.target.value)}
           />
-          {formError ? <p className="text-sm text-[var(--danger)]">{formError}</p> : null}
+          {formError ? <p className="text-sm text-[var(--danger)]" id={`destination-${destination.id}-error`}>{formError}</p> : null}
           <div className="flex flex-wrap gap-2">
             <Button size="sm" disabled={isPending} onClick={onSave}>Save</Button>
             <Button size="sm" variant="secondary" disabled={isPending} onClick={onCancelEdit}>
@@ -494,10 +500,10 @@ function DestinationRow({
               ) : null}
               {canEdit ? (
                 <>
-              <Button size="sm" variant="secondary" disabled={isFirst || isPending} onClick={() => onMove(-1)}>
+              <Button aria-label={`Move ${destination.name} up`} size="sm" variant="secondary" disabled={isFirst || isPending} onClick={() => onMove(-1)}>
                 Move up
               </Button>
-              <Button size="sm" variant="secondary" disabled={isLast || isPending} onClick={() => onMove(1)}>
+              <Button aria-label={`Move ${destination.name} down`} size="sm" variant="secondary" disabled={isLast || isPending} onClick={() => onMove(1)}>
                 Move down
               </Button>
               <Button size="sm" variant="ghost" disabled={isPending} onClick={onEdit}>Edit</Button>

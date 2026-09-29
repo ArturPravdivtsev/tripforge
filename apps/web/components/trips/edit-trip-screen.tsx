@@ -146,10 +146,11 @@ export function EditTripScreen({ tripId }: EditTripScreenProps) {
 function TripFormSkeleton() {
   return (
     <div aria-label="Loading trip" className="space-y-5" role="status">
-      <div className="h-20 animate-pulse rounded-[var(--radius-md)] bg-[var(--muted)]" />
+      <span className="sr-only">Loading trip…</span>
+      <div aria-hidden="true" className="h-20 animate-pulse rounded-[var(--radius-md)] bg-[var(--muted)]" />
       <div className="grid gap-5 sm:grid-cols-2">
-        <div className="h-20 animate-pulse rounded-[var(--radius-md)] bg-[var(--muted)]" />
-        <div className="h-20 animate-pulse rounded-[var(--radius-md)] bg-[var(--muted)]" />
+        <div aria-hidden="true" className="h-20 animate-pulse rounded-[var(--radius-md)] bg-[var(--muted)]" />
+        <div aria-hidden="true" className="h-20 animate-pulse rounded-[var(--radius-md)] bg-[var(--muted)]" />
       </div>
     </div>
   );

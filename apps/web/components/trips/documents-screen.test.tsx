@@ -7,6 +7,7 @@ import { tripsApi } from "@/lib/api/trips";
 import { uploadFile } from "@/lib/documents/upload-file";
 import { tripKeys } from "@/lib/trips/query-keys";
 import { renderWithQueryClient } from "@/test-utils";
+import { expectNoAxeViolations } from "@/test/accessibility";
 
 import { DocumentsScreen } from "./documents-screen";
 
@@ -77,12 +78,13 @@ describe("DocumentsScreen", () => {
   });
 
   it("renders private document metadata as responsive cards", async () => {
-    renderWithQueryClient(<DocumentsScreen tripId={trip.id} />);
+    const { container } = renderWithQueryClient(<DocumentsScreen tripId={trip.id} />);
     expect(await screen.findByText("Beijing flight ticket")).toBeVisible();
     expect(screen.getByText("ticket.pdf")).toBeVisible();
     expect(screen.getByText("PDF · 42 KB")).toBeVisible();
     expect(screen.getByText("Uploaded by Artur")).toBeVisible();
     expect(screen.getByText("Trip-level document")).toBeVisible();
+    await expectNoAxeViolations(container);
   });
 
   it("renders loading and empty states", async () => {
@@ -103,9 +105,9 @@ describe("DocumentsScreen", () => {
     renderWithQueryClient(<DocumentsScreen tripId={trip.id} />);
     expect(await screen.findByText("Beijing flight ticket")).toBeVisible();
     expect(screen.queryByText("Upload document")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Delete" })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Download" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: /Edit / })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Delete / })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Download / })).toBeVisible();
     await waitFor(() => {
       expect(tripsApi.listItineraryItems).toHaveBeenCalled();
       expect(tripsApi.listReservations).toHaveBeenCalled();
@@ -279,7 +281,7 @@ describe("DocumentsScreen", () => {
         (element) => element.tagName === "P",
       ),
     ).toBe(true);
-    await user.click(screen.getByRole("button", { name: "Edit" }));
+    await user.click(screen.getByRole("button", { name: /Edit / }));
     const title = screen.getAllByLabelText("Title").at(-1)!;
     await user.clear(title);
     await user.type(title, "Dinner confirmation");
@@ -300,7 +302,7 @@ describe("DocumentsScreen", () => {
       new TypeError("signing detail"),
     );
     renderWithQueryClient(<DocumentsScreen tripId={trip.id} />);
-    await user.click(await screen.findByRole("button", { name: "Download" }));
+    await user.click(await screen.findByRole("button", { name: /Download / }));
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Unable to create a download link",
     );
@@ -312,7 +314,7 @@ describe("DocumentsScreen", () => {
     vi.spyOn(window, "confirm").mockReturnValue(true);
     const remove = vi.spyOn(tripsApi, "removeDocument").mockResolvedValue();
     renderWithQueryClient(<DocumentsScreen tripId={trip.id} />);
-    await user.click(await screen.findByRole("button", { name: "Delete" }));
+    await user.click(await screen.findByRole("button", { name: /Delete / }));
     await waitFor(() => expect(remove).toHaveBeenCalledWith(trip.id, document.id));
   });
 });
