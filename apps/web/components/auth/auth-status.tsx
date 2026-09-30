@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -7,10 +8,17 @@ import type { AuthUser } from "@tripforge/contracts";
 import { Button } from "@tripforge/ui";
 
 import { NotificationBell } from "@/components/notifications/notification-bell";
-import { AuthenticatedRealtimeBridge } from "@/components/realtime/authenticated-realtime-bridge";
 import { authApi } from "@/lib/api/auth";
 import { ApiClientError } from "@/lib/api/errors";
 import { clearAuthenticatedCache } from "@/lib/auth/cache";
+
+const AuthenticatedRealtimeBridge = dynamic(
+  () =>
+    import("@/components/realtime/authenticated-realtime-bridge").then(
+      ({ AuthenticatedRealtimeBridge: Bridge }) => Bridge,
+    ),
+  { ssr: false },
+);
 
 type AuthState =
   | { status: "loading" }

@@ -27,6 +27,8 @@ import type {
   TripMapSelection,
 } from "@/lib/maps/trip-map-points";
 
+import "maplibre-gl/dist/maplibre-gl.css";
+
 setWorkerUrl(
   new URL("maplibre-gl/dist/maplibre-gl-worker.mjs", import.meta.url).toString(),
 );

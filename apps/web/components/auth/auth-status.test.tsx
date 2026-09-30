@@ -11,7 +11,7 @@ import { renderWithQueryClient } from "@/test-utils";
 import { AuthStatus } from "./auth-status";
 
 vi.mock("@/components/realtime/authenticated-realtime-bridge", () => ({
-  AuthenticatedRealtimeBridge: () => null,
+  AuthenticatedRealtimeBridge: () => <span data-testid="realtime-bridge" />,
 }));
 
 vi.mock("@/components/notifications/notification-bell", () => ({
@@ -30,7 +30,9 @@ describe("AuthStatus", () => {
     renderWithQueryClient(<AuthStatus />);
 
     expect(screen.getByRole("status")).toHaveTextContent("Checking session…");
+    expect(screen.queryByTestId("realtime-bridge")).not.toBeInTheDocument();
     expect(await screen.findByText("Arthur")).toBeVisible();
+    expect(await screen.findByTestId("realtime-bridge")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Logout" })).toBeVisible();
   });
 
@@ -42,6 +44,7 @@ describe("AuthStatus", () => {
 
     expect(await screen.findByRole("link", { name: "Sign in" })).toBeVisible();
     expect(screen.getByRole("link", { name: "Create account" })).toBeVisible();
+    expect(screen.queryByTestId("realtime-bridge")).not.toBeInTheDocument();
   });
 
   it("logs out and transitions to guest state", async () => {

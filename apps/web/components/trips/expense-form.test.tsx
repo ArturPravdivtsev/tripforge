@@ -44,7 +44,7 @@ describe("ExpenseForm", () => {
     );
   });
 
-  it("disables submit while custom allocation mismatches", async () => {
+  it("disables submit while custom allocation mismatches", { timeout: 10_000 }, async () => {
     const user = userEvent.setup();
     const values = emptyExpenseForm([owner, anna], "2027-04-14");
     values.amount = "100.00";

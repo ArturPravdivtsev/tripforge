@@ -1,0 +1,14 @@
+{
+  "limits": {
+    "css.rawBytes": 120000,
+    "javascript.rawBytes": 2700000,
+    "largestJavaScriptFiles.0.rawBytes": 620000,
+    "mapLazy.rawBytes": 1150000,
+    "mapLazyCss.rawBytes": 90000,
+    "mapLeakRoutes.length": 0,
+    "nonMapRouteMaxInitialBytes": 670000,
+    "nonMapRouteMaxInitialCssBytes": 32000,
+    "sharedInitial.rawBytes": 545000,
+    "sharedInitialCss.rawBytes": 32000
+  }
+}

@@ -52,6 +52,8 @@ pnpm typecheck  # Type-check all workspaces
 pnpm test       # Run workspace tests
 pnpm test:a11y  # Run representative accessibility component checks
 pnpm test:coverage # Run tests and generate coverage reports
+pnpm perf:bundle # Build web and enforce deterministic bundle budgets
+pnpm perf:db     # Profile an isolated deterministic PostgreSQL fixture
 pnpm check      # Run lint, typecheck, tests, and build
 ```
 
@@ -111,6 +113,9 @@ See [Trip-wide search](docs/search.md) for indexed fields, ranking, access scope
 browser behavior, and intentionally deferred search features.
 See [Accessibility](docs/accessibility.md) for the WCAG 2.2 AA target, automated
 coverage, implementation decisions, known limitations, and manual QA checklist.
+See [Performance](docs/performance.md) for the measured bundle baseline, Core Web
+Vitals targets, database fixture and plans, rejected optimizations, and repeatable
+profiling commands.
 
 The separate worker validates the database/S3 settings above plus `REDIS_URL`;
 it does not require `WEB_ORIGIN`. The API opens an independently configured
