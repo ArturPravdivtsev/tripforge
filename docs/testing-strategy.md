@@ -241,6 +241,22 @@ The Community image also does not provide snapshot persistence. Restart QA for
 S3 bytes therefore requires the authenticated `2026.08.3` Compose runtime; the
 database persistence path remains independently testable without that token.
 
+## GitHub Actions mapping
+
+| Local command | Mandatory CI ownership |
+| --- | --- |
+| `pnpm ci:quality` | `CI / Quality` deterministic source gates |
+| `pnpm ci:security` | `CI / Security` dependency, secret, and security regressions |
+| `pnpm ci:integration` | `CI / Integration` Testcontainers services |
+| `pnpm db:migrate` twice + migration verifier | `CI / Database` fresh PostgreSQL 18.6 |
+| Compose config, production image builds, Trivy, smoke | `CI / Docker` |
+| all five results | stable `CI / Gate` required check |
+
+`pnpm ci:verify` approximates the mandatory non-container gates locally.
+Hosted Docker publication and GitHub-plan features still require a real workflow
+run; browser/manual accessibility, security, and performance debts remain
+manual and are not reclassified by CI.
+
 ## Observability testing layers
 
 `pnpm observability:test` covers production JSON parsing/redaction, request ID,

@@ -5,6 +5,12 @@
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
+    "ci:integration": "pnpm test:integration",
+    "ci:quality": "pnpm db:check && pnpm lint && pnpm typecheck && pnpm test && pnpm test:coverage && pnpm test:a11y && pnpm build && pnpm perf:bundle:check && pnpm observability:config:check && pnpm observability:test && pnpm peers check && pnpm ci:workflow:test && pnpm ci:workflow:check",
+    "ci:security": "pnpm security:audit && pnpm security:secrets && pnpm test:security",
+    "ci:verify": "pnpm db:generate && git diff --exit-code -- apps/api/drizzle && pnpm ci:quality && pnpm ci:security && git diff --check",
+    "ci:workflow:check": "node scripts/ci/workflow-policy.mjs",
+    "ci:workflow:test": "node --test scripts/ci/*.test.mjs",
     "db:check": "pnpm --filter @tripforge/api db:check",
     "db:generate": "pnpm --filter @tripforge/api db:generate",
     "db:migrate": "pnpm --filter @tripforge/api db:migrate",
@@ -33,7 +39,8 @@
   "devDependencies": {
     "eslint": "9.39.5",
     "turbo": "2.10.12",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "yaml": "2.9.0"
   },
   "engines": {
     "node": ">=24.0.0 <25"

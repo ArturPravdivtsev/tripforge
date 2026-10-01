@@ -327,3 +327,11 @@ bounded 3-second exporter timeouts, 10 HTTP histogram buckets, production 10%
 parent-based trace sampling, placeholder-only PG reporting, no Redis command
 instrumentation, and small structured log fields. Stage 25 browser bundle budgets
 remain authoritative; server-only Pino/OTel packages must not enter static chunks.
+
+## CI enforcement
+
+`CI / Quality` runs the production Webpack build and
+`pnpm perf:bundle:check`; all ten Stage 25 bundle budgets are merge-blocking.
+GitHub Actions does not replace the deferred real-browser profiling checklist or
+introduce a speculative container-size budget. Trusted delivery reports image
+sizes for trend review without failing on an unmeasured threshold.

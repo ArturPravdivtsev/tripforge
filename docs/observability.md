@@ -262,3 +262,12 @@ telemetry backend and retention policy, authenticated/private UI placement,
 Alertmanager/incident routing, production dashboards, CloudWatch or equivalent
 integration, and vendor trace-to-log deep links. These are explicit deployment
 decisions, not hidden dependencies of the application.
+
+## CI validation
+
+`CI / Quality` runs `pnpm observability:config:check` and
+`pnpm observability:test`; Collector, Prometheus, rules, safe logging, traces,
+and metrics regressions are merge-blocking. `CI / Docker` also validates the
+base plus observability Compose model. It does not start the full telemetry
+stack for every unit job, and production images must smoke-start with
+`OTEL_ENABLED=false`.

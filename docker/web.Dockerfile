@@ -1,9 +1,10 @@
-FROM node:24-bookworm-slim AS base
+FROM node:24.21.0-bookworm-slim@sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6 AS base
 
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 
-RUN corepack enable
+RUN corepack enable \
+  && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 WORKDIR /workspace
 
@@ -34,14 +35,23 @@ COPY . .
 
 RUN pnpm --filter @tripforge/web... build
 
-FROM node:24-bookworm-slim AS runtime
+FROM node:24.21.0-bookworm-slim@sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6 AS runtime
+
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 WORKDIR /app
+
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_MAPTILER_KEY
+ARG NEXT_PUBLIC_S3_UPLOAD_ORIGIN
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_MAPTILER_KEY=$NEXT_PUBLIC_MAPTILER_KEY
+ENV NEXT_PUBLIC_S3_UPLOAD_ORIGIN=$NEXT_PUBLIC_S3_UPLOAD_ORIGIN
 
 COPY --from=builder --chown=node:node /workspace/apps/web/.next/standalone ./
 COPY --from=builder --chown=node:node /workspace/apps/web/.next/static ./apps/web/.next/static

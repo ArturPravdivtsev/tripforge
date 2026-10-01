@@ -15,7 +15,7 @@
     "lint": "eslint .",
     "perf:db": "node scripts/performance/db-performance.mjs",
     "test": "vitest run",
-    "test:integration": "vitest run --config vitest.integration.config.mts",
+    "test:integration": "vitest run --config vitest.integration.config.mts --no-file-parallelism",
     "test:observability": "vitest run src/observability test/observability.e2e-spec.ts",
     "test:security": "vitest run src/security src/auth/password src/auth/session src/realtime/realtime.spec.ts src/storage/s3-storage.service.spec.ts test/browser-policy.e2e-spec.ts test/application.e2e-spec.ts && vitest run --config vitest.integration.config.mts --no-file-parallelism test/security.integration-spec.ts test/auth.integration-spec.ts test/realtime.integration-spec.ts",
     "test:coverage": "vitest run --coverage",

@@ -305,3 +305,17 @@ Prometheus and Jaeger are trusted local infrastructure, not public product
 routes. The application exposes no `/metrics` or debug-error endpoint. Future
 production placement must add private networking, UI authentication, transport
 policy, and explicit retention; telemetry context is never authorization input.
+
+## CI/CD supply-chain controls
+
+All external workflow actions use reviewed immutable 40-character SHAs and are
+maintained through weekly Dependabot proposals. Pull requests execute with
+read-only repository permissions, no registry login or production secrets, and
+no explicit write-capable cache mode. Only a trusted main/version-tag publisher
+receives ephemeral GHCR and optional attestation scopes after `CI / Gate`.
+
+Candidate web, API, and migration images are scanned with Trivy for
+HIGH/CRITICAL findings before merge. Trusted artifacts include BuildKit SBOM and
+max provenance and are promoted by digest. No PR artifact is passed through a
+`workflow_run` privilege bridge. See [CI/CD](./ci-cd.md) for the full trust
+boundary and repository settings.

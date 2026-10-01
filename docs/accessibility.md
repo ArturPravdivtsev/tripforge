@@ -173,3 +173,7 @@ This is a practical remediation map, not an exhaustive legal conformance report.
 Accessibility changes do not alter RBAC, session/CSRF policy, presigned URLs,
 REST contracts, or persisted data. Accessible names contain ordinary visible
 resource names only—never tokens, confirmation codes, or signed URLs.
+
+`pnpm test:a11y` is a mandatory `CI / Quality` gate and therefore
+merge-blocking through `CI / Gate`. JSDOM/axe coverage does not change the
+explicit status of the real-browser and assistive-technology manual checklist.

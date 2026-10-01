@@ -1,9 +1,10 @@
-FROM node:24-bookworm-slim AS base
+FROM node:24.21.0-bookworm-slim@sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6 AS base
 
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 
-RUN corepack enable
+RUN corepack enable \
+  && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 WORKDIR /workspace
 
@@ -19,18 +20,6 @@ COPY packages/ui/package.json ./packages/ui/package.json
 
 RUN --mount=type=cache,id=tripforge-pnpm,target=/pnpm/store \
   pnpm install --frozen-lockfile
-
-FROM dependencies AS migration
-
-COPY . .
-
-WORKDIR /workspace/apps/api
-
-ENV NODE_ENV=production
-
-USER node
-
-CMD ["./node_modules/.bin/drizzle-kit", "migrate"]
 
 FROM dependencies AS builder
 
@@ -51,7 +40,9 @@ COPY packages/ui/package.json ./packages/ui/package.json
 RUN --mount=type=cache,id=tripforge-pnpm,target=/pnpm/store \
   pnpm install --frozen-lockfile --prod --filter @tripforge/api
 
-FROM node:24-bookworm-slim AS runtime
+FROM node:24.21.0-bookworm-slim@sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6 AS runtime
+
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 WORKDIR /app/apps/api
 
@@ -69,3 +60,9 @@ USER node
 EXPOSE 4000
 
 CMD ["node", "dist/main.js"]
+
+FROM runtime AS migration
+
+COPY --chown=node:node apps/api/drizzle ./drizzle
+
+CMD ["node", "dist/migrate.js"]

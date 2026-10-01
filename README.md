@@ -64,12 +64,22 @@ pnpm observability:test # Run logger, privacy, tracing, metrics, and request tes
 pnpm observability:config:check # Validate Collector, Prometheus, and alert rules
 pnpm observability:overhead # Compare local API latency with OTel off/on
 pnpm check      # Run lint, typecheck, tests, and build
+pnpm ci:verify  # Approximate mandatory non-container CI gates locally
 ```
 
 Local services:
 
 - Web: <http://127.0.0.1:3000>
 - API health: <http://127.0.0.1:4000/health>
+
+## CI/CD
+
+GitHub Actions runs stable Quality, Database, Integration, Security, and Docker
+checks for pull requests and trusted main/tag pushes. `CI / Gate` is the single
+required aggregate check. Only a successful trusted push may publish immutable
+web, API/worker, and migration images to GHCR; images include BuildKit SBOM and
+provenance and are handed to future deployment by digest. Stage 28 performs no
+cloud deployment. See [CI/CD and supply-chain delivery](docs/ci-cd.md).
 
 ## API configuration
 
