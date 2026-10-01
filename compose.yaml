@@ -9,12 +9,14 @@ services:
       args:
         NEXT_PUBLIC_API_URL: http://127.0.0.1:4000
         NEXT_PUBLIC_MAPTILER_KEY: ${NEXT_PUBLIC_MAPTILER_KEY:-}
+        NEXT_PUBLIC_S3_UPLOAD_ORIGIN: http://localhost:4566
     environment:
       NODE_ENV: production
       HOSTNAME: 0.0.0.0
       PORT: "3000"
       NEXT_PUBLIC_API_URL: http://127.0.0.1:4000
       NEXT_PUBLIC_MAPTILER_KEY: ${NEXT_PUBLIC_MAPTILER_KEY:-}
+      NEXT_PUBLIC_S3_UPLOAD_ORIGIN: http://localhost:4566
     ports:
       - "127.0.0.1:${TRIPFORGE_WEB_PORT:-3100}:3000"
     healthcheck:

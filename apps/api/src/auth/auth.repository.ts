@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import { DATABASE } from "../database/database.constants";
 import type { Database } from "../database/database.provider";
@@ -91,6 +91,22 @@ export class AuthRepository {
       tokenHash,
       userId,
     });
+  }
+
+  async updatePasswordHash(
+    userId: string,
+    currentHash: string,
+    passwordHash: string,
+  ): Promise<void> {
+    await this.database
+      .update(passwordCredentials)
+      .set({ passwordHash, updatedAt: new Date() })
+      .where(
+        and(
+          eq(passwordCredentials.userId, userId),
+          eq(passwordCredentials.passwordHash, currentHash),
+        ),
+      );
   }
 
   async findSessionWithUser(

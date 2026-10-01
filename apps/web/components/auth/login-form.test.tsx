@@ -79,6 +79,22 @@ describe("LoginForm", () => {
     );
   });
 
+  it("shows a safe accessible rate-limit error", async () => {
+    vi.spyOn(authApi, "login").mockRejectedValue(
+      new ApiClientError("internal bucket detail", 429, "TOO_MANY_REQUESTS"),
+    );
+    const user = userEvent.setup();
+    renderWithQueryClient(<LoginForm />);
+
+    await user.type(screen.getByRole("textbox", { name: "Email" }), "user@example.com");
+    await user.type(screen.getByLabelText("Password"), "wrong");
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Too many attempts. Please try again later.",
+    );
+  });
+
   it("sanitizes network failures", async () => {
     vi.spyOn(authApi, "login").mockRejectedValue(new TypeError("network detail"));
     const user = userEvent.setup();

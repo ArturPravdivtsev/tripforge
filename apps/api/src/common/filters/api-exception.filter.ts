@@ -27,7 +27,8 @@ export class ApiExceptionFilter implements ExceptionFilter {
     const errorResponse =
       exception instanceof HttpException
         ? this.normalizeHttpException(exception, path)
-        : this.normalizeUnexpectedException(exception, path);
+        : (this.normalizeParserException(exception, path) ??
+          this.normalizeUnexpectedException(exception, path));
 
     httpAdapter.reply(response, errorResponse, errorResponse.statusCode);
   }
@@ -58,13 +59,23 @@ export class ApiExceptionFilter implements ExceptionFilter {
       : undefined;
     const isValidationError =
       statusCode === HttpStatus.BAD_REQUEST && Boolean(errors?.length);
+    const isInvalidJson =
+      statusCode === HttpStatus.BAD_REQUEST &&
+      typeof responseMessage === "string" &&
+      /json|unexpected token|expected property|unterminated/iu.test(
+        responseMessage,
+      );
 
     return {
       statusCode,
-      code: isValidationError
+      code: isInvalidJson
+        ? "INVALID_JSON"
+        : isValidationError
         ? "VALIDATION_ERROR"
         : (responseCode ?? this.getHttpStatusCode(statusCode)),
-      message: isValidationError
+      message: isInvalidJson
+        ? "Request body must contain valid JSON"
+        : isValidationError
         ? "Validation failed"
         : typeof responseMessage === "string"
           ? responseMessage
@@ -80,8 +91,9 @@ export class ApiExceptionFilter implements ExceptionFilter {
     path: string,
   ): ApiErrorResponse {
     this.logger.error(
-      "Unhandled exception",
-      exception instanceof Error ? exception.stack : undefined,
+      `Unhandled exception type=${
+        exception instanceof Error ? exception.name : "unknown"
+      }`,
     );
 
     return {
@@ -91,6 +103,36 @@ export class ApiExceptionFilter implements ExceptionFilter {
       path,
       timestamp: new Date().toISOString(),
     };
+  }
+
+  private normalizeParserException(
+    exception: unknown,
+    path: string,
+  ): ApiErrorResponse | undefined {
+    if (!exception || typeof exception !== "object") return undefined;
+    const candidate = exception as { status?: unknown; type?: unknown };
+    if (candidate.status === HttpStatus.PAYLOAD_TOO_LARGE) {
+      return {
+        statusCode: HttpStatus.PAYLOAD_TOO_LARGE,
+        code: "PAYLOAD_TOO_LARGE",
+        message: "Request body is too large",
+        path,
+        timestamp: new Date().toISOString(),
+      };
+    }
+    if (
+      candidate.status === HttpStatus.BAD_REQUEST &&
+      candidate.type === "entity.parse.failed"
+    ) {
+      return {
+        statusCode: HttpStatus.BAD_REQUEST,
+        code: "INVALID_JSON",
+        message: "Request body must contain valid JSON",
+        path,
+        timestamp: new Date().toISOString(),
+      };
+    }
+    return undefined;
   }
 
   private getHttpStatusCode(statusCode: number): string {

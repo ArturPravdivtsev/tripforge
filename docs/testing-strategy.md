@@ -148,6 +148,19 @@ rollback, and direct enum/FK/CHECK enforcement. The realtime suite additionally
 proves cross-node `notifications:invalidate` delivery and durable rows while
 Redis command processing is paused.
 
+Stage 26 adds a security gate spanning static/config checks, focused unit tests,
+HTTP attacks, and real-container distributed behavior. Unit coverage validates
+IP/email/user trackers, IPv6 `/64` normalization, public limiter responses,
+Argon2 policy and rehashing, cookie flags, headers/CSP, filename sanitation, and
+socket limits. HTTP coverage exercises evil Origin, missing mutation headers,
+cross-site Fetch Metadata, JSON/media/body boundaries, prototype-pollution keys,
+cache policy, and safe errors. The dedicated integration suite uses real
+PostgreSQL and Redis with two Nest instances to prove shared/atomic limits,
+brute-force behavior, enumeration-safe login, expiry, and fail-closed auth while
+unrelated reads remain available. Existing domain suites provide the complete
+RBAC/IDOR matrix. Real-browser CSP and penetration testing remain distinct manual
+or future layers rather than being claimed by JSDOM/config tests.
+
 TripForge should avoid testing implementation details and should not rely only
 on expensive browser E2E tests.
 
@@ -186,6 +199,15 @@ pnpm test:integration
 
 pnpm test:a11y
   -> representative WCAG-tagged axe + semantic/interaction component tests
+
+pnpm test:security
+  -> focused unit/HTTP checks plus real Redis/PostgreSQL multi-node integration
+
+pnpm security:secrets
+  -> focused tracked/unignored-text scan for high-risk secret shapes
+
+pnpm security:audit
+  -> fail on high/critical production dependency advisories
 
 pnpm check
   -> fast developer gate: lint + typecheck + test + build

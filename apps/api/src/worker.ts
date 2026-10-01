@@ -8,11 +8,8 @@ async function bootstrap(): Promise<void> {
   app.enableShutdownHooks(["SIGINT", "SIGTERM"]);
 }
 
-void bootstrap().catch((error: unknown) => {
+void bootstrap().catch(() => {
   const logger = new Logger("WorkerBootstrap");
-  logger.error(
-    "Worker startup failed",
-    error instanceof Error ? error.stack : undefined,
-  );
+  logger.error("Worker startup failed");
   process.exitCode = 1;
 });

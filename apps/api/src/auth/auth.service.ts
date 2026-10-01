@@ -105,6 +105,19 @@ export class AuthService {
       throw this.invalidCredentials();
     }
 
+    if (this.passwordHasher.needsRehash(identity.passwordHash)) {
+      try {
+        const passwordHash = await this.passwordHasher.hash(input.password);
+        await this.authRepository.updatePasswordHash(
+          identity.id,
+          identity.passwordHash,
+          passwordHash,
+        );
+      } catch {
+        throw this.internalFailure();
+      }
+    }
+
     const user: AuthenticatedUser = {
       displayName: identity.displayName,
       email: identity.email,

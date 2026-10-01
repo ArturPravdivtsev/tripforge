@@ -56,11 +56,11 @@ export class BackgroundJobsService
     const redisUrl = this.config.getOrThrow<string>("REDIS_URL");
     this.queueRedis = new Redis(redisUrl, { maxRetriesPerRequest: 1 });
     this.workerRedis = new Redis(redisUrl, { maxRetriesPerRequest: null });
-    this.queueRedis.on("error", (error) =>
-      this.logger.error(`Queue Redis error: ${error.message}`),
+    this.queueRedis.on("error", () =>
+      this.logger.error("Queue Redis connection error"),
     );
-    this.workerRedis.on("error", (error) =>
-      this.logger.error(`Worker Redis error: ${error.message}`),
+    this.workerRedis.on("error", () =>
+      this.logger.error("Worker Redis connection error"),
     );
 
     this.queue = new Queue(MAINTENANCE_QUEUE, {
@@ -82,8 +82,8 @@ export class BackgroundJobsService
     this.worker.on("failed", (job, error) => {
       void this.handleFailure(job, error);
     });
-    this.worker.on("error", (error) => {
-      this.logger.error(`BullMQ worker error: ${error.message}`, error.stack);
+    this.worker.on("error", () => {
+      this.logger.error("BullMQ worker error");
     });
 
     try {
@@ -132,8 +132,7 @@ export class BackgroundJobsService
     const attempts = job?.opts.attempts ?? 1;
     const exhausted = Boolean(job && job.attemptsMade >= attempts);
     this.logger.error(
-      `Job failed name=${job?.name ?? "unknown"} id=${job?.id ?? "unknown"} attempt=${job?.attemptsMade ?? 0}/${attempts} exhausted=${exhausted}: ${error.message}`,
-      exhausted ? error.stack : undefined,
+      `Job failed name=${job?.name ?? "unknown"} id=${job?.id ?? "unknown"} attempt=${job?.attemptsMade ?? 0}/${attempts} exhausted=${exhausted} errorType=${error.name}`,
     );
     if (!job || job.name !== JOB_NAMES.cleanupObject || !exhausted) return;
 
@@ -143,7 +142,7 @@ export class BackgroundJobsService
     } catch (markError) {
       this.logger.error(
         `Failed to record exhausted cleanup job id=${job.id ?? "unknown"}`,
-        markError instanceof Error ? markError.stack : undefined,
+        markError instanceof Error ? `errorType=${markError.name}` : undefined,
       );
     }
   }

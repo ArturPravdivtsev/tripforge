@@ -100,7 +100,9 @@ function contentDisposition(fileName: string): string {
   const safe = [...fileName]
     .map((character) => {
       const code = character.codePointAt(0) ?? 0;
-      return code < 32 || code > 126 || character === '"' || character === "\\"
+      return code < 32 ||
+        code > 126 ||
+        ['"', "\\", "/", ";"].includes(character)
         ? "_"
         : character;
     })

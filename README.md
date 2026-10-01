@@ -54,6 +54,9 @@ pnpm test:a11y  # Run representative accessibility component checks
 pnpm test:coverage # Run tests and generate coverage reports
 pnpm perf:bundle # Build web and enforce deterministic bundle budgets
 pnpm perf:db     # Profile an isolated deterministic PostgreSQL fixture
+pnpm security:audit   # Audit production dependencies for high/critical advisories
+pnpm security:secrets # Scan tracked/unignored text for high-risk secret shapes
+pnpm test:security    # Run focused security tests, including real Redis/PostgreSQL
 pnpm check      # Run lint, typecheck, tests, and build
 ```
 
@@ -73,6 +76,7 @@ PORT=4000
 DATABASE_URL=postgresql://tripforge:tripforge@127.0.0.1:5433/tripforge
 WEB_ORIGIN=http://127.0.0.1:3000
 REDIS_URL=redis://127.0.0.1:6379
+SECURITY_RATE_LIMITING_ENABLED=true
 OPENROUTESERVICE_API_KEY=
 S3_BUCKET=tripforge-documents
 S3_REGION=us-east-1
@@ -83,10 +87,12 @@ S3_FORCE_PATH_STYLE=true
 
 These are local development defaults. Production requires an explicit
 `DATABASE_URL` and exact `WEB_ORIGIN`. The browser app uses
-`NEXT_PUBLIC_API_URL=http://127.0.0.1:4000`. Set `NEXT_PUBLIC_MAPTILER_KEY` to a
-MapTiler browser key to enable Trip maps and itinerary place search; without it
+`NEXT_PUBLIC_API_URL=http://127.0.0.1:4000` and
+`NEXT_PUBLIC_S3_UPLOAD_ORIGIN=http://localhost:4566` for the exact direct-upload
+CSP destination. Set `NEXT_PUBLIC_MAPTILER_KEY` to a MapTiler browser key to
+enable Trip maps and itinerary place search; without it
 the workspace keeps working and shows controlled provider-unavailable states.
-Both `NEXT_PUBLIC_*` values are
+All `NEXT_PUBLIC_*` values are
 embedded into the web build and are not secrets. Restrict MapTiler keys to the
 allowed frontend origin and use separate development and production keys.
 Environment files are optional for local development; use
@@ -116,6 +122,9 @@ coverage, implementation decisions, known limitations, and manual QA checklist.
 See [Performance](docs/performance.md) for the measured bundle baseline, Core Web
 Vitals targets, database fixture and plans, rejected optimizations, and repeatable
 profiling commands.
+See [Security hardening](docs/security-hardening.md) for the ASVS 5.0.0-informed
+threat review, distributed limits, CSP/header policy, secrets inventory, known
+limitations, and reusable pre-release checklist.
 
 The separate worker validates the database/S3 settings above plus `REDIS_URL`;
 it does not require `WEB_ORIGIN`. The API opens an independently configured

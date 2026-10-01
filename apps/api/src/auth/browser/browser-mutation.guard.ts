@@ -38,7 +38,8 @@ export class BrowserMutationGuard implements CanActivate {
 
     if (
       this.getHeader(request, "origin") !== this.webOrigin ||
-      this.getHeader(request, MUTATION_HEADER) !== "1"
+      this.getHeader(request, MUTATION_HEADER) !== "1" ||
+      this.getHeader(request, "sec-fetch-site") === "cross-site"
     ) {
       throw new HttpException(
         {

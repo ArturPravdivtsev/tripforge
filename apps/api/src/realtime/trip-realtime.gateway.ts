@@ -19,6 +19,7 @@ import {
 import type { Server, Socket } from "socket.io";
 
 import { SessionService } from "../auth/session/session.service";
+import { RedisThrottlerStorage } from "../security/redis-throttler.storage";
 import { TripPermissionsService } from "../trips/trip-permissions.service";
 import {
   MAX_SESSION_TIMER_MS,
@@ -62,6 +63,7 @@ export class TripRealtimeGateway
     private readonly sessionService: SessionService,
     private readonly tripPermissions: TripPermissionsService,
     private readonly publisher: TripRealtimePublisher,
+    private readonly rateLimits: RedisThrottlerStorage,
   ) {}
 
   afterInit(server: RealtimeServer): void {
@@ -107,6 +109,15 @@ export class TripRealtimeGateway
     @ConnectedSocket() socket: RealtimeSocket,
     @MessageBody() payload: TripJoinRequest,
   ): Promise<TripJoinResponse> {
+    if (!(await this.allowRealtimeEvent(socket, "join", 20))) {
+      return {
+        error: {
+          code: "RATE_LIMITED",
+          message: "Too many realtime requests. Please try again later.",
+        },
+        ok: false,
+      };
+    }
     if (!this.validTripId(payload)) {
       return {
         error: { code: "INVALID_TRIP_ID", message: "Trip ID must be a UUID" },
@@ -152,6 +163,15 @@ export class TripRealtimeGateway
     @ConnectedSocket() socket: RealtimeSocket,
     @MessageBody() payload: TripLeaveRequest,
   ): Promise<TripLeaveResponse> {
+    if (!(await this.allowRealtimeEvent(socket, "leave", 60))) {
+      return {
+        error: {
+          code: "RATE_LIMITED",
+          message: "Too many realtime requests. Please try again later.",
+        },
+        ok: false,
+      };
+    }
     if (!this.validTripId(payload)) {
       return {
         error: { code: "INVALID_TRIP_ID", message: "Trip ID must be a UUID" },
@@ -188,6 +208,26 @@ export class TripRealtimeGateway
       sessionId: session.sessionId,
       userId: session.id,
     };
+  }
+
+  private async allowRealtimeEvent(
+    socket: RealtimeSocket,
+    event: "join" | "leave",
+    limit: number,
+  ): Promise<boolean> {
+    try {
+      const result = await this.rateLimits.increment(
+        `realtime:${event}:user:${socket.data.userId}`,
+        60_000,
+        limit,
+        60_000,
+        `realtime-${event}`,
+      );
+      return !result.isBlocked;
+    } catch {
+      // Joining is authorization-sensitive; leaving remains available for cleanup.
+      return event === "leave";
+    }
   }
 
   private readCookie(header: string | undefined, name: string): string | undefined {

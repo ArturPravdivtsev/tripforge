@@ -15,10 +15,13 @@
     "perf:bundle:report": "node scripts/performance/report-bundle.mjs",
     "perf:db": "pnpm --filter @tripforge/api perf:db",
     "perf:test": "node --test scripts/performance/*.test.mjs",
+    "security:audit": "pnpm audit --prod --audit-level high",
+    "security:secrets": "node scripts/security/secret-scan.mjs",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "test:a11y": "pnpm --filter @tripforge/web test:a11y",
     "test:integration": "pnpm --filter @tripforge/api test:integration",
+    "test:security": "pnpm --filter @tripforge/api test:security && pnpm --filter @tripforge/web test:security && node --test scripts/security/*.test.mjs && pnpm security:secrets",
     "test:coverage": "turbo run test:coverage",
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "check:full": "pnpm check && pnpm test:integration"

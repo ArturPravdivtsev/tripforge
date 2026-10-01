@@ -22,12 +22,14 @@ import { BrowserMutationGuard } from "../auth/browser/browser-mutation.guard";
 import { RequireJsonBody } from "../auth/browser/require-json-body.decorator";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { SessionAuthGuard } from "../auth/guards/session-auth.guard";
+import { SecurityRateLimit } from "../security/security-rate-limit.decorator";
+import { SecurityRateLimitGuard } from "../security/security-rate-limit.guard";
 import { CreateDocumentUploadDto } from "./dto/create-document-upload.dto";
 import { UpdateTripDocumentDto } from "./dto/update-trip-document.dto";
 import { TripDocumentsService } from "./trip-documents.service";
 
 @Controller("trips/:tripId/documents")
-@UseGuards(SessionAuthGuard, BrowserMutationGuard)
+@UseGuards(SessionAuthGuard, BrowserMutationGuard, SecurityRateLimitGuard)
 export class TripDocumentsController {
   constructor(private readonly documents: TripDocumentsService) {}
 
@@ -41,6 +43,7 @@ export class TripDocumentsController {
 
   @Post("uploads")
   @RequireJsonBody()
+  @SecurityRateLimit("documentUpload")
   createUpload(
     @CurrentUser() user: AuthenticatedUser,
     @Param("tripId", ParseUUIDPipe) tripId: string,
@@ -60,6 +63,7 @@ export class TripDocumentsController {
   }
 
   @Get(":documentId/download")
+  @SecurityRateLimit("documentDownload")
   download(
     @CurrentUser() user: AuthenticatedUser,
     @Param("tripId", ParseUUIDPipe) tripId: string,

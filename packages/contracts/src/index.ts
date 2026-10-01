@@ -654,7 +654,11 @@ export type TripJoinResponse =
   | {
       ok: false;
       error: {
-        code: "INVALID_TRIP_ID" | "TRIP_ACCESS_DENIED" | "INTERNAL_ERROR";
+        code:
+          | "INVALID_TRIP_ID"
+          | "TRIP_ACCESS_DENIED"
+          | "RATE_LIMITED"
+          | "INTERNAL_ERROR";
         message: string;
       };
     };
@@ -668,7 +672,7 @@ export type TripLeaveResponse =
   | {
       ok: false;
       error: {
-        code: "INVALID_TRIP_ID";
+        code: "INVALID_TRIP_ID" | "RATE_LIMITED";
         message: string;
       };
     };

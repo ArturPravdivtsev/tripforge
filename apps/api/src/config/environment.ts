@@ -39,6 +39,18 @@ export const environmentSchema = Joi.object({
   REDIS_URL: Joi.string()
     .uri({ scheme: ["redis", "rediss"] })
     .default("redis://127.0.0.1:6379"),
+  SECURITY_RATE_LIMITING_ENABLED: Joi.boolean()
+    .truthy("true")
+    .falsy("false")
+    .when("NODE_ENV", {
+      is: "production",
+      then: Joi.boolean().valid(true).default(true),
+      otherwise: Joi.boolean().when("NODE_ENV", {
+        is: "test",
+        then: Joi.boolean().default(false),
+        otherwise: Joi.boolean().default(true),
+      }),
+    }),
   OPENROUTESERVICE_API_KEY: Joi.string().trim().empty("").min(1).optional(),
   S3_BUCKET: Joi.string().trim().min(3).default("tripforge-documents"),
   S3_REGION: Joi.string().trim().min(1).default("us-east-1"),

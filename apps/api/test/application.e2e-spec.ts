@@ -108,6 +108,32 @@ describe("Application HTTP foundation", () => {
     });
   });
 
+  it("returns stable errors for oversized and malformed JSON", async () => {
+    const oversized = await request(app.getHttpServer())
+      .post("/api/test-foundation/input")
+      .set("Content-Type", "application/json")
+      .send(JSON.stringify({ name: "x".repeat(300 * 1024) }));
+    const malformed = await request(app.getHttpServer())
+      .post("/api/test-foundation/input")
+      .set("Content-Type", "application/json")
+      .send('{"name":');
+
+    expect(oversized.status).toBe(413);
+    expect(oversized.body.code).toBe("PAYLOAD_TOO_LARGE");
+    expect(malformed.status).toBe(400);
+    expect(malformed.body.code).toBe("INVALID_JSON");
+  });
+
+  it("rejects TRACE without reflecting request data", async () => {
+    const response = await request(app.getHttpServer())
+      .trace("/api/test-foundation/input")
+      .send("secret-echo-value");
+
+    expect(response.status).toBe(405);
+    expect(response.text).not.toContain("secret-echo-value");
+    expect(response.body.code).toBe("METHOD_NOT_ALLOWED");
+  });
+
   it("rejects properties outside the DTO whitelist", async () => {
     const response = await request(app.getHttpServer())
       .post("/api/test-foundation/input")

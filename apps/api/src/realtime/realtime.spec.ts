@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { SessionService } from "../auth/session/session.service";
 import type { TripPermissionsService } from "../trips/trip-permissions.service";
+import { SOCKET_MAX_HTTP_BUFFER_BYTES } from "./realtime.constants";
 import { sessionRoom, tripRoom, userRoom } from "./realtime-rooms";
 import { TripRealtimeGateway } from "./trip-realtime.gateway";
 import { TripRealtimePublisher } from "./trip-realtime.publisher";
@@ -53,10 +54,14 @@ describe("TripRealtimeGateway", () => {
       attach: vi.fn(),
       publishPresence: vi.fn().mockResolvedValue(undefined),
     };
+    const rateLimits = {
+      increment: vi.fn().mockResolvedValue({ isBlocked: false }),
+    };
     const gateway = new TripRealtimeGateway(
       sessions as unknown as SessionService,
       permissions as unknown as TripPermissionsService,
       publisher as unknown as TripRealtimePublisher,
+      rateLimits as never,
     );
     gateway.afterInit({
       use: vi.fn((value) => {
@@ -64,7 +69,14 @@ describe("TripRealtimeGateway", () => {
       }),
     } as never);
 
-    return { gateway, middleware: () => middleware, permissions, publisher, sessions };
+    return {
+      gateway,
+      middleware: () => middleware,
+      permissions,
+      publisher,
+      rateLimits,
+      sessions,
+    };
   }
 
   it("authenticates from the opaque cookie and joins session/user rooms", async () => {
@@ -136,6 +148,27 @@ describe("TripRealtimeGateway", () => {
     await vi.advanceTimersByTimeAsync(1_000);
 
     expect(client.disconnect).toHaveBeenCalledWith(true);
+  });
+
+  it("rate limits client-originated joins without exposing bucket details", async () => {
+    const { gateway, rateLimits } = subject();
+    const client = socket();
+    client.data = socketData();
+    rateLimits.increment.mockResolvedValue({ isBlocked: true });
+
+    await expect(
+      gateway.joinTrip(client as never, { tripId: TRIP_ID }),
+    ).resolves.toEqual({
+      error: {
+        code: "RATE_LIMITED",
+        message: "Too many realtime requests. Please try again later.",
+      },
+      ok: false,
+    });
+  });
+
+  it("bounds Socket.IO payloads to 64 KiB", () => {
+    expect(SOCKET_MAX_HTTP_BUFFER_BYTES).toBe(65_536);
   });
 });
 

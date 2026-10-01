@@ -25,3 +25,11 @@ allowBuilds:
 minimumReleaseAgeExclude:
   - '@aws-sdk/client-s3@3.1135.0'
   - '@aws-sdk/s3-request-presigner@3.1135.0'
+
+overrides:
+  'brace-expansion@<2.0.0': 1.1.21
+  'brace-expansion@>=2.0.0 <3.0.0': 2.1.7
+  'brace-expansion@>=4.0.0 <5.0.12': 5.0.12
+  '@grpc/grpc-js@>=1.14.0 <1.14.5': 1.14.5
+  fast-uri: 3.1.8
+  multer: 2.4.0

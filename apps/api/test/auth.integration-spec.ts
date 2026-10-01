@@ -6,6 +6,7 @@ import {
 } from "@testcontainers/postgresql";
 import { type INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
+import { argon2id, hash as argon2Hash } from "argon2";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Pool } from "pg";
@@ -209,6 +210,43 @@ describe("Authentication with PostgreSQL", () => {
 
     const sessions = await pool.query("SELECT id FROM auth_sessions");
     expect(sessions.rowCount).toBe(2);
+  });
+
+  it("rehashes a weaker valid Argon2id credential after successful login", async () => {
+    await browserPost(app, "/api/auth/register").send({
+      email: "rehash@example.com",
+      password: PASSWORD,
+    });
+    const weakerHash = await argon2Hash(PASSWORD, {
+      memoryCost: 8_192,
+      parallelism: 1,
+      timeCost: 1,
+      type: argon2id,
+    });
+    await pool.query(
+      `UPDATE password_credentials
+       SET password_hash = $1
+       WHERE user_id = (SELECT id FROM users WHERE email = $2)`,
+      [weakerHash, "rehash@example.com"],
+    );
+
+    const login = await browserPost(app, "/api/auth/login").send({
+      email: "rehash@example.com",
+      password: PASSWORD,
+    });
+    const stored = await pool.query<{ password_hash: string }>(
+      `SELECT pc.password_hash
+       FROM password_credentials pc
+       JOIN users u ON u.id = pc.user_id
+       WHERE u.email = $1`,
+      ["rehash@example.com"],
+    );
+
+    expect(login.status).toBe(200);
+    expect(stored.rows[0]?.password_hash).toMatch(
+      /^\$argon2id\$v=19\$m=19456,p=1,t=2\$/u,
+    );
+    expect(stored.rows[0]?.password_hash).not.toBe(weakerHash);
   });
 
   it("uses the same public failure for wrong and unknown credentials", async () => {

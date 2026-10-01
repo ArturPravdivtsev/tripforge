@@ -17,6 +17,13 @@ import {
 } from "@/lib/auth/schemas";
 
 function registerErrorMessage(error: unknown): string {
+  if (
+    error instanceof ApiClientError &&
+    (error.status === 429 || error.code === "TOO_MANY_REQUESTS")
+  ) {
+    return "Too many attempts. Please try again later.";
+  }
+
   if (error instanceof ApiClientError && error.code === "ACCOUNT_ALREADY_EXISTS") {
     return "An account with this email already exists.";
   }

@@ -7,6 +7,7 @@ import Redis from "ioredis";
 import type { Server, ServerOptions } from "socket.io";
 
 import {
+  SOCKET_MAX_HTTP_BUFFER_BYTES,
   SOCKET_PATH,
   SOCKET_STREAM_MAX_LENGTH,
   SOCKET_STREAM_NAME,
@@ -38,6 +39,7 @@ export class TripForgeIoAdapter extends IoAdapter {
         credentials: true,
         origin: webOrigin,
       },
+      maxHttpBufferSize: SOCKET_MAX_HTTP_BUFFER_BYTES,
       path: SOCKET_PATH,
       serveClient: false,
       transports: ["websocket"],
@@ -54,8 +56,8 @@ export class TripForgeIoAdapter extends IoAdapter {
     this.redisClient.on("ready", () => {
       this.logger.log("Realtime Redis connection is ready");
     });
-    this.redisClient.on("error", (error: Error) => {
-      this.logger.warn(`Realtime Redis unavailable: ${error.message}`);
+    this.redisClient.on("error", () => {
+      this.logger.warn("Realtime Redis unavailable");
     });
     server.adapter(
       createAdapter(this.redisClient, {

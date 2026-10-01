@@ -20,7 +20,7 @@ Neither may be logged or persisted in raw form.
 | Session fixation | Fresh token after every registration/login; no anonymous sessions |
 | Stolen session logout | Server-side row deletion immediately revokes the session |
 | Half-created account | User, credential, and session share one transaction |
-| Credential stuffing / online guessing | Distributed rate limiting deferred; required pre-production |
+| Credential stuffing / online guessing | Shared Redis IP + normalized-account limits across API nodes |
 | CSRF | `SameSite=Lax`, exact mutation `Origin`, required custom header, and JSON-only body endpoints |
 | Cross-origin response access | Exact credentialed CORS allowlist; no wildcard origin |
 | Duplicate-register enumeration | Accepted MVP UX/security tradeoff; `409` reveals existence |
@@ -130,8 +130,8 @@ Neither may be logged or persisted in raw form.
   TripForge separately rejects browser mutations unless `Origin` exactly equals
   `WEB_ORIGIN` and `X-TripForge-Request` equals `1`; register, login, Trip create,
   and Trip PATCH requests must also use JSON.
-- No in-memory limiter is presented as brute-force protection. A shared,
-  deployment-aware rate limiter must precede public exposure.
+- Authentication limits fail closed when shared Redis is unavailable; ordinary
+  low-risk reads deliberately do not acquire that dependency.
 - Account verification, recovery, MFA, password changes, provider login, bulk
   session revocation, and security event logging remain future controls.
 - Duplicate registration intentionally has a stable distinct response for MVP
@@ -141,8 +141,8 @@ Neither may be logged or persisted in raw form.
   enumeration; a future invitation flow should remove that dependency.
 - Expired sessions are deleted opportunistically. Scheduled cleanup is not yet
   required for correctness.
-- Automatic Argon2 rehash-on-login is not enabled, but the password abstraction
-  can detect hashes that no longer match current parameters.
+- Successful login automatically replaces an older valid Argon2 hash when the
+  password abstraction reports that the current policy requires rehashing.
 - UUID unpredictability is defense in depth, not authorization. Trip access is
   authorized by ownership or current membership in SQL.
 - Final cleanup failures currently require operational inspection and manual
@@ -160,3 +160,5 @@ Neither may be logged or persisted in raw form.
 Do not put passwords, password hashes, raw session tokens, token hashes, or full
 Cookie headers in logs, URLs, query parameters, analytics, or JSON responses.
 Production must terminate HTTPS before accepting the `__Host-` Secure cookie.
+See [Security hardening](./security-hardening.md) for the full application
+boundary, rate-limit policy, CSP, ASVS-informed mapping, and release checklist.

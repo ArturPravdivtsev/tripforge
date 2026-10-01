@@ -101,4 +101,20 @@ describe("RegisterForm", () => {
       "An account with this email already exists.",
     );
   });
+
+  it("shows a safe rate-limit error without bucket details", async () => {
+    vi.spyOn(authApi, "register").mockRejectedValue(
+      new ApiClientError("IP bucket exhausted", 429, "TOO_MANY_REQUESTS"),
+    );
+    const user = userEvent.setup();
+    renderWithQueryClient(<RegisterForm />);
+
+    await user.type(screen.getByRole("textbox", { name: "Email" }), "user@example.com");
+    await user.type(screen.getByLabelText("Password"), "123456789012345");
+    await user.click(screen.getByRole("button", { name: "Create account" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Too many attempts. Please try again later.",
+    );
+  });
 });

@@ -108,19 +108,17 @@ export class TripRealtimePublisher {
         ),
       };
       this.server.to(tripRoom(tripId)).emit(TRIP_REALTIME_EVENTS.presence, payload);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      this.logger.warn(`Presence refresh failed tripId=${tripId}: ${message}`);
+    } catch {
+      this.logger.warn(`Presence refresh failed tripId=${tripId}`);
     }
   }
 
   private publish(action: () => void, event: string, tripId?: string): void {
     try {
       action();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
+    } catch {
       this.logger.warn(
-        `Realtime publish failed event=${event}${tripId ? ` tripId=${tripId}` : ""}: ${message}`,
+        `Realtime publish failed event=${event}${tripId ? ` tripId=${tripId}` : ""}`,
       );
     }
   }

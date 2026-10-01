@@ -62,6 +62,7 @@ describe("Socket.IO collaboration with PostgreSQL and Redis Streams", () => {
     process.env.DATABASE_URL = databaseUrl;
     process.env.NODE_ENV = "test";
     process.env.REDIS_URL = redisUrl;
+    process.env.SECURITY_RATE_LIMITING_ENABLED = "true";
     process.env.WEB_ORIGIN = WEB_ORIGIN;
 
     const { AppModule } = await import("../src/app.module");
@@ -252,6 +253,45 @@ describe("Socket.IO collaboration with PostgreSQL and Redis Streams", () => {
     } finally {
       ownerSocket.disconnect();
       memberSocket.disconnect();
+    }
+  });
+
+  it("throttles rapid authorized join attempts without disconnecting the socket", async () => {
+    const owner = await register(apiA, "owner@example.com", "Owner");
+    const tripId = await createTrip(apiA, owner, "Rate limited");
+    const ownerSocket = await connect(apiA, owner.cookie);
+    try {
+      for (let attempt = 0; attempt < 20; attempt += 1) {
+        await expect(join(ownerSocket, tripId)).resolves.toEqual({
+          accessRole: "owner",
+          ok: true,
+        });
+      }
+
+      await expect(join(ownerSocket, tripId)).resolves.toMatchObject({
+        error: { code: "RATE_LIMITED" },
+        ok: false,
+      });
+      expect(ownerSocket.connected).toBe(true);
+    } finally {
+      ownerSocket.disconnect();
+    }
+  });
+
+  it("disconnects a client that exceeds the Socket.IO payload limit", async () => {
+    const owner = await register(apiA, "owner@example.com", "Owner");
+    const ownerSocket = await connect(apiA, owner.cookie);
+    try {
+      const disconnected = waitForDisconnect(ownerSocket);
+      ownerSocket.emit(
+        "trip:join",
+        { tripId: "x".repeat(70 * 1024) },
+        () => undefined,
+      );
+
+      await expect(disconnected).resolves.toMatch(/transport close|server/iu);
+    } finally {
+      ownerSocket.disconnect();
     }
   });
 

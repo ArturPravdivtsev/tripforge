@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:a11y": "vitest run components/auth/login-form.test.tsx components/trips/trips-dashboard.test.tsx components/trips/trip-workspace.test.tsx components/trips/days-section.test.tsx components/places/place-search-combobox.test.tsx components/trips/routes-section.test.tsx components/trips/reservation-form.test.tsx components/trips/expense-form.test.tsx components/trips/documents-screen.test.tsx components/notifications/notifications-screen.test.tsx components/trips/trip-search-screen.test.tsx",
+    "test:security": "vitest run lib/security components/auth/login-form.test.tsx components/auth/register-form.test.tsx lib/auth/cache.test.ts",
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit"
   },
@@ -21,7 +22,7 @@
     "@tripforge/contracts": "workspace:*",
     "@tripforge/ui": "workspace:*",
     "maplibre-gl": "6.10.0",
-    "next": "16.3.4",
+    "next": "16.3.6",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-hook-form": "7.87.0",
@@ -30,7 +31,7 @@
     "zod": "4.5.4"
   },
   "devDependencies": {
-    "@next/bundle-analyzer": "16.3.4",
+    "@next/bundle-analyzer": "16.3.6",
     "@tailwindcss/postcss": "4.3.3",
     "@testing-library/dom": "catalog:",
     "@testing-library/jest-dom": "catalog:",

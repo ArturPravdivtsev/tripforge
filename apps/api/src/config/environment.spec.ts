@@ -27,6 +27,7 @@ describe("validateEnvironment", () => {
       S3_BUCKET: "tripforge-documents",
       S3_FORCE_PATH_STYLE: false,
       S3_REGION: "us-east-1",
+      SECURITY_RATE_LIMITING_ENABLED: true,
       WEB_ORIGIN: "http://127.0.0.1:3000",
     });
   });
@@ -98,5 +99,22 @@ describe("validateEnvironment", () => {
         NODE_ENV: "production",
       }),
     ).toThrow(/WEB_ORIGIN/);
+  });
+
+  it("disables distributed rate limiting by default only in tests", () => {
+    expect(
+      validateEnvironment({ NODE_ENV: "test" }),
+    ).toHaveProperty("SECURITY_RATE_LIMITING_ENABLED", false);
+  });
+
+  it("does not allow production rate limiting to be disabled", () => {
+    expect(() =>
+      validateEnvironment({
+        DATABASE_URL: "postgresql://user:password@database:5432/app",
+        NODE_ENV: "production",
+        SECURITY_RATE_LIMITING_ENABLED: "false",
+        WEB_ORIGIN: "https://tripforge.example",
+      }),
+    ).toThrow(/SECURITY_RATE_LIMITING_ENABLED/);
   });
 });

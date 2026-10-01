@@ -9,6 +9,7 @@ import { DatabaseModule } from "./database/database.module";
 import { HealthController } from "./health.controller";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { RealtimeModule } from "./realtime/realtime.module";
+import { SecurityModule } from "./security/security.module";
 import { TripsModule } from "./trips/trips.module";
 
 @Module({
@@ -22,6 +23,7 @@ import { TripsModule } from "./trips/trips.module";
     DatabaseModule,
     NotificationsModule,
     RealtimeModule,
+    SecurityModule,
     TripsModule,
   ],
   controllers: [HealthController],

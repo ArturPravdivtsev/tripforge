@@ -14,6 +14,13 @@ import { clearAuthenticatedCache } from "@/lib/auth/cache";
 import { loginSchema, type LoginFormValues } from "@/lib/auth/schemas";
 
 function loginErrorMessage(error: unknown): string {
+  if (
+    error instanceof ApiClientError &&
+    (error.status === 429 || error.code === "TOO_MANY_REQUESTS")
+  ) {
+    return "Too many attempts. Please try again later.";
+  }
+
   if (error instanceof ApiClientError && error.code === "INVALID_CREDENTIALS") {
     return "Email or password is incorrect.";
   }

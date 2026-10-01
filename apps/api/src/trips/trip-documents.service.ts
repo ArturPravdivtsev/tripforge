@@ -77,10 +77,9 @@ export class TripDocumentsService {
     } catch (error) {
       await this.documents
         .deleteMetadata(tripId, documentId)
-        .catch((cleanupError) => {
+        .catch(() => {
           this.logger.error(
             `Failed to remove document metadata after presign failure: ${documentId}`,
-            cleanupError instanceof Error ? cleanupError.stack : undefined,
           );
         });
       throw error;

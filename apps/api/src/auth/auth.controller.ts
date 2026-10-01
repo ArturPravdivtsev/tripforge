@@ -23,13 +23,15 @@ import { LoginDto } from "./dto/login.dto";
 import { RegisterDto } from "./dto/register.dto";
 import { SessionAuthGuard } from "./guards/session-auth.guard";
 import { TripRealtimePublisher } from "../realtime/trip-realtime.publisher";
+import { SecurityRateLimit } from "../security/security-rate-limit.decorator";
+import { SecurityRateLimitGuard } from "../security/security-rate-limit.guard";
 import {
   SessionService,
   type SessionCookieResponse,
 } from "./session/session.service";
 
 @Controller("auth")
-@UseGuards(BrowserMutationGuard)
+@UseGuards(BrowserMutationGuard, SecurityRateLimitGuard)
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
@@ -39,6 +41,7 @@ export class AuthController {
 
   @Post("register")
   @RequireJsonBody()
+  @SecurityRateLimit("register")
   async register(
     @Body() input: RegisterDto,
     @Res({ passthrough: true }) response: SessionCookieResponse,
@@ -53,6 +56,7 @@ export class AuthController {
   @Post("login")
   @HttpCode(HttpStatus.OK)
   @RequireJsonBody()
+  @SecurityRateLimit("login")
   async login(
     @Body() input: LoginDto,
     @Res({ passthrough: true }) response: SessionCookieResponse,

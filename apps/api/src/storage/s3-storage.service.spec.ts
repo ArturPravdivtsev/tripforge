@@ -73,6 +73,18 @@ describe("S3StorageService", () => {
     });
   });
 
+  it("neutralizes path and parameter separators in download filenames", async () => {
+    vi.mocked(getSignedUrl).mockResolvedValue("http://localhost/download");
+
+    await service.createDownloadUrl("opaque", '../folder\\evil;name.pdf');
+
+    const command = vi.mocked(getSignedUrl).mock.calls[0]?.[1];
+    expect(command?.input).toMatchObject({
+      ResponseContentDisposition:
+        'attachment; filename=".._folder_evil_name.pdf"',
+    });
+  });
+
   it("uses the internal client for HEAD and returns verified metadata", async () => {
     internalSend.mockResolvedValue({
       ContentLength: 42,

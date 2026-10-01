@@ -12,15 +12,18 @@ import type { AuthenticatedUser } from "../auth/auth.types";
 import { BrowserMutationGuard } from "../auth/browser/browser-mutation.guard";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { SessionAuthGuard } from "../auth/guards/session-auth.guard";
+import { SecurityRateLimit } from "../security/security-rate-limit.decorator";
+import { SecurityRateLimitGuard } from "../security/security-rate-limit.guard";
 import { SearchTripQueryDto } from "./dto/search-trip-query.dto";
 import { TripSearchService } from "./trip-search.service";
 
 @Controller("trips/:tripId/search")
-@UseGuards(SessionAuthGuard, BrowserMutationGuard)
+@UseGuards(SessionAuthGuard, BrowserMutationGuard, SecurityRateLimitGuard)
 export class TripSearchController {
   constructor(private readonly search: TripSearchService) {}
 
   @Get()
+  @SecurityRateLimit("tripSearch")
   find(
     @CurrentUser() user: AuthenticatedUser,
     @Param("tripId", ParseUUIDPipe) tripId: string,
