@@ -8,6 +8,10 @@ import { ConfigService } from "@nestjs/config";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 
+import { AppLogger } from "../observability/app-logger.service";
+import { createHttpObservabilityMiddleware } from "../observability/http-observability.middleware";
+import { ObservabilityMetrics } from "../observability/metrics.service";
+
 type CorsOriginCallback = (error: Error | null, allow?: boolean) => void;
 
 type BodyParserApplication = INestApplication & {
@@ -39,6 +43,13 @@ export function configureApplication(app: INestApplication): void {
   const config = app.get(ConfigService);
   const webOrigin = config.getOrThrow<string>("WEB_ORIGIN");
   const production = config.getOrThrow<string>("NODE_ENV") === "production";
+
+  app.use(
+    createHttpObservabilityMiddleware(
+      app.get(AppLogger),
+      app.get(ObservabilityMetrics),
+    ),
+  );
 
   app.use(
     helmet({
@@ -73,8 +84,9 @@ export function configureApplication(app: INestApplication): void {
   );
 
   app.enableCors({
-    allowedHeaders: ["Content-Type", "X-TripForge-Request"],
+    allowedHeaders: ["Content-Type", "X-Request-ID", "X-TripForge-Request"],
     credentials: true,
+    exposedHeaders: ["X-Request-ID"],
     methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     origin: (
       requestOrigin: string | undefined,

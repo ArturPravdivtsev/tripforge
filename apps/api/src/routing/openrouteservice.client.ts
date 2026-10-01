@@ -5,6 +5,9 @@ import type {
   TripRouteMode,
 } from "@tripforge/contracts";
 
+import { ObservabilityMetrics } from "../observability/metrics.service";
+import { withClientSpan, withInternalSpan } from "../observability/tracing";
+
 const OPENROUTESERVICE_BASE_URL =
   "https://api.heigit.org/openrouteservice/v2";
 const ROUTING_TIMEOUT_MS = 9_000;
@@ -41,9 +44,34 @@ export class RoutingProviderError extends Error {
 
 @Injectable()
 export class OpenRouteServiceClient {
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    private readonly metrics: ObservabilityMetrics = new ObservabilityMetrics(),
+  ) {}
 
   async calculate(
+    mode: TripRouteMode,
+    origin: RouteCoordinates,
+    destination: RouteCoordinates,
+  ): Promise<CalculatedRoute> {
+    const startedAt = process.hrtime.bigint();
+    return withInternalSpan(
+      "route.calculate",
+      { "tripforge.route.mode": mode },
+      async () => {
+        try {
+          const result = await this.request(mode, origin, destination);
+          this.metrics.providerRequest(mode, "success", elapsedSeconds(startedAt));
+          return result;
+        } catch (error) {
+          this.metrics.providerRequest(mode, "failure", elapsedSeconds(startedAt));
+          throw error;
+        }
+      },
+    );
+  }
+
+  private async request(
     mode: TripRouteMode,
     origin: RouteCoordinates,
     destination: RouteCoordinates,
@@ -53,23 +81,33 @@ export class OpenRouteServiceClient {
 
     let response: Response;
     try {
-      response = await fetch(
-        `${OPENROUTESERVICE_BASE_URL}/directions/${profiles[mode]}/geojson`,
+      response = await withClientSpan(
+        "openrouteservice directions",
         {
-          body: JSON.stringify({
-            coordinates: [
-              [origin.longitude, origin.latitude],
-              [destination.longitude, destination.latitude],
-            ],
-          }),
-          headers: {
-            Accept: "application/geo+json",
-            Authorization: apiKey,
-            "Content-Type": "application/json",
-          },
-          method: "POST",
-          signal: AbortSignal.timeout(ROUTING_TIMEOUT_MS),
+          "server.address": "api.heigit.org",
+          "tripforge.provider": "openrouteservice",
+          "tripforge.provider.operation": "directions",
+          "tripforge.route.mode": mode,
         },
+        async () =>
+          fetch(
+            `${OPENROUTESERVICE_BASE_URL}/directions/${profiles[mode]}/geojson`,
+            {
+              body: JSON.stringify({
+                coordinates: [
+                  [origin.longitude, origin.latitude],
+                  [destination.longitude, destination.latitude],
+                ],
+              }),
+              headers: {
+                Accept: "application/geo+json",
+                Authorization: apiKey,
+                "Content-Type": "application/json",
+              },
+              method: "POST",
+              signal: AbortSignal.timeout(ROUTING_TIMEOUT_MS),
+            },
+          ),
       );
     } catch {
       throw new RoutingProviderError("unavailable");
@@ -94,6 +132,10 @@ export class OpenRouteServiceClient {
 
     return normalizeRouteResponse(payload);
   }
+}
+
+function elapsedSeconds(startedAt: bigint): number {
+  return Number(process.hrtime.bigint() - startedAt) / 1_000_000_000;
 }
 
 function normalizeRouteResponse(payload: unknown): CalculatedRoute {

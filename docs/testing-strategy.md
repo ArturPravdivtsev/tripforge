@@ -240,3 +240,18 @@ claim made by the local emulator.
 The Community image also does not provide snapshot persistence. Restart QA for
 S3 bytes therefore requires the authenticated `2026.08.3` Compose runtime; the
 database persistence path remains independently testable without that token.
+
+## Observability testing layers
+
+`pnpm observability:test` covers production JSON parsing/redaction, request ID,
+route privacy, in-memory OTel spans/metrics, and API log correlation.
+`pnpm observability:config:check` uses the official Collector and Prometheus
+container CLIs to validate Collector config, Prometheus config, rules, and
+healthy/firing alert fixtures.
+
+Focused API/worker/realtime tests prove instrumentation at domain boundaries;
+real PostgreSQL/S3 suites remain responsible for provider integration behavior.
+The local Docker QA layer validates actual OTLP acceptance, Jaeger service/spans,
+Prometheus scrape/custom/runtime series, and operation with telemetry services
+stopped. Manual UI inspection remains necessary for span waterfall semantics
+and bounded label spot-checks; it does not replace automated privacy tests.

@@ -41,3 +41,17 @@ The repository owns one parameterized PostgreSQL `UNION ALL` query over source
 tables and maps rows explicitly to shared discriminated contracts. Generated
 vectors and indexes are persistence concerns; no search copy or background
 indexing pipeline exists. See [Trip-wide search](./search.md).
+
+## Observability boundary
+
+`register-api.ts` and `register-worker.ts` initialize OpenTelemetry before
+instrumented HTTP, Express, PostgreSQL, and AWS modules load. The shared global
+observability module provides the structured Nest/Pino logger and bounded custom
+metrics. API request middleware establishes a validated UUID request ID in
+`AsyncLocalStorage`; active OpenTelemetry context contributes the real trace and
+span IDs to logs.
+
+Application processes know only JSON stdout and OTLP HTTP. Collector routes
+metrics to its Prometheus scrape endpoint and traces to Jaeger. It is optional:
+neither startup, `/health`, request handling, worker correctness, nor SSR depends
+on Collector/Prometheus/Jaeger. See [Production observability](./observability.md).

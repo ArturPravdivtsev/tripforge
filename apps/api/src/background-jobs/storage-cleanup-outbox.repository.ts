@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
 
 import { DATABASE } from "../database/database.constants";
 import type { Database } from "../database/database.provider";
@@ -10,6 +10,11 @@ export type StorageCleanupOutboxRecord = Readonly<{
   storageKey: string;
   completedAt: Date | null;
   failedAt: Date | null;
+}>;
+
+export type StorageCleanupBacklog = Readonly<{
+  incomplete: number;
+  oldestCreatedAt: Date | null;
 }>;
 
 @Injectable()
@@ -45,6 +50,23 @@ export class StorageCleanupOutboxRepository {
         asc(storageCleanupOutbox.id),
       )
       .limit(limit);
+  }
+
+  async measureBacklog(): Promise<StorageCleanupBacklog> {
+    const [row] = await this.database
+      .select({
+        incomplete: sql<number>`count(*)::int`.mapWith(Number),
+        oldestCreatedAt: sql<Date | string | null>`min(${storageCleanupOutbox.createdAt})`,
+      })
+      .from(storageCleanupOutbox)
+      .where(isNull(storageCleanupOutbox.completedAt));
+
+    return row
+      ? {
+          incomplete: row.incomplete,
+          oldestCreatedAt: normalizeOldestCreatedAt(row.oldestCreatedAt),
+        }
+      : { incomplete: 0, oldestCreatedAt: null };
   }
 
   async markDispatched(id: string): Promise<void> {
@@ -83,4 +105,11 @@ export class StorageCleanupOutboxRepository {
         ),
       );
   }
+}
+
+export function normalizeOldestCreatedAt(
+  value: Date | string | null | undefined,
+): Date | null {
+  if (!value) return null;
+  return value instanceof Date ? value : new Date(value);
 }

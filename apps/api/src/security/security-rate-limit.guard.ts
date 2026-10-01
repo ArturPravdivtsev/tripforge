@@ -10,6 +10,8 @@ import { ConfigService } from "@nestjs/config";
 
 import type { AuthenticatedUser } from "../auth/auth.types";
 import { normalizeEmail } from "../auth/email-normalizer";
+import { AppLogger } from "../observability/app-logger.service";
+import { ObservabilityMetrics } from "../observability/metrics.service";
 import { normalizeClientIp } from "./ip-normalizer";
 import { RedisThrottlerStorage } from "./redis-throttler.storage";
 import {
@@ -31,11 +33,14 @@ type RateLimitResponse = {
 @Injectable()
 export class SecurityRateLimitGuard implements CanActivate {
   private readonly enabled: boolean;
+  private readonly lastRejectionLog = new Map<string, number>();
 
   constructor(
     private readonly reflector: Reflector,
     private readonly storage: RedisThrottlerStorage,
     config: ConfigService,
+    private readonly logger: AppLogger = new AppLogger(),
+    private readonly metrics: ObservabilityMetrics = new ObservabilityMetrics(),
   ) {
     this.enabled = config.get<boolean>("SECURITY_RATE_LIMITING_ENABLED") ?? true;
   }
@@ -60,6 +65,9 @@ export class SecurityRateLimitGuard implements CanActivate {
           `${policyName}-${policy.tracker}`,
         );
         if (result.isBlocked) {
+          const limiter = limiterCategory(policyName, policy.tracker);
+          this.metrics.rateLimitRejected(limiter);
+          this.logRejection(limiter);
           response.setHeader(
             "Retry-After",
             String(Math.max(result.timeToBlockExpire, 1)),
@@ -106,4 +114,27 @@ export class SecurityRateLimitGuard implements CanActivate {
   private ipTracker(request: RateLimitRequest): string {
     return normalizeClientIp(request.socket?.remoteAddress);
   }
+
+  private logRejection(limiter: string): void {
+    const now = Date.now();
+    const previous = this.lastRejectionLog.get(limiter) ?? 0;
+    if (now - previous < 60_000) return;
+    this.lastRejectionLog.set(limiter, now);
+    this.logger.event("warn", "security.rate_limit.rejected", { limiter });
+  }
+}
+
+export function limiterCategory(
+  policy: SecurityRateLimitPolicyName,
+  tracker: "account" | "ip" | "user",
+): string {
+  const names: Record<SecurityRateLimitPolicyName, string> = {
+    documentDownload: "document_download",
+    documentUpload: "document_upload",
+    login: "login",
+    register: "register",
+    routeCalculation: "routing",
+    tripSearch: "search",
+  };
+  return `${names[policy]}.${tracker}`;
 }

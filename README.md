@@ -16,6 +16,9 @@ sharing, access changes, and selected reservation, expense, and document events;
 Socket.IO carries only best-effort cache invalidations.
 Each Trip also has permission-safe PostgreSQL full-text and typo-tolerant search
 across destinations, itinerary, reservations, expenses, and ready documents.
+Production-oriented observability adds correlated Pino JSON logs plus
+OpenTelemetry traces and metrics routed through a local Collector to Jaeger and
+Prometheus; telemetry backends remain optional to product correctness.
 
 ## Structure
 
@@ -57,6 +60,9 @@ pnpm perf:db     # Profile an isolated deterministic PostgreSQL fixture
 pnpm security:audit   # Audit production dependencies for high/critical advisories
 pnpm security:secrets # Scan tracked/unignored text for high-risk secret shapes
 pnpm test:security    # Run focused security tests, including real Redis/PostgreSQL
+pnpm observability:test # Run logger, privacy, tracing, metrics, and request tests
+pnpm observability:config:check # Validate Collector, Prometheus, and alert rules
+pnpm observability:overhead # Compare local API latency with OTel off/on
 pnpm check      # Run lint, typecheck, tests, and build
 ```
 
@@ -125,6 +131,8 @@ profiling commands.
 See [Security hardening](docs/security-hardening.md) for the ASVS 5.0.0-informed
 threat review, distributed limits, CSP/header policy, secrets inventory, known
 limitations, and reusable pre-release checklist.
+See [Production observability](docs/observability.md) for logs, metrics, traces,
+privacy/cardinality policy, PromQL, alerts, and incident runbooks.
 
 The separate worker validates the database/S3 settings above plus `REDIS_URL`;
 it does not require `WEB_ORIGIN`. The API opens an independently configured
@@ -190,3 +198,20 @@ worker has no HTTP port; `docker compose ps` reports its CLI healthcheck.
 See [Docker runtime](docs/docker.md) for architecture, inspection, and shutdown
 commands, and [Database foundation](docs/database.md) for the schema and
 migration workflow.
+
+## Local observability
+
+The explicit overlay adds Collector `0.162.0`, Prometheus `3.15.0`, and Jaeger
+`2.21.0` without changing the base stack:
+
+```bash
+docker compose -f compose.yaml -f compose.observability.yaml up --build
+```
+
+- Prometheus: <http://127.0.0.1:9090>
+- Jaeger: <http://127.0.0.1:16686>
+
+For API/web telemetry without the licensed LocalStack runtime, start only `db`,
+`redis`, `migrate`, `api`, `web`, `otel-collector`, `prometheus`, and `jaeger`.
+See the observability guide for the exact command and architecture-specific
+Collector image override.

@@ -1,4 +1,4 @@
-import { HttpException, Logger } from "@nestjs/common";
+import { HttpException } from "@nestjs/common";
 import {
   ConnectedSocket,
   MessageBody,
@@ -19,6 +19,8 @@ import {
 import type { Server, Socket } from "socket.io";
 
 import { SessionService } from "../auth/session/session.service";
+import { AppLogger } from "../observability/app-logger.service";
+import { ObservabilityMetrics } from "../observability/metrics.service";
 import { RedisThrottlerStorage } from "../security/redis-throttler.storage";
 import { TripPermissionsService } from "../trips/trip-permissions.service";
 import {
@@ -53,7 +55,6 @@ const UUID_PATTERN =
 export class TripRealtimeGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
-  private readonly logger = new Logger(TripRealtimeGateway.name);
   private readonly expiryTimers = new Map<string, NodeJS.Timeout>();
 
   @WebSocketServer()
@@ -64,6 +65,8 @@ export class TripRealtimeGateway
     private readonly tripPermissions: TripPermissionsService,
     private readonly publisher: TripRealtimePublisher,
     private readonly rateLimits: RedisThrottlerStorage,
+    private readonly logger: AppLogger = new AppLogger(),
+    private readonly metrics: ObservabilityMetrics = new ObservabilityMetrics(),
   ) {}
 
   afterInit(server: RealtimeServer): void {
@@ -72,6 +75,10 @@ export class TripRealtimeGateway
       void this.authenticate(socket)
         .then(() => next())
         .catch(() => {
+          this.metrics.realtimeEvent("connection_rejected");
+          this.logger.event("warn", "realtime.connection.rejected", {
+            reason: "authentication",
+          });
           const error = new Error(SOCKET_AUTH_ERROR.message) as Error & {
             data?: typeof SOCKET_AUTH_ERROR;
           };
@@ -87,7 +94,8 @@ export class TripRealtimeGateway
       userRoom(socket.data.userId),
     ]);
     this.scheduleExpiry(socket);
-    this.logger.log(`Socket connected socketId=${socket.id} userId=${socket.data.userId}`);
+    this.metrics.realtimeSocket(1, "connected");
+    this.logger.event("info", "realtime.socket.connected");
   }
 
   handleDisconnect(socket: RealtimeSocket, reason?: string): void {
@@ -99,9 +107,14 @@ export class TripRealtimeGateway
     for (const tripId of socket.data.joinedTripIds ?? []) {
       void this.publisher.publishPresence(tripId);
     }
-    this.logger.log(
-      `Socket disconnected socketId=${socket.id} userId=${socket.data.userId} reason=${reason ?? "unknown"}`,
-    );
+    const joinedTrips = socket.data.joinedTripIds?.length ?? 0;
+    for (let index = 0; index < joinedTrips; index += 1) {
+      this.metrics.realtimeJoin(-1);
+    }
+    this.metrics.realtimeSocket(-1, "disconnected");
+    this.logger.event("info", "realtime.socket.disconnected", {
+      reason: normalizeDisconnectReason(reason),
+    });
   }
 
   @SubscribeMessage(TRIP_REALTIME_EVENTS.join)
@@ -110,6 +123,7 @@ export class TripRealtimeGateway
     @MessageBody() payload: TripJoinRequest,
   ): Promise<TripJoinResponse> {
     if (!(await this.allowRealtimeEvent(socket, "join", 20))) {
+      this.metrics.realtimeEvent("join_rejected");
       return {
         error: {
           code: "RATE_LIMITED",
@@ -119,6 +133,7 @@ export class TripRealtimeGateway
       };
     }
     if (!this.validTripId(payload)) {
+      this.metrics.realtimeEvent("join_rejected");
       return {
         error: { code: "INVALID_TRIP_ID", message: "Trip ID must be a UUID" },
         ok: false,
@@ -131,14 +146,17 @@ export class TripRealtimeGateway
         payload.tripId,
       );
       await socket.join(tripRoom(payload.tripId));
-      if (!socket.data.joinedTripIds.includes(payload.tripId)) {
+      const newJoin = !socket.data.joinedTripIds.includes(payload.tripId);
+      if (newJoin) {
         socket.data.joinedTripIds.push(payload.tripId);
+        this.metrics.realtimeJoin(1);
       }
       await this.publisher.publishPresence(payload.tripId);
 
       return { accessRole: access.role, ok: true };
     } catch (error) {
       if (error instanceof HttpException) {
+        this.metrics.realtimeEvent("join_rejected");
         return {
           error: {
             code: "TRIP_ACCESS_DENIED",
@@ -148,9 +166,10 @@ export class TripRealtimeGateway
         };
       }
 
-      this.logger.error(
-        `Trip join failed socketId=${socket.id} tripId=${payload.tripId}`,
-      );
+      this.metrics.realtimeEvent("join_rejected");
+      this.logger.event("error", "realtime.join.failed", {
+        errorType: error instanceof Error ? error.name : "unknown",
+      });
       return {
         error: { code: "INTERNAL_ERROR", message: "Unable to join Trip" },
         ok: false,
@@ -179,10 +198,12 @@ export class TripRealtimeGateway
       };
     }
 
+    const wasJoined = socket.data.joinedTripIds.includes(payload.tripId);
     await socket.leave(tripRoom(payload.tripId));
     socket.data.joinedTripIds = socket.data.joinedTripIds.filter(
       (tripId) => tripId !== payload.tripId,
     );
+    if (wasJoined) this.metrics.realtimeJoin(-1);
     await this.publisher.publishPresence(payload.tripId);
     return { ok: true };
   }
@@ -268,4 +289,15 @@ export class TripRealtimeGateway
       UUID_PATTERN.test((payload as { tripId: string }).tripId)
     );
   }
+}
+
+function normalizeDisconnectReason(reason: string | undefined): string {
+  const allowed = new Set([
+    "client namespace disconnect",
+    "server namespace disconnect",
+    "ping timeout",
+    "transport close",
+    "transport error",
+  ]);
+  return reason && allowed.has(reason) ? reason : "other";
 }

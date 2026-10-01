@@ -312,3 +312,18 @@ Before accepting a performance change:
    observations rather than committing large traces.
 5. Recheck Docker image sizes and Compose health without weakening the existing
    LocalStack token/security model.
+
+## Observability overhead
+
+`pnpm observability:overhead` compares 200 sequential production-build
+`/health` requests with OTel disabled and enabled against deliberately
+unreachable local exporters. A 2026-10-01 ARM laptop run measured 1.749 ms mean
+disabled and 2.138 ms enabled: +0.389 ms absolute (+22.202% relative against a
+very small baseline). This is a local microbenchmark, not a production latency
+claim; representative database/provider workloads and concurrency may differ.
+
+The implementation keeps 15-second metric exports, 10-second runtime monitoring,
+bounded 3-second exporter timeouts, 10 HTTP histogram buckets, production 10%
+parent-based trace sampling, placeholder-only PG reporting, no Redis command
+instrumentation, and small structured log fields. Stage 25 browser bundle budgets
+remain authoritative; server-only Pino/OTel packages must not enter static chunks.

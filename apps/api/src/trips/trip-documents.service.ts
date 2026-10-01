@@ -4,7 +4,6 @@ import {
   HttpException,
   HttpStatus,
   Injectable,
-  Logger,
 } from "@nestjs/common";
 import type {
   CreateDocumentUploadRequest,
@@ -15,6 +14,7 @@ import type {
   UpdateTripDocumentRequest,
 } from "@tripforge/contracts";
 
+import { AppLogger } from "../observability/app-logger.service";
 import { S3StorageService } from "../storage/s3-storage.service";
 import { TripRealtimePublisher } from "../realtime/trip-realtime.publisher";
 import { TripPermissionsService } from "./trip-permissions.service";
@@ -22,13 +22,12 @@ import { TripDocumentsRepository } from "./trip-documents.repository";
 
 @Injectable()
 export class TripDocumentsService {
-  private readonly logger = new Logger(TripDocumentsService.name);
-
   constructor(
     private readonly documents: TripDocumentsRepository,
     private readonly permissions: TripPermissionsService,
     private readonly storage: S3StorageService,
     private readonly realtime: TripRealtimePublisher,
+    private readonly logger: AppLogger = new AppLogger(),
   ) {}
 
   async list(userId: string, tripId: string): Promise<TripDocument[]> {
@@ -78,9 +77,9 @@ export class TripDocumentsService {
       await this.documents
         .deleteMetadata(tripId, documentId)
         .catch(() => {
-          this.logger.error(
-            `Failed to remove document metadata after presign failure: ${documentId}`,
-          );
+          this.logger.event("error", "document.presign_cleanup.failed", {
+            errorType: "MetadataCleanupError",
+          });
         });
       throw error;
     }

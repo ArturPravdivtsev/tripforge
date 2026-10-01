@@ -4,7 +4,6 @@ import {
   Controller,
   Get,
   type INestApplication,
-  Logger,
   Module,
   Post,
 } from "@nestjs/common";
@@ -15,6 +14,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { AppModule } from "../src/app.module";
 import { configureApplication } from "../src/common/configure-application";
+import { AppLogger } from "../src/observability/app-logger.service";
 
 class TestInputDto {
   @IsString()
@@ -47,9 +47,7 @@ class TestApplicationModule {}
 
 describe("Application HTTP foundation", () => {
   let app: INestApplication;
-  const loggerErrorSpy = vi
-    .spyOn(Logger.prototype, "error")
-    .mockImplementation(() => undefined);
+  const loggerEventSpy = vi.spyOn(AppLogger.prototype, "event");
 
   beforeAll(async () => {
     const testingModule = await Test.createTestingModule({
@@ -63,7 +61,7 @@ describe("Application HTTP foundation", () => {
 
   afterAll(async () => {
     await app.close();
-    loggerErrorSpy.mockRestore();
+    loggerEventSpy.mockRestore();
   });
 
   it("normalizes unknown API routes", async () => {
@@ -179,6 +177,13 @@ describe("Application HTTP foundation", () => {
     });
     expect(serializedBody).not.toContain("Internal implementation detail");
     expect(serializedBody).not.toContain("stack");
-    expect(loggerErrorSpy).toHaveBeenCalled();
+    expect(loggerEventSpy).toHaveBeenCalledWith(
+      "error",
+      "http.request.failed",
+      expect.objectContaining({
+        errorCode: "INTERNAL_SERVER_ERROR",
+        errorType: "Error",
+      }),
+    );
   });
 });

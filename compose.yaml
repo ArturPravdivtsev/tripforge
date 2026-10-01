@@ -14,6 +14,8 @@ services:
       NODE_ENV: production
       HOSTNAME: 0.0.0.0
       PORT: "3000"
+      LOG_LEVEL: info
+      OTEL_ENABLED: "false"
       NEXT_PUBLIC_API_URL: http://127.0.0.1:4000
       NEXT_PUBLIC_MAPTILER_KEY: ${NEXT_PUBLIC_MAPTILER_KEY:-}
       NEXT_PUBLIC_S3_UPLOAD_ORIGIN: http://localhost:4566
@@ -116,6 +118,8 @@ services:
     environment:
       NODE_ENV: production
       PORT: "4000"
+      LOG_LEVEL: info
+      OTEL_ENABLED: "false"
       DATABASE_URL: postgresql://tripforge:tripforge@db:5432/tripforge
       WEB_ORIGIN: http://127.0.0.1:3100
       REDIS_URL: redis://redis:6379
@@ -151,6 +155,8 @@ services:
     command: ["node", "dist/worker.js"]
     environment:
       NODE_ENV: production
+      LOG_LEVEL: info
+      OTEL_ENABLED: "false"
       DATABASE_URL: postgresql://tripforge:tripforge@db:5432/tripforge
       REDIS_URL: redis://redis:6379
       S3_BUCKET: tripforge-documents

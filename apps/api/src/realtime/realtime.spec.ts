@@ -57,11 +57,19 @@ describe("TripRealtimeGateway", () => {
     const rateLimits = {
       increment: vi.fn().mockResolvedValue({ isBlocked: false }),
     };
+    const logger = { event: vi.fn() };
+    const metrics = {
+      realtimeEvent: vi.fn(),
+      realtimeJoin: vi.fn(),
+      realtimeSocket: vi.fn(),
+    };
     const gateway = new TripRealtimeGateway(
       sessions as unknown as SessionService,
       permissions as unknown as TripPermissionsService,
       publisher as unknown as TripRealtimePublisher,
       rateLimits as never,
+      logger as never,
+      metrics as never,
     );
     gateway.afterInit({
       use: vi.fn((value) => {
@@ -72,6 +80,7 @@ describe("TripRealtimeGateway", () => {
     return {
       gateway,
       middleware: () => middleware,
+      metrics,
       permissions,
       publisher,
       rateLimits,
@@ -80,7 +89,7 @@ describe("TripRealtimeGateway", () => {
   }
 
   it("authenticates from the opaque cookie and joins session/user rooms", async () => {
-    const { gateway, middleware, sessions } = subject();
+    const { gateway, metrics, middleware, sessions } = subject();
     const client = socket("tripforge_session=opaque-token");
 
     await runMiddleware(middleware(), client);
@@ -96,6 +105,7 @@ describe("TripRealtimeGateway", () => {
       sessionId: SESSION_ID,
       userId: USER_ID,
     });
+    expect(metrics.realtimeSocket).toHaveBeenCalledWith(1, "connected");
   });
 
   it("rejects a missing or invalid session with a stable connect error", async () => {
@@ -151,7 +161,7 @@ describe("TripRealtimeGateway", () => {
   });
 
   it("rate limits client-originated joins without exposing bucket details", async () => {
-    const { gateway, rateLimits } = subject();
+    const { gateway, metrics, rateLimits } = subject();
     const client = socket();
     client.data = socketData();
     rateLimits.increment.mockResolvedValue({ isBlocked: true });
@@ -165,6 +175,7 @@ describe("TripRealtimeGateway", () => {
       },
       ok: false,
     });
+    expect(metrics.realtimeEvent).toHaveBeenCalledWith("join_rejected");
   });
 
   it("bounds Socket.IO payloads to 64 KiB", () => {

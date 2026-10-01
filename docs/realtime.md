@@ -166,3 +166,13 @@ Socket.IO servers, and real `socket.io-client` connections. It proves cross-node
 mutation, role downgrade, revocation, deletion, logout disconnect, presence
 deduplication, reconnect/rejoin, invalid-session rejection, and REST continuity
 plus broadcast recovery through a temporary Redis command-processing pause.
+
+## Observability
+
+Bounded metrics expose active authenticated sockets, active Trip-room joins,
+connect/disconnect events, rejected connections/joins, and cross-node publisher
+failures. They never label by socket, session, user, or Trip. Safe logs cover
+meaningful rejection and Redis adapter/publisher failures; routine presence
+snapshots and invalidations are intentionally silent. Broad ioredis command
+tracing is disabled to avoid payload/room leakage and noisy spans. See the
+[realtime runbook](./observability.md#diagnosis-runbooks).

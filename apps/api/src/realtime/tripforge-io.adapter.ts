@@ -1,4 +1,3 @@
-import { Logger } from "@nestjs/common";
 import type { INestApplicationContext } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { IoAdapter } from "@nestjs/platform-socket.io";
@@ -6,6 +5,8 @@ import { createAdapter } from "@socket.io/redis-streams-adapter";
 import Redis from "ioredis";
 import type { Server, ServerOptions } from "socket.io";
 
+import { AppLogger } from "../observability/app-logger.service";
+import { ObservabilityMetrics } from "../observability/metrics.service";
 import {
   SOCKET_MAX_HTTP_BUFFER_BYTES,
   SOCKET_PATH,
@@ -14,12 +15,13 @@ import {
 } from "./realtime.constants";
 
 export class TripForgeIoAdapter extends IoAdapter {
-  private readonly logger = new Logger(TripForgeIoAdapter.name);
   private redisClient?: Redis;
 
   constructor(
     app: INestApplicationContext,
     private readonly configService: ConfigService,
+    private readonly logger: AppLogger = new AppLogger(),
+    private readonly metrics: ObservabilityMetrics = new ObservabilityMetrics(),
   ) {
     super(app);
   }
@@ -54,10 +56,11 @@ export class TripForgeIoAdapter extends IoAdapter {
       },
     );
     this.redisClient.on("ready", () => {
-      this.logger.log("Realtime Redis connection is ready");
+      this.logger.event("info", "realtime.redis.ready");
     });
     this.redisClient.on("error", () => {
-      this.logger.warn("Realtime Redis unavailable");
+      this.metrics.realtimeEvent("publisher_failure");
+      this.logger.event("warn", "realtime.redis.unavailable");
     });
     server.adapter(
       createAdapter(this.redisClient, {

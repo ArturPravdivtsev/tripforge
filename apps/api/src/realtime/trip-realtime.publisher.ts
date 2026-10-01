@@ -1,4 +1,4 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import {
   NOTIFICATION_REALTIME_EVENTS,
   TRIP_REALTIME_EVENTS,
@@ -12,6 +12,8 @@ import {
 } from "@tripforge/contracts";
 import type { Server } from "socket.io";
 
+import { AppLogger } from "../observability/app-logger.service";
+import { ObservabilityMetrics } from "../observability/metrics.service";
 import { sessionRoom, tripRoom, userRoom } from "./realtime-rooms";
 import type {
   ClientToServerEvents,
@@ -28,8 +30,12 @@ type RealtimeServer = Server<
 
 @Injectable()
 export class TripRealtimePublisher {
-  private readonly logger = new Logger(TripRealtimePublisher.name);
   private server?: RealtimeServer;
+
+  constructor(
+    private readonly logger: AppLogger = new AppLogger(),
+    private readonly metrics: ObservabilityMetrics = new ObservabilityMetrics(),
+  ) {}
 
   attach(server: RealtimeServer): void {
     this.server = server;
@@ -43,7 +49,7 @@ export class TripRealtimePublisher {
 
     this.publish(() => {
       this.server?.to(tripRoom(tripId)).emit(TRIP_REALTIME_EVENTS.invalidate, payload);
-    }, TRIP_REALTIME_EVENTS.invalidate, tripId);
+    }, TRIP_REALTIME_EVENTS.invalidate);
   }
 
   tripDeleted(tripId: string): void {
@@ -53,7 +59,7 @@ export class TripRealtimePublisher {
       const room = this.server?.in(tripRoom(tripId));
       room?.emit(TRIP_REALTIME_EVENTS.deleted, payload);
       room?.socketsLeave(tripRoom(tripId));
-    }, TRIP_REALTIME_EVENTS.deleted, tripId);
+    }, TRIP_REALTIME_EVENTS.deleted);
   }
 
   accessRevoked(tripId: string, userId: string): void {
@@ -64,7 +70,7 @@ export class TripRealtimePublisher {
       target?.emit(TRIP_REALTIME_EVENTS.accessRevoked, payload);
       target?.socketsLeave(tripRoom(tripId));
       setTimeout(() => void this.publishPresence(tripId), 0);
-    }, TRIP_REALTIME_EVENTS.accessRevoked, tripId);
+    }, TRIP_REALTIME_EVENTS.accessRevoked);
   }
 
   disconnectSession(sessionId: string): void {
@@ -109,17 +115,19 @@ export class TripRealtimePublisher {
       };
       this.server.to(tripRoom(tripId)).emit(TRIP_REALTIME_EVENTS.presence, payload);
     } catch {
-      this.logger.warn(`Presence refresh failed tripId=${tripId}`);
+      this.metrics.realtimeEvent("publisher_failure");
+      this.logger.event("warn", "realtime.publisher.failed", {
+        operation: "presence",
+      });
     }
   }
 
-  private publish(action: () => void, event: string, tripId?: string): void {
+  private publish(action: () => void, event: string): void {
     try {
       action();
     } catch {
-      this.logger.warn(
-        `Realtime publish failed event=${event}${tripId ? ` tripId=${tripId}` : ""}`,
-      );
+      this.metrics.realtimeEvent("publisher_failure");
+      this.logger.event("warn", "realtime.publisher.failed", { event });
     }
   }
 }

@@ -1,6 +1,5 @@
 import {
   Injectable,
-  Logger,
   type OnApplicationBootstrap,
   type OnApplicationShutdown,
 } from "@nestjs/common";
@@ -8,6 +7,9 @@ import { ConfigService } from "@nestjs/config";
 import { Job, Queue, Worker } from "bullmq";
 import Redis from "ioredis";
 
+import { AppLogger } from "../observability/app-logger.service";
+import { ObservabilityMetrics } from "../observability/metrics.service";
+import { withInternalSpan } from "../observability/tracing";
 import {
   JOB_NAMES,
   MAINTENANCE_QUEUE,
@@ -37,7 +39,6 @@ type MaintenanceWorker = Worker<
 export class BackgroundJobsService
   implements OnApplicationBootstrap, OnApplicationShutdown
 {
-  private readonly logger = new Logger(BackgroundJobsService.name);
   private queue?: MaintenanceQueue;
   private queueRedis?: Redis;
   private worker?: MaintenanceWorker;
@@ -50,6 +51,8 @@ export class BackgroundJobsService
     private readonly schedulers: JobSchedulerRegistrar,
     private readonly stalePending: StalePendingCleaner,
     private readonly outbox: StorageCleanupOutboxRepository,
+    private readonly logger: AppLogger,
+    private readonly metrics: ObservabilityMetrics,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -57,10 +60,10 @@ export class BackgroundJobsService
     this.queueRedis = new Redis(redisUrl, { maxRetriesPerRequest: 1 });
     this.workerRedis = new Redis(redisUrl, { maxRetriesPerRequest: null });
     this.queueRedis.on("error", () =>
-      this.logger.error("Queue Redis connection error"),
+      this.logger.event("error", "worker.redis.queue.error"),
     );
     this.workerRedis.on("error", () =>
-      this.logger.error("Worker Redis connection error"),
+      this.logger.event("error", "worker.redis.consumer.error"),
     );
 
     this.queue = new Queue(MAINTENANCE_QUEUE, {
@@ -75,15 +78,23 @@ export class BackgroundJobsService
       },
     );
     this.worker.on("completed", (job) => {
-      this.logger.log(
-        `Job completed name=${job.name} id=${job.id ?? "unknown"} attempt=${job.attemptsMade}`,
+      const noWork =
+        job.name === JOB_NAMES.dispatchCleanupOutbox && job.returnvalue === 0;
+      this.logger.event(
+        noWork ? "debug" : "info",
+        noWork ? "worker.job.no_work" : "worker.job.completed",
+        {
+          attempt: job.attemptsMade,
+          jobName: job.name,
+          outcome: "succeeded",
+        },
       );
     });
     this.worker.on("failed", (job, error) => {
       void this.handleFailure(job, error);
     });
     this.worker.on("error", () => {
-      this.logger.error("BullMQ worker error");
+      this.logger.event("error", "worker.consumer.error");
     });
 
     try {
@@ -92,9 +103,10 @@ export class BackgroundJobsService
         this.worker.waitUntilReady(),
       ]);
       await this.schedulers.register(this.queue);
-      this.logger.log(
-        `Worker ready queue=${MAINTENANCE_QUEUE} concurrency=${WORKER_CONCURRENCY}`,
-      );
+      this.logger.event("info", "worker.ready", {
+        concurrency: WORKER_CONCURRENCY,
+        queue: MAINTENANCE_QUEUE,
+      });
     } catch (error) {
       await this.closeResources();
       throw error;
@@ -102,27 +114,75 @@ export class BackgroundJobsService
   }
 
   async onApplicationShutdown(): Promise<void> {
-    this.logger.log("Worker shutdown started");
+    this.logger.event("info", "worker.shutdown.started");
     await this.closeResources();
-    this.logger.log("Worker shutdown completed");
+    this.logger.event("info", "worker.shutdown.completed");
   }
 
   private async process(
     job: Job<MaintenanceData, unknown, MaintenanceJobName>,
   ): Promise<unknown> {
-    this.logger.log(
-      `Job started name=${job.name} id=${job.id ?? "unknown"} attempt=${job.attemptsMade + 1}`,
+    const startedAt = process.hrtime.bigint();
+    const attempt = job.attemptsMade + 1;
+    this.logger.event(
+      job.name === JOB_NAMES.dispatchCleanupOutbox ? "debug" : "info",
+      "worker.job.started",
+      { attempt, jobName: job.name },
     );
-    if (job.name === JOB_NAMES.cleanupObject) {
-      return this.cleanup.process(job);
-    }
+
     if (job.name === JOB_NAMES.dispatchCleanupOutbox) {
-      return this.dispatcher.dispatch(this.requireQueue());
+      return this.processDispatcherJob(job, startedAt);
     }
-    if (job.name === JOB_NAMES.cleanupStalePending) {
-      return this.stalePending.cleanup();
+
+    return withInternalSpan(
+      `worker ${job.name}`,
+      { "job.attempt": attempt, "job.name": job.name },
+      async (span) => {
+        try {
+          let result: unknown;
+          if (job.name === JOB_NAMES.cleanupObject) {
+            result = await this.cleanup.process(job);
+          } else if (job.name === JOB_NAMES.cleanupStalePending) {
+            result = await this.stalePending.cleanup();
+          } else {
+            throw new Error("Unsupported maintenance job");
+          }
+          span.setAttribute("job.outcome", "succeeded");
+          this.metrics.workerJob(
+            job.name,
+            "succeeded",
+            elapsedSeconds(startedAt),
+          );
+          return result;
+        } catch (error) {
+          const attempts = job.opts.attempts ?? 1;
+          const outcome = job.attemptsMade + 1 < attempts ? "retried" : "failed";
+          span.setAttribute("job.outcome", outcome);
+          this.metrics.workerJob(job.name, outcome, elapsedSeconds(startedAt));
+          throw error;
+        }
+      },
+    );
+  }
+
+  private async processDispatcherJob(
+    job: Job<MaintenanceData, unknown, MaintenanceJobName>,
+    startedAt: bigint,
+  ): Promise<number> {
+    try {
+      const result = await this.dispatcher.dispatch(this.requireQueue());
+      this.metrics.workerJob(
+        job.name,
+        "succeeded",
+        elapsedSeconds(startedAt),
+      );
+      return result;
+    } catch (error) {
+      const attempts = job.opts.attempts ?? 1;
+      const outcome = job.attemptsMade + 1 < attempts ? "retried" : "failed";
+      this.metrics.workerJob(job.name, outcome, elapsedSeconds(startedAt));
+      throw error;
     }
-    throw new Error(`Unsupported maintenance job: ${job.name}`);
   }
 
   private async handleFailure(
@@ -131,19 +191,23 @@ export class BackgroundJobsService
   ): Promise<void> {
     const attempts = job?.opts.attempts ?? 1;
     const exhausted = Boolean(job && job.attemptsMade >= attempts);
-    this.logger.error(
-      `Job failed name=${job?.name ?? "unknown"} id=${job?.id ?? "unknown"} attempt=${job?.attemptsMade ?? 0}/${attempts} exhausted=${exhausted} errorType=${error.name}`,
-    );
+    this.logger.event("error", "worker.job.failed", {
+      attempt: job?.attemptsMade ?? 0,
+      attempts,
+      errorType: error.name,
+      exhausted,
+      jobName: job?.name ?? "unknown",
+    });
     if (!job || job.name !== JOB_NAMES.cleanupObject || !exhausted) return;
 
     try {
       const { outboxId } = parseStorageCleanupJobData(job.data);
       await this.outbox.markFailed(outboxId);
     } catch (markError) {
-      this.logger.error(
-        `Failed to record exhausted cleanup job id=${job.id ?? "unknown"}`,
-        markError instanceof Error ? `errorType=${markError.name}` : undefined,
-      );
+      this.logger.event("error", "worker.outbox.mark_failed.error", {
+        errorType: markError instanceof Error ? markError.name : "unknown",
+        jobName: job.name,
+      });
     }
   }
 
@@ -158,6 +222,10 @@ export class BackgroundJobsService
     await closeRedis(this.workerRedis);
     await closeRedis(this.queueRedis);
   }
+}
+
+function elapsedSeconds(startedAt: bigint): number {
+  return Number(process.hrtime.bigint() - startedAt) / 1_000_000_000;
 }
 
 async function closeRedis(redis: Redis | undefined): Promise<void> {

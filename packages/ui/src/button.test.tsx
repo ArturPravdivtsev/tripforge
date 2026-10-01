@@ -9,8 +9,8 @@ describe("Button", () => {
     render(<Button disabled>Create trip</Button>);
 
     expect(
-      screen.getByRole("button", { name: "Create trip" }),
-    ).toBeDisabled();
+      screen.getByRole("button", { name: "Create trip" }).hasAttribute("disabled"),
+    ).toBe(true);
   });
 
   it("invokes its click handler", async () => {

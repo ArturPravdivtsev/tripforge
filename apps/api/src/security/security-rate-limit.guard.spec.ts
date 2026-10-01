@@ -8,6 +8,8 @@ import { SecurityRateLimitGuard } from "./security-rate-limit.guard";
 
 describe("SecurityRateLimitGuard", () => {
   const increment = vi.fn();
+  const logEvent = vi.fn();
+  const rateLimitRejected = vi.fn();
   const setHeader = vi.fn();
 
   beforeEach(() => {
@@ -18,6 +20,8 @@ describe("SecurityRateLimitGuard", () => {
       totalHits: 1,
     });
     setHeader.mockReset();
+    logEvent.mockReset();
+    rateLimitRejected.mockReset();
   });
 
   it("requires independent IP and normalized-account login buckets", async () => {
@@ -52,6 +56,10 @@ describe("SecurityRateLimitGuard", () => {
       });
     });
     expect(setHeader).toHaveBeenCalledWith("Retry-After", "42");
+    expect(rateLimitRejected).toHaveBeenCalledWith("login.ip");
+    expect(JSON.stringify(rateLimitRejected.mock.calls)).not.toMatch(
+      /user@example|203\.0\.113/iu,
+    );
   });
 
   it("fails closed with a generic 503 when Redis is unavailable", async () => {
@@ -72,6 +80,8 @@ describe("SecurityRateLimitGuard", () => {
       { getAllAndOverride: vi.fn(() => policy) } as unknown as Reflector,
       { increment } as unknown as RedisThrottlerStorage,
       new ConfigService({ SECURITY_RATE_LIMITING_ENABLED: true }),
+      { event: logEvent } as never,
+      { rateLimitRejected } as never,
     );
   }
 

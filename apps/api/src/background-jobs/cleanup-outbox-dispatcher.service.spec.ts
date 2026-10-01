@@ -17,10 +17,19 @@ const firstId = "10000000-0000-4000-8000-000000000001";
 const secondId = "10000000-0000-4000-8000-000000000002";
 
 describe("CleanupOutboxDispatcher", () => {
-  const outbox = { listDispatchable: vi.fn(), markDispatched: vi.fn() };
+  const outbox = {
+    listDispatchable: vi.fn(),
+    markDispatched: vi.fn(),
+    measureBacklog: vi.fn().mockResolvedValue({
+      incomplete: 0,
+      oldestCreatedAt: null,
+    }),
+  };
   const queue = { add: vi.fn(), getJob: vi.fn() };
+  const metrics = { updateOutbox: vi.fn() };
   const dispatcher = new CleanupOutboxDispatcher(
     outbox as unknown as StorageCleanupOutboxRepository,
+    metrics as never,
   );
 
   beforeEach(() => vi.clearAllMocks());
@@ -45,6 +54,8 @@ describe("CleanupOutboxDispatcher", () => {
     );
     expect(cleanupJobId(firstId)).not.toContain(":");
     expect(outbox.markDispatched).toHaveBeenCalledWith(firstId);
+    expect(outbox.measureBacklog).toHaveBeenCalledOnce();
+    expect(metrics.updateOutbox).toHaveBeenCalledWith(0, 0);
   });
 
   it("does not duplicate an existing waiting/active/completed/failed identity", async () => {

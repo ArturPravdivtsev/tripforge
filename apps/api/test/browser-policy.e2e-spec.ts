@@ -16,6 +16,7 @@ import { BrowserMutationGuard } from "../src/auth/browser/browser-mutation.guard
 import { RequireJsonBody } from "../src/auth/browser/require-json-body.decorator";
 import { RegisterDto } from "../src/auth/dto/register.dto";
 import { configureApplication } from "../src/common/configure-application";
+import { ObservabilityModule } from "../src/observability/observability.module";
 
 const WEB_ORIGIN = "http://127.0.0.1:3000";
 
@@ -41,6 +42,7 @@ class BrowserPolicyController {
 
 @Module({
   imports: [
+    ObservabilityModule,
     ConfigModule.forRoot({
       isGlobal: true,
       load: [() => ({ WEB_ORIGIN })],

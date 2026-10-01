@@ -23,6 +23,8 @@ describe("validateEnvironment", () => {
       DATABASE_URL:
         "postgresql://tripforge:tripforge@127.0.0.1:5433/tripforge",
       NODE_ENV: "development",
+      LOG_LEVEL: "debug",
+      OTEL_ENABLED: false,
       PORT: 4000,
       S3_BUCKET: "tripforge-documents",
       S3_FORCE_PATH_STYLE: false,
@@ -116,5 +118,23 @@ describe("validateEnvironment", () => {
         WEB_ORIGIN: "https://tripforge.example",
       }),
     ).toThrow(/SECURITY_RATE_LIMITING_ENABLED/);
+  });
+
+  it("validates observability configuration and keeps tests disabled", () => {
+    expect(validateEnvironment({ NODE_ENV: "test" })).toMatchObject({
+      LOG_LEVEL: "info",
+      OTEL_ENABLED: false,
+      OTEL_TRACES_SAMPLER: "parentbased_traceidratio",
+      OTEL_TRACES_SAMPLER_ARG: 1,
+    });
+    expect(() =>
+      validateEnvironment({ LOG_LEVEL: "everything", NODE_ENV: "test" }),
+    ).toThrow(/LOG_LEVEL/);
+    expect(() =>
+      validateEnvironment({
+        NODE_ENV: "test",
+        OTEL_EXPORTER_OTLP_ENDPOINT: "redis://collector",
+      }),
+    ).toThrow(/OTEL_EXPORTER_OTLP_ENDPOINT/);
   });
 });

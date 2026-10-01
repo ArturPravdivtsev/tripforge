@@ -1,0 +1,84 @@
+rule_files:
+  - rules.yml
+
+evaluation_interval: 1m
+
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'tripforge_http_server_requests{status_class="2xx"}'
+        values: '100+100x15'
+      - series: 'tripforge_http_server_requests{status_class="5xx"}'
+        values: '0+0x15'
+      - series: 'tripforge_storage_outbox_oldest_age'
+        values: '0+0x15'
+      - series: 'tripforge_db_pool_waiting_requests'
+        values: '0+0x15'
+      - series: 'tripforge_worker_jobs{outcome="failed"}'
+        values: '0+0x15'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: TripForgeHighApi5xxRatio
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: TripForgeOutboxBacklogOld
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: TripForgeDbPoolWaiting
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: TripForgeRepeatedWorkerFailures
+        exp_alerts: []
+  - interval: 1m
+    input_series:
+      - series: 'tripforge_http_server_requests{status_class="2xx"}'
+        values: '0+100x15'
+      - series: 'tripforge_http_server_requests{status_class="5xx"}'
+        values: '0+20x15'
+      - series: 'tripforge_storage_outbox_oldest_age'
+        values: '1000+0x15'
+      - series: 'tripforge_db_pool_waiting_requests'
+        values: '1+0x15'
+      - series: 'tripforge_worker_jobs{outcome="failed"}'
+        values: '0+1x15'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: TripForgeHighApi5xxRatio
+        exp_alerts:
+          - exp_labels:
+              alertname: TripForgeHighApi5xxRatio
+              service: tripforge-api
+              severity: critical
+            exp_annotations:
+              summary: TripForge API 5xx ratio is above 5 percent
+              first_step: Inspect a representative request trace and correlated JSON error log.
+      - eval_time: 10m
+        alertname: TripForgeOutboxBacklogOld
+        exp_alerts:
+          - exp_labels:
+              alertname: TripForgeOutboxBacklogOld
+              service: tripforge-worker
+              severity: warning
+            exp_annotations:
+              summary: TripForge cleanup outbox oldest item exceeds 15 minutes
+              first_step: Inspect dispatcher and cleanup job failures before checking S3.
+      - eval_time: 10m
+        alertname: TripForgeDbPoolWaiting
+        exp_alerts:
+          - exp_labels:
+              alertname: TripForgeDbPoolWaiting
+              service: tripforge-api
+              severity: warning
+            exp_annotations:
+              summary: TripForge PostgreSQL pool has sustained waiters
+              first_step: Inspect slow PostgreSQL spans and Stage 25 query plans.
+      - eval_time: 10m
+        alertname: TripForgeRepeatedWorkerFailures
+        exp_alerts:
+          - exp_labels:
+              alertname: TripForgeRepeatedWorkerFailures
+              service: tripforge-worker
+              severity: critical
+            exp_annotations:
+              summary: TripForge worker jobs are repeatedly failing
+              first_step: Find worker.job.failed logs and inspect the matching worker trace.

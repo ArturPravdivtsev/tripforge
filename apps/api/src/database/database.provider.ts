@@ -5,17 +5,24 @@ import { Pool } from "pg";
 
 import { DATABASE, DATABASE_POOL } from "./database.constants";
 import * as schema from "./schema";
+import { ObservabilityMetrics } from "../observability/metrics.service";
 
 export type Database = NodePgDatabase<typeof schema>;
 
 export const databaseProviders: Provider[] = [
   {
     provide: DATABASE_POOL,
-    inject: [ConfigService],
-    useFactory: (configService: ConfigService): Pool =>
-      new Pool({
+    inject: [ConfigService, ObservabilityMetrics],
+    useFactory: (
+      configService: ConfigService,
+      metrics: ObservabilityMetrics,
+    ): Pool => {
+      const pool = new Pool({
         connectionString: configService.getOrThrow<string>("DATABASE_URL"),
-      }),
+      });
+      metrics.registerPool(pool);
+      return pool;
+    },
   },
   {
     provide: DATABASE,

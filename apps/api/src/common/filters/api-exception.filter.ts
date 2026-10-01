@@ -5,17 +5,19 @@ import {
   HttpException,
   HttpStatus,
   Injectable,
-  Logger,
 } from "@nestjs/common";
 import { HttpAdapterHost } from "@nestjs/core";
 import type { ApiErrorResponse } from "@tripforge/contracts";
 
+import { AppLogger } from "../../observability/app-logger.service";
+
 @Catch()
 @Injectable()
 export class ApiExceptionFilter implements ExceptionFilter {
-  private readonly logger = new Logger(ApiExceptionFilter.name);
-
-  constructor(private readonly adapterHost: HttpAdapterHost) {}
+  constructor(
+    private readonly adapterHost: HttpAdapterHost,
+    private readonly logger: AppLogger,
+  ) {}
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const { httpAdapter } = this.adapterHost;
@@ -90,11 +92,10 @@ export class ApiExceptionFilter implements ExceptionFilter {
     exception: unknown,
     path: string,
   ): ApiErrorResponse {
-    this.logger.error(
-      `Unhandled exception type=${
-        exception instanceof Error ? exception.name : "unknown"
-      }`,
-    );
+    this.logger.event("error", "http.request.failed", {
+      errorCode: "INTERNAL_SERVER_ERROR",
+      errorType: exception instanceof Error ? exception.name : "unknown",
+    });
 
     return {
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,

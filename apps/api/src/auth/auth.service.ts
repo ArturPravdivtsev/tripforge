@@ -13,6 +13,7 @@ import type { RegisterDto } from "./dto/register.dto";
 import { normalizeEmail } from "./email-normalizer";
 import { PasswordHasherService } from "./password/password-hasher.service";
 import { SessionService } from "./session/session.service";
+import { ObservabilityMetrics } from "../observability/metrics.service";
 
 type AuthenticationResult = {
   rawToken: string;
@@ -31,6 +32,7 @@ export class AuthService {
     private readonly authRepository: AuthRepository,
     private readonly passwordHasher: PasswordHasherService,
     private readonly sessionService: SessionService,
+    private readonly metrics: ObservabilityMetrics,
   ) {}
 
   async register(input: RegisterDto): Promise<AuthenticationResult> {
@@ -54,6 +56,7 @@ export class AuthService {
         tokenHash: session.tokenHash,
       });
 
+      this.metrics.auth("registration_success");
       return { rawToken: session.rawToken, user };
     } catch (error) {
       if (this.isDuplicateEmail(error)) {
@@ -87,6 +90,7 @@ export class AuthService {
         throw this.internalFailure();
       }
 
+      this.metrics.auth("login_failure");
       throw this.invalidCredentials();
     }
 
@@ -102,6 +106,7 @@ export class AuthService {
     }
 
     if (!passwordMatches) {
+      this.metrics.auth("login_failure");
       throw this.invalidCredentials();
     }
 
@@ -125,6 +130,7 @@ export class AuthService {
     };
     const rawToken = await this.sessionService.create(user.id);
 
+    this.metrics.auth("login_success");
     return { rawToken, user };
   }
 

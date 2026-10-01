@@ -291,3 +291,17 @@ tiles/controls, direct S3 PUT and download, and no unexpected CSP console errors
 Inspect cookies, response headers, network destinations, local/session storage,
 IndexedDB, and browser-visible source/config. Browser extensions' own violations
 must be distinguished from product CSP violations.
+
+## Telemetry security boundary
+
+Observability preserves the Stage 26 safe-error posture. Logs and traces exclude
+passwords, cookies, authorization/session tokens, provider credentials,
+presigned URLs, request bodies, raw search queries, SQL bind values, filenames,
+storage keys, and untrusted third-party messages. IDs and private values are
+never metric labels; raw IPs are not newly retained. Recursive logger redaction
+is defense in depth around a primary rule of never passing sensitive structures.
+
+Prometheus and Jaeger are trusted local infrastructure, not public product
+routes. The application exposes no `/metrics` or debug-error endpoint. Future
+production placement must add private networking, UI authentication, transport
+policy, and explicit retention; telemetry context is never authorization input.

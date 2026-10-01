@@ -95,3 +95,16 @@ No sessions, Trip data, authorization, response cache, notifications, or user
 job state are stored in Redis. BullMQ is durable work delivery backed by the
 PostgreSQL outbox; the Socket.IO Streams adapter is non-durable freshness
 transport whose missed messages are repaired by reconnect and refetch.
+
+## Observability
+
+Each executed fixed-name BullMQ job gets a manual worker span plus structured
+start/success/retry/failure events and count/duration metrics. Attributes include
+only fixed job name, attempt, and bounded outcome; job IDs never become metric
+labels and storage keys are not logged. A no-work 30-second dispatch cycle avoids
+creating a trace. Existing maintenance cycles refresh incomplete count and
+oldest-age gauges, so no request-path or high-frequency COUNT probe was added.
+
+A final cleanup failure is correlated through `worker.job.failed`, the worker
+trace (including safe AWS operation children), the failure counter, and durable
+incomplete outbox state. See the [worker runbook](./observability.md#diagnosis-runbooks).
