@@ -108,3 +108,17 @@ oldest-age gauges, so no request-path or high-frequency COUNT probe was added.
 A final cleanup failure is correlated through `worker.job.failed`, the worker
 trace (including safe AWS operation children), the failure counter, and durable
 incomplete outbox state. See the [worker runbook](./observability.md#diagnosis-runbooks).
+
+## AWS runtime
+
+The worker is a private Fargate service using the same immutable API digest with
+`node dist/worker.js`. It has no ALB or inbound rule. RDS and authenticated TLS
+ElastiCache endpoints are injected at startup; its task role can only delete
+objects under the TripForge `trips/*` prefix. The health command verifies Redis,
+and ECS allows 120 seconds for BullMQ/Nest/telemetry shutdown after SIGTERM.
+
+ElastiCache uses Redis OSS 7.1, cluster mode disabled, `noeviction`, TLS, and
+AUTH. HA may add a replica and automatic failover, but Redis loss never loses
+business intent because the PostgreSQL outbox remains authoritative. Real cloud
+QA must exercise reconnect/failover only in a controlled environment and verify
+one cleanup item end to end.

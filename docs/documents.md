@@ -98,3 +98,10 @@ The API uses `S3_ENDPOINT=http://localstack:4566` for HEAD/DELETE and
 URLs. In Amazon S3 production deployments both endpoints may be omitted. The
 AWS SDK then uses normal endpoint discovery and credential-provider chain, so
 IAM roles work without permanent keys in application configuration.
+
+The production bucket is private, bucket-owner-enforced, Block Public Access,
+SSE-S3 encrypted, versioned, TLS-only, and protected from force destroy. CORS
+allows only the exact HTTPS web origin and required GET/HEAD/PUT headers. The API
+task role signs and verifies objects under `trips/*`; the worker has a narrower
+delete-only role. Versioning provides recovery history but does not change
+DB-first product deletion semantics. See [AWS deployment](./aws-deployment.md).

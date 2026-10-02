@@ -14,10 +14,42 @@ describe("validateWorkerEnvironment", () => {
     });
   });
 
-  it("requires database and Redis URLs in production", () => {
+  it("requires database configuration and Redis URL in production", () => {
     expect(() =>
-      validateWorkerEnvironment({ NODE_ENV: "production" }),
-    ).toThrow(/DATABASE_URL.*REDIS_URL/);
+      validateWorkerEnvironment({
+        NODE_ENV: "production",
+        REDIS_URL: "rediss://:secret@redis.internal:6379",
+      }),
+    ).toThrow(/DATABASE_URL.*DATABASE/);
+  });
+
+  it("accepts discrete TLS database and Redis configuration", () => {
+    expect(
+      validateWorkerEnvironment({
+        DATABASE_HOST: "database.internal",
+        DATABASE_NAME: "tripforge",
+        DATABASE_PASSWORD: "secret",
+        DATABASE_PORT: "5432",
+        DATABASE_SSL: "true",
+        DATABASE_USER: "tripforge",
+        NODE_ENV: "production",
+        REDIS_URL: "rediss://:secret@redis.internal:6379",
+      }),
+    ).toMatchObject({
+      DATABASE_HOST: "database.internal",
+      DATABASE_PORT: 5432,
+      DATABASE_SSL: true,
+    });
+  });
+
+  it("rejects plaintext Redis in production", () => {
+    expect(() =>
+      validateWorkerEnvironment({
+        DATABASE_URL: "postgresql://user:password@database:5432/app",
+        NODE_ENV: "production",
+        REDIS_URL: "redis://redis.internal:6379",
+      }),
+    ).toThrow(/rediss/);
   });
 
   it("rejects a non-Redis connection URL", () => {

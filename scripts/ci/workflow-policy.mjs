@@ -7,7 +7,6 @@ import { parse } from "yaml";
 const SHA_ACTION = /^[^./][^@]*@[0-9a-f]{40}$/u;
 const FORBIDDEN_TRIGGERS = ["pull_request_target", "workflow_run"];
 const FORBIDDEN_TEXT = [
-  "aws-actions/configure-aws-credentials",
   "cache-mode: write",
   "GH_ADMIN_TOKEN",
 ];
@@ -81,6 +80,14 @@ export function validateWorkflow(source, filename = "workflow.yml") {
     if (!action.startsWith("./") && !SHA_ACTION.test(action)) {
       errors.push(`${filename}: action is not pinned to a full SHA: ${action}`);
     }
+    if (
+      action.startsWith("aws-actions/configure-aws-credentials@") &&
+      basename(filename) !== "deploy-aws.yml"
+    ) {
+      errors.push(
+        `${filename}: AWS credentials action is restricted to deploy-aws.yml`,
+      );
+    }
   }
 
   for (const forbidden of FORBIDDEN_TEXT) {
@@ -110,8 +117,13 @@ export function validateWorkflow(source, filename = "workflow.yml") {
     const isCodeql =
       basename(filename) === "codeql.yml" &&
       scopes.every((scope) => scope === "security-events");
+    const isAwsDeploy =
+      basename(filename) === "deploy-aws.yml" &&
+      jobName === "deploy" &&
+      job.environment === "production" &&
+      scopes.every((scope) => scope === "id-token");
 
-    if (!isTrustedPublish && !isCodeql) {
+    if (!isTrustedPublish && !isCodeql && !isAwsDeploy) {
       errors.push(
         `${filename}: job ${jobName} has unexpected write permissions: ${scopes.join(", ")}`,
       );
@@ -122,7 +134,14 @@ export function validateWorkflow(source, filename = "workflow.yml") {
     const jobs = workflow.jobs ?? {};
     const gate = jobs.gate;
     const publish = jobs.publish;
-    const mandatory = ["quality", "database", "integration", "security", "docker"];
+    const mandatory = [
+      "quality",
+      "database",
+      "integration",
+      "security",
+      "docker",
+      "infrastructure",
+    ];
     const gateNeeds = Array.isArray(gate?.needs) ? gate.needs : [];
 
     if (gate?.name !== "Gate" || !String(gate?.if ?? "").includes("always()")) {
@@ -174,6 +193,50 @@ export function validateWorkflow(source, filename = "workflow.yml") {
     ]) {
       if (!publishText.includes(required)) {
         errors.push(`${filename}: publish policy is missing ${required}`);
+      }
+    }
+  }
+
+  if (basename(filename) === "deploy-aws.yml") {
+    const jobs = workflow.jobs ?? {};
+    const deploy = jobs.deploy;
+    const deployText = JSON.stringify(deploy ?? {});
+    const triggers = workflow.on ?? {};
+
+    if (
+      typeof triggers !== "object" ||
+      !("workflow_dispatch" in triggers) ||
+      Object.keys(triggers).some((trigger) => trigger !== "workflow_dispatch")
+    ) {
+      errors.push(`${filename}: deployment must be workflow_dispatch-only`);
+    }
+    if (deploy?.environment !== "production") {
+      errors.push(`${filename}: deploy job must use the production environment`);
+    }
+    if (deploy?.permissions?.["id-token"] !== "write") {
+      errors.push(`${filename}: deploy job must request OIDC id-token write`);
+    }
+    if (
+      !collectUses(deploy).some((action) =>
+        action.startsWith("aws-actions/configure-aws-credentials@"),
+      )
+    ) {
+      errors.push(`${filename}: deploy job must configure AWS through OIDC`);
+    }
+    for (const forbidden of ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"]){
+      if (source.includes(forbidden)) {
+        errors.push(`${filename}: static AWS credential reference: ${forbidden}`);
+      }
+    }
+    for (const required of [
+      "sha256:[0-9a-f]{64}",
+      "Run migration before service rollout",
+      "Roll out API, worker, and web",
+      "services-stable",
+      "assignPublicIp=DISABLED",
+    ]) {
+      if (!deployText.includes(required)) {
+        errors.push(`${filename}: deployment policy is missing ${required}`);
       }
     }
   }

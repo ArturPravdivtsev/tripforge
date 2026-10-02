@@ -31,12 +31,15 @@ packages/
   eslint-config/        Shared ESLint configuration
   typescript-config/    Shared TypeScript configuration
   ui/                   Reusable presentation primitives
+infra/
+  terraform/            AWS bootstrap and production infrastructure
 ```
 
 ## Prerequisites
 
 - Node.js 24 LTS
 - Corepack (included with supported Node.js installations)
+- Terraform 1.16.4 for AWS infrastructure work
 
 ## Setup
 
@@ -65,6 +68,9 @@ pnpm observability:config:check # Validate Collector, Prometheus, and alert rule
 pnpm observability:overhead # Compare local API latency with OTel off/on
 pnpm check      # Run lint, typecheck, tests, and build
 pnpm ci:verify  # Approximate mandatory non-container CI gates locally
+pnpm infra:fmt      # Check Terraform formatting
+pnpm infra:validate # Initialize and validate both Terraform roots
+pnpm infra:test     # Run focused mock-provider architecture tests
 ```
 
 Local services:
@@ -74,12 +80,14 @@ Local services:
 
 ## CI/CD
 
-GitHub Actions runs stable Quality, Database, Integration, Security, and Docker
+GitHub Actions runs stable Quality, Database, Integration, Security, Docker, and Terraform
 checks for pull requests and trusted main/tag pushes. `CI / Gate` is the single
 required aggregate check. Only a successful trusted push may publish immutable
 web, API/worker, and migration images to GHCR; images include BuildKit SBOM and
-provenance and are handed to future deployment by digest. Stage 28 performs no
-cloud deployment. See [CI/CD and supply-chain delivery](docs/ci-cd.md).
+provenance. A separate manual, protected AWS workflow promotes exact digests by
+OIDC, runs migrations first, and then rolls ECS services. See
+[CI/CD and supply-chain delivery](docs/ci-cd.md) and
+[AWS production deployment](docs/aws-deployment.md).
 
 ## API configuration
 
@@ -101,8 +109,10 @@ S3_PUBLIC_ENDPOINT=http://localhost:4566
 S3_FORCE_PATH_STYLE=true
 ```
 
-These are local development defaults. Production requires an explicit
-`DATABASE_URL` and exact `WEB_ORIGIN`. The browser app uses
+These are local development defaults. Production accepts either an explicit
+`DATABASE_URL` or the complete `DATABASE_HOST/PORT/NAME/USER/PASSWORD` set;
+the modes cannot be mixed. AWS uses the discrete set with `DATABASE_SSL=true`,
+an exact `WEB_ORIGIN`, and authenticated `rediss://`. The browser app uses
 `NEXT_PUBLIC_API_URL=http://127.0.0.1:4000` and
 `NEXT_PUBLIC_S3_UPLOAD_ORIGIN=http://localhost:4566` for the exact direct-upload
 CSP destination. Set `NEXT_PUBLIC_MAPTILER_KEY` to a MapTiler browser key to
@@ -143,6 +153,9 @@ threat review, distributed limits, CSP/header policy, secrets inventory, known
 limitations, and reusable pre-release checklist.
 See [Production observability](docs/observability.md) for logs, metrics, traces,
 privacy/cardinality policy, PromQL, alerts, and incident runbooks.
+See [AWS production deployment](docs/aws-deployment.md) and
+[infrastructure operations](infra/README.md) for VPC/ECS/RDS/Redis/S3,
+Terraform state, cost profiles, OIDC promotion, rollback, and cloud QA.
 
 The separate worker validates the database/S3 settings above plus `REDIS_URL`;
 it does not require `WEB_ORIGIN`. The API opens an independently configured

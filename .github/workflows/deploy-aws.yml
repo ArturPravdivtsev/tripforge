@@ -1,0 +1,201 @@
+name: Deploy AWS
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Verified 40-character source commit from Stage 28
+        required: true
+        type: string
+      web_digest:
+        description: tripforge-web sha256 digest
+        required: true
+        type: string
+      api_digest:
+        description: tripforge-api sha256 digest
+        required: true
+        type: string
+      migrate_digest:
+        description: tripforge-migrate sha256 digest
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tripforge-production-writer
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Promote immutable release
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
+    permissions:
+      contents: read
+      packages: read
+      id-token: write
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      AWS_DEPLOY_ROLE_ARN: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+      ECS_CLUSTER: ${{ vars.ECS_CLUSTER }}
+      ECS_WEB_SERVICE: ${{ vars.ECS_WEB_SERVICE }}
+      ECS_API_SERVICE: ${{ vars.ECS_API_SERVICE }}
+      ECS_WORKER_SERVICE: ${{ vars.ECS_WORKER_SERVICE }}
+      ECS_MIGRATE_TASK_FAMILY: ${{ vars.ECS_MIGRATE_TASK_FAMILY }}
+      ECS_MIGRATE_SUBNETS: ${{ vars.ECS_MIGRATE_SUBNETS }}
+      ECS_MIGRATE_SECURITY_GROUP: ${{ vars.ECS_MIGRATE_SECURITY_GROUP }}
+      APP_URL: ${{ vars.TRIPFORGE_APP_URL }}
+      API_URL: ${{ vars.TRIPFORGE_API_URL }}
+      COMMIT_SHA: ${{ inputs.commit_sha }}
+      WEB_DIGEST: ${{ inputs.web_digest }}
+      API_DIGEST: ${{ inputs.api_digest }}
+      MIGRATE_DIGEST: ${{ inputs.migrate_digest }}
+    steps:
+      - name: Check out trusted main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate promotion inputs
+        run: |
+          [[ "$COMMIT_SHA" =~ ^[0-9a-f]{40}$ ]]
+          for digest in "$WEB_DIGEST" "$API_DIGEST" "$MIGRATE_DIGEST"; do
+            [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+          done
+          for value in AWS_REGION AWS_DEPLOY_ROLE_ARN ECS_CLUSTER ECS_WEB_SERVICE ECS_API_SERVICE ECS_WORKER_SERVICE ECS_MIGRATE_TASK_FAMILY ECS_MIGRATE_SUBNETS ECS_MIGRATE_SECURITY_GROUP APP_URL API_URL; do
+            test -n "${!value}"
+          done
+          git merge-base --is-ancestor "$COMMIT_SHA" HEAD
+      - name: Resolve immutable image references
+        id: images
+        env:
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          owner="${OWNER,,}"
+          echo "web=ghcr.io/${owner}/tripforge-web@${WEB_DIGEST}" >> "$GITHUB_OUTPUT"
+          echo "api=ghcr.io/${owner}/tripforge-api@${API_DIGEST}" >> "$GITHUB_OUTPUT"
+          echo "migrate=ghcr.io/${owner}/tripforge-migrate@${MIGRATE_DIGEST}" >> "$GITHUB_OUTPUT"
+      - name: Log in to GHCR for metadata verification
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Verify digest existence and source revision
+        env:
+          WEB_IMAGE: ${{ steps.images.outputs.web }}
+          API_IMAGE: ${{ steps.images.outputs.api }}
+          MIGRATE_IMAGE: ${{ steps.images.outputs.migrate }}
+        run: |
+          for image in "$WEB_IMAGE" "$API_IMAGE" "$MIGRATE_IMAGE"; do
+            metadata="$(docker buildx imagetools inspect "$image")"
+            grep -F "org.opencontainers.image.revision: $COMMIT_SHA" <<< "$metadata"
+          done
+      - name: Configure AWS credentials through OIDC
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ env.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: tripforge-${{ github.run_id }}
+      - name: Register migration revision
+        id: migration
+        env:
+          MIGRATE_IMAGE: ${{ steps.images.outputs.migrate }}
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition "$ECS_MIGRATE_TASK_FAMILY" \
+            --query taskDefinition > migrate-current.json
+          jq --arg image "$MIGRATE_IMAGE" '
+            .containerDefinitions |= map(if .name == "migrate" then .image = $image else . end)
+            | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
+          ' migrate-current.json > migrate-next.json
+          arn="$(aws ecs register-task-definition \
+            --cli-input-json file://migrate-next.json \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)"
+          echo "task_definition=$arn" >> "$GITHUB_OUTPUT"
+      - name: Run migration before service rollout
+        env:
+          MIGRATE_TASK_DEFINITION: ${{ steps.migration.outputs.task_definition }}
+        run: |
+          task_arn="$(aws ecs run-task \
+            --cluster "$ECS_CLUSTER" \
+            --task-definition "$MIGRATE_TASK_DEFINITION" \
+            --launch-type FARGATE \
+            --platform-version LATEST \
+            --network-configuration "awsvpcConfiguration={subnets=[$ECS_MIGRATE_SUBNETS],securityGroups=[$ECS_MIGRATE_SECURITY_GROUP],assignPublicIp=DISABLED}" \
+            --query 'tasks[0].taskArn' \
+            --output text)"
+          test -n "$task_arn"
+          test "$task_arn" != None
+          aws ecs wait tasks-stopped --cluster "$ECS_CLUSTER" --tasks "$task_arn"
+          aws ecs describe-tasks --cluster "$ECS_CLUSTER" --tasks "$task_arn" > migrate-result.json
+          exit_code="$(jq -r '.tasks[0].containers[] | select(.name == "migrate") | .exitCode // 1' migrate-result.json)"
+          if [[ "$exit_code" != 0 ]]; then
+            jq '.tasks[0] | {stopCode, stoppedReason, containers: [.containers[] | {name, exitCode, reason}]}' migrate-result.json
+            exit 1
+          fi
+      - name: Register application task revisions
+        id: revisions
+        env:
+          WEB_IMAGE: ${{ steps.images.outputs.web }}
+          API_IMAGE: ${{ steps.images.outputs.api }}
+        run: |
+          register_revision() {
+            service="$1"
+            container="$2"
+            image="$3"
+            current="$(aws ecs describe-services \
+              --cluster "$ECS_CLUSTER" \
+              --services "$service" \
+              --query 'services[0].taskDefinition' \
+              --output text)"
+            aws ecs describe-task-definition \
+              --task-definition "$current" \
+              --query taskDefinition > "${container}-current.json"
+            jq --arg image "$image" --arg container "$container" '
+              .containerDefinitions |= map(if .name == $container then .image = $image else . end)
+              | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
+            ' "${container}-current.json" > "${container}-next.json"
+            aws ecs register-task-definition \
+              --cli-input-json "file://${container}-next.json" \
+              --query 'taskDefinition.taskDefinitionArn' \
+              --output text
+          }
+
+          api_arn="$(register_revision "$ECS_API_SERVICE" api "$API_IMAGE")"
+          worker_arn="$(register_revision "$ECS_WORKER_SERVICE" worker "$API_IMAGE")"
+          web_arn="$(register_revision "$ECS_WEB_SERVICE" web "$WEB_IMAGE")"
+          echo "api=$api_arn" >> "$GITHUB_OUTPUT"
+          echo "worker=$worker_arn" >> "$GITHUB_OUTPUT"
+          echo "web=$web_arn" >> "$GITHUB_OUTPUT"
+      - name: Roll out API, worker, and web
+        env:
+          API_TASK_DEFINITION: ${{ steps.revisions.outputs.api }}
+          WORKER_TASK_DEFINITION: ${{ steps.revisions.outputs.worker }}
+          WEB_TASK_DEFINITION: ${{ steps.revisions.outputs.web }}
+        run: |
+          aws ecs update-service --cluster "$ECS_CLUSTER" --service "$ECS_API_SERVICE" --task-definition "$API_TASK_DEFINITION" >/dev/null
+          aws ecs update-service --cluster "$ECS_CLUSTER" --service "$ECS_WORKER_SERVICE" --task-definition "$WORKER_TASK_DEFINITION" >/dev/null
+          aws ecs update-service --cluster "$ECS_CLUSTER" --service "$ECS_WEB_SERVICE" --task-definition "$WEB_TASK_DEFINITION" >/dev/null
+          aws ecs wait services-stable --cluster "$ECS_CLUSTER" --services "$ECS_API_SERVICE" "$ECS_WORKER_SERVICE" "$ECS_WEB_SERVICE"
+      - name: Smoke-test HTTPS health endpoints
+        run: |
+          curl --fail --silent --show-error --retry 5 --retry-delay 5 "${APP_URL%/}/health"
+          curl --fail --silent --show-error --retry 5 --retry-delay 5 "${API_URL%/}/health"
+      - name: Summarize deployment
+        if: ${{ always() }}
+        run: |
+          {
+            echo "### AWS deployment — ${{ job.status }}"
+            echo "- Source: \`$COMMIT_SHA\`"
+            echo "- Web: \`$WEB_DIGEST\`"
+            echo "- API/worker: \`$API_DIGEST\`"
+            echo "- Migration: \`$MIGRATE_DIGEST\`"
+          } >> "$GITHUB_STEP_SUMMARY"

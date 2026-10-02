@@ -4,6 +4,13 @@ import { LOG_LEVELS } from "../observability/observability-config";
 
 const defaultDatabaseUrl =
   "postgresql://tripforge:tripforge@127.0.0.1:5433/tripforge";
+const databaseKeys = [
+  "DATABASE_HOST",
+  "DATABASE_PORT",
+  "DATABASE_NAME",
+  "DATABASE_USER",
+  "DATABASE_PASSWORD",
+] as const;
 
 export const workerEnvironmentSchema = Joi.object({
   NODE_ENV: Joi.string()
@@ -13,9 +20,15 @@ export const workerEnvironmentSchema = Joi.object({
     .uri({ scheme: ["postgresql", "postgres"] })
     .when("NODE_ENV", {
       is: "production",
-      then: Joi.required(),
+      then: Joi.optional(),
       otherwise: Joi.string().default(defaultDatabaseUrl),
     }),
+  DATABASE_HOST: Joi.string().hostname().optional(),
+  DATABASE_PORT: Joi.number().port().optional(),
+  DATABASE_NAME: Joi.string().trim().min(1).max(63).optional(),
+  DATABASE_USER: Joi.string().trim().min(1).max(63).optional(),
+  DATABASE_PASSWORD: Joi.string().min(1).optional(),
+  DATABASE_SSL: Joi.boolean().truthy("true").falsy("false").default(false),
   REDIS_URL: Joi.string()
     .uri({ scheme: ["redis", "rediss"] })
     .when("NODE_ENV", {
@@ -70,6 +83,41 @@ export const workerEnvironmentSchema = Joi.object({
     .truthy("true")
     .falsy("false")
     .default(false),
+}).custom((value: Record<string, unknown>, helpers) => {
+  if (value.NODE_ENV !== "production") return value;
+
+  const hasUrl = typeof value.DATABASE_URL === "string";
+  const presentDiscrete = databaseKeys.filter(
+    (key) => value[key] !== undefined,
+  );
+
+  if (hasUrl && presentDiscrete.length > 0) {
+    return helpers.message({
+      custom:
+        "DATABASE_URL cannot be combined with discrete DATABASE_* settings",
+    });
+  }
+  if (!hasUrl && presentDiscrete.length !== databaseKeys.length) {
+    return helpers.message({
+      custom:
+        "production requires DATABASE_URL or every discrete DATABASE_* setting",
+    });
+  }
+  if (!hasUrl && value.DATABASE_SSL !== true) {
+    return helpers.message({
+      custom: "production discrete database configuration requires DATABASE_SSL=true",
+    });
+  }
+  if (
+    typeof value.REDIS_URL === "string" &&
+    !value.REDIS_URL.startsWith("rediss://")
+  ) {
+    return helpers.message({
+      custom: "production REDIS_URL must use rediss://",
+    });
+  }
+
+  return value;
 });
 
 export function validateWorkerEnvironment(

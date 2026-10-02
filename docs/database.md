@@ -91,6 +91,19 @@ files.
 Native commands use `DATABASE_URL` when provided and otherwise target the local
 Docker database at `127.0.0.1:5433`. Compose uses `db:5432` internally.
 
+AWS production instead injects the complete discrete RDS configuration:
+`DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_NAME`, `DATABASE_USER`,
+`DATABASE_PASSWORD`, and `DATABASE_SSL=true`. URL and discrete modes cannot be
+mixed, incomplete values fail startup, and local/test `DATABASE_URL` behavior
+is unchanged. The compiled migration task uses the same resolver.
+
+RDS runs PostgreSQL 18.6 on private subnets with encrypted gp3 storage, managed
+master credentials, TLS connections, automated backups, a required final
+snapshot, log exports, and deletion protection. Using the master account is
+known debt; Stage 31 owns a dedicated least-privileged application role. After
+deployment, verify all 14 committed migration hashes once, `pg_trgm`, generated
+vectors, ranking, and a no-change Terraform drift plan.
+
 The authentication migration normalizes pre-existing emails before adding the
 database check. If historical addresses collide after normalization, the
 existing unique constraint aborts the migration transaction so the conflict can

@@ -130,3 +130,48 @@ jobs:
   assert.ok(errors.some((error) => error.includes("--exit-code 1")));
   assert.ok(errors.some((error) => error.includes("type=semver")));
 });
+
+test("allows AWS OIDC only in the trusted production deployment", () => {
+  const source = `
+name: Deploy AWS
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  deploy:
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: aws-actions/configure-aws-credentials@${SHA}
+      - name: Run migration before service rollout
+        run: '[[ "$DIGEST" =~ sha256:[0-9a-f]{64} ]] && echo assignPublicIp=DISABLED'
+      - name: Roll out API, worker, and web
+        run: aws ecs wait services-stable
+`;
+
+  assert.deepEqual(validateWorkflow(source, "deploy-aws.yml"), []);
+});
+
+test("rejects AWS credentials outside the trusted deployment", () => {
+  const source = `
+name: Unsafe AWS
+on: pull_request
+permissions:
+  contents: read
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: aws-actions/configure-aws-credentials@${SHA}
+`;
+
+  assert.ok(
+    validateWorkflow(source, "ci-extra.yml").some((error) =>
+      error.includes("restricted to deploy-aws.yml"),
+    ),
+  );
+});

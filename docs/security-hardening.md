@@ -319,3 +319,25 @@ HIGH/CRITICAL findings before merge. Trusted artifacts include BuildKit SBOM and
 max provenance and are promoted by digest. No PR artifact is passed through a
 `workflow_run` privilege bridge. See [CI/CD](./ci-cd.md) for the full trust
 boundary and repository settings.
+
+## AWS production boundary
+
+Production exposes only a TLS ALB. Web/API/worker/migration tasks have no public
+IP; RDS and Redis occupy private data subnets. Security-group references, not
+public CIDRs, authorize internal ports. The web task role has no data access;
+API and worker S3 permissions are separate and scoped to `trips/*`; migration
+has no S3 permission. Execution-role secret retrieval is distinct from
+application task roles.
+
+GitHub assumes one exact repository/environment deploy role through OIDC. No
+static AWS keys exist in workflows, and the deploy role cannot read Terraform
+state. RDS credentials are managed by RDS, Redis AUTH is stored in Secrets
+Manager, and private-GHCR/ORS values are externally owned secrets referenced by
+ARN. Task definitions contain references, not plaintext secret values; rotation
+requires a new task deployment.
+
+Terraform state is encrypted, versioned, TLS-only, lock-protected, and treated
+as secret-bearing because ElastiCache AUTH passes through provider state.
+Document/state buckets and RDS use deliberate deletion barriers. IAM wildcards
+are limited to APIs that cannot be resource-scoped, never admin managed
+policies. See [AWS deployment](./aws-deployment.md).

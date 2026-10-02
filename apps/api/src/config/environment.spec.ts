@@ -77,10 +77,57 @@ describe("validateEnvironment", () => {
     ).toThrow(/DATABASE_URL/);
   });
 
-  it("requires a database URL in production", () => {
-    expect(() => validateEnvironment({ NODE_ENV: "production" })).toThrow(
-      /DATABASE_URL/,
-    );
+  it("requires a complete database configuration in production", () => {
+    expect(() =>
+      validateEnvironment({
+        NODE_ENV: "production",
+        REDIS_URL: "rediss://:secret@redis.internal:6379",
+        WEB_ORIGIN: "https://app.example.com",
+      }),
+    ).toThrow(/DATABASE_URL.*DATABASE/);
+  });
+
+  it("accepts discrete TLS database configuration in production", () => {
+    expect(
+      validateEnvironment({
+        DATABASE_HOST: "database.internal",
+        DATABASE_NAME: "tripforge",
+        DATABASE_PASSWORD: "secret",
+        DATABASE_PORT: "5432",
+        DATABASE_SSL: "true",
+        DATABASE_USER: "tripforge",
+        NODE_ENV: "production",
+        REDIS_URL: "rediss://:secret@redis.internal:6379",
+        WEB_ORIGIN: "https://app.example.com",
+      }),
+    ).toMatchObject({
+      DATABASE_HOST: "database.internal",
+      DATABASE_PORT: 5432,
+      DATABASE_SSL: true,
+    });
+  });
+
+  it("rejects ambiguous production database configuration", () => {
+    expect(() =>
+      validateEnvironment({
+        DATABASE_HOST: "database.internal",
+        DATABASE_URL: "postgresql://user:password@database:5432/app",
+        NODE_ENV: "production",
+        REDIS_URL: "rediss://:secret@redis.internal:6379",
+        WEB_ORIGIN: "https://app.example.com",
+      }),
+    ).toThrow(/cannot be combined/);
+  });
+
+  it("requires encrypted Redis transport in production", () => {
+    expect(() =>
+      validateEnvironment({
+        DATABASE_URL: "postgresql://user:password@database:5432/app",
+        NODE_ENV: "production",
+        REDIS_URL: "redis://redis.internal:6379",
+        WEB_ORIGIN: "https://app.example.com",
+      }),
+    ).toThrow(/rediss/);
   });
 
   it.each([
@@ -99,6 +146,7 @@ describe("validateEnvironment", () => {
       validateEnvironment({
         DATABASE_URL: "postgresql://user:password@database:5432/app",
         NODE_ENV: "production",
+        REDIS_URL: "rediss://:secret@redis.internal:6379",
       }),
     ).toThrow(/WEB_ORIGIN/);
   });
@@ -114,6 +162,7 @@ describe("validateEnvironment", () => {
       validateEnvironment({
         DATABASE_URL: "postgresql://user:password@database:5432/app",
         NODE_ENV: "production",
+        REDIS_URL: "rediss://:secret@redis.internal:6379",
         SECURITY_RATE_LIMITING_ENABLED: "false",
         WEB_ORIGIN: "https://tripforge.example",
       }),

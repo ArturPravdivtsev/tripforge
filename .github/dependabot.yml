@@ -24,6 +24,22 @@ updates:
       time: "05:30"
       timezone: Europe/Moscow
     open-pull-requests-limit: 5
+  - package-ecosystem: terraform
+    directory: /infra/terraform/bootstrap
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Moscow
+    open-pull-requests-limit: 5
+  - package-ecosystem: terraform
+    directory: /infra/terraform/production
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:15"
+      timezone: Europe/Moscow
+    open-pull-requests-limit: 5
   - package-ecosystem: docker
     directory: /
     schedule:

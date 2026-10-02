@@ -1,0 +1,34 @@
+aws_region    = "eu-west-1"
+project_name  = "tripforge"
+environment   = "production"
+vpc_cidr      = "10.42.0.0/16"
+
+app_domain     = "app.example.com"
+api_domain     = "api.example.com"
+hosted_zone_id = "Z000000000000EXAMPLE"
+
+github_organization = "replace-with-github-owner"
+github_repository   = "replace-with-repository"
+github_environment  = "production"
+
+web_image     = "ghcr.io/replace/tripforge-web@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+api_image     = "ghcr.io/replace/tripforge-api@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+migrate_image = "ghcr.io/replace/tripforge-migrate@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+
+# Supply the Redis token out-of-band, for example:
+# export TF_VAR_redis_auth_token="$(openssl rand -hex 32)"
+# redis_auth_token is intentionally absent from this file.
+
+# Private GHCR only; create the username/password JSON secret outside Terraform.
+# ghcr_credentials_secret_arn = "arn:aws:secretsmanager:REGION:ACCOUNT:secret:tripforge-ghcr"
+# openrouteservice_api_key_secret_arn = "arn:aws:secretsmanager:REGION:ACCOUNT:secret:tripforge-ors"
+
+# HA profile defaults: 2 web, 2 API, 1 worker, NAT per AZ, Multi-AZ RDS,
+# and Redis primary + replica. Lower-cost non-HA profile:
+# single_nat_gateway = true
+# web_desired_count = 1
+# api_desired_count = 1
+# worker_desired_count = 1
+# database_multi_az = false
+# redis_replica_count = 0
+# enable_container_insights = false

@@ -21,3 +21,14 @@ coverage/
 # Logs
 *.log
 pnpm-debug.log*
+
+# Terraform local state and operator inputs
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+*.auto.tfvars
+!*.tfvars.example
+.terraform.tfstate.lock.info
+crash.log

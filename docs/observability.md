@@ -258,9 +258,8 @@ Prometheus retains seven days locally; local Jaeger retention is development
 only. Production log transport/retention belongs to the future platform.
 
 Deferred work includes browser RUM and browser error collection, a production
-telemetry backend and retention policy, authenticated/private UI placement,
-Alertmanager/incident routing, production dashboards, CloudWatch or equivalent
-integration, and vendor trace-to-log deep links. These are explicit deployment
+telemetry retention review, authenticated/private UI placement, production
+dashboards, and vendor trace-to-log deep links. These are explicit deployment
 decisions, not hidden dependencies of the application.
 
 ## CI validation
@@ -271,3 +270,21 @@ and metrics regressions are merge-blocking. `CI / Docker` also validates the
 base plus observability Compose model. It does not start the full telemetry
 stack for every unit job, and production images must smoke-start with
 `OTEL_ENABLED=false`.
+
+## AWS destination
+
+ECS always sends existing JSON stdout/stderr to separate bounded-retention
+CloudWatch groups for web, API, worker, and migration. Enhanced Container
+Insights is configurable infrastructure telemetry; it does not replace
+application traces and metrics.
+
+When enabled, an immutable AWS Distro for OpenTelemetry sidecar receives OTLP
+HTTP only on `127.0.0.1:4318` and exports traces to X-Ray plus metrics to
+CloudWatch/EMF. Local Prometheus and Jaeger are not production services.
+Collector permissions contain only X-Ray and CloudWatch write calls; exporter
+failure remains fail-open. Cloud alarms cover ALB, target health, ECS, RDS,
+Redis, and zero-tolerance evictions. SNS email is opt-in.
+
+Cloud QA must confirm safe logs, an API/PG trace, worker trace, runtime metrics,
+and absence of passwords, cookies, AWS credentials, presigned URLs, search
+queries, Redis AUTH, and database secrets. See [AWS deployment](./aws-deployment.md).

@@ -11,6 +11,11 @@ coverage
 **/coverage
 .turbo
 **/.turbo
+.terraform
+**/.terraform
+*.tfstate
+*.tfstate.*
+*.tfplan
 *.tsbuildinfo
 
 .env

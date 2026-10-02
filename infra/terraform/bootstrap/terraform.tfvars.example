@@ -1,0 +1,5 @@
+aws_region       = "eu-west-1"
+state_bucket_name = "replace-with-a-globally-unique-tripforge-terraform-state-bucket"
+project_name     = "tripforge"
+environment      = "production"
+# owner          = "team-or-person"

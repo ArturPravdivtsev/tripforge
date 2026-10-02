@@ -1,8 +1,9 @@
 # CI/CD and supply-chain delivery
 
-Stage 28 automates verification and produces deployable OCI artifacts. It does
-not deploy to AWS or any other runtime. CI answers whether a commit is safe to
-merge; CD publishes verified images for a trusted `main` or version-tag push.
+Stage 28 automates verification and produces deployable OCI artifacts. Stage 29
+adds a separate, deliberate AWS promotion workflow. CI answers whether a commit
+is safe to merge; trusted delivery publishes images; production deployment
+consumes exact verified digests without rebuilding.
 
 ## Pipeline
 
@@ -12,14 +13,15 @@ pull_request (untrusted source)
   ├─ Database
   ├─ Integration
   ├─ Security
-  └─ Docker build + Trivy + smoke
+  ├─ Docker build + Trivy + smoke
+  └─ Terraform fmt + validate + tests + Trivy IaC
            │
            ▼
         CI / Gate
 ```
 
-The five jobs run in parallel on `ubuntu-latest`; each has a finite timeout.
-`CI / Gate` always runs and succeeds only when all five results are `success`.
+The six jobs run in parallel on `ubuntu-latest`; each has a finite timeout.
+`CI / Gate` always runs and succeeds only when all six results are `success`.
 The stable required-check name is `CI / Gate` (workflow `CI`, job `Gate`).
 CodeQL and Dependency Review are separate, plan-dependent checks and do not
 weaken or replace the mandatory local security gates.
@@ -162,8 +164,38 @@ digest; never reuse the same version for different bytes.
 Database/Redis URLs, AWS credentials, S3 server endpoints, session material,
 OpenRouteService credentials, and all future cloud credentials are runtime
 server configuration. They are never Docker build arguments, labels, cache
-content, provenance inputs, or client variables. Stage 28 contains no AWS
-account, role, cluster, database endpoint, or production-domain configuration.
+content or provenance inputs. Account, role, cluster, database endpoint, and
+production-domain values remain operator-owned variables rather than source
+defaults.
+
+## AWS promotion
+
+`.github/workflows/deploy-aws.yml` is `workflow_dispatch`-only and uses the
+protected GitHub `production` Environment. It receives one source commit and
+three `sha256:<64 hex>` digests, verifies trusted-main ancestry and OCI revision
+metadata, then assumes the Terraform-provisioned deploy role through GitHub
+OIDC. Only this job gets `id-token: write`; normal PR CI has no AWS credentials
+or deploy permission.
+
+```text
+validate digests/revision
+→ register + run migration task
+→ require exit 0
+→ register API/worker/web revisions
+→ update services
+→ wait for ECS steady state
+→ HTTPS health smoke
+```
+
+A failed migration stops before service updates. GitHub concurrency permits one
+production writer. Circuit breakers can roll back unhealthy ECS revisions. A
+previous application rollback re-promotes previous digests; it never reverses
+schema changes. Full inputs are in [AWS deployment](./aws-deployment.md).
+
+Workflow policy permits `aws-actions/configure-aws-credentials` only in this
+file, requires a full SHA, OIDC, the production Environment, migration-before-
+rollout markers, no public migration IP, and the steady-state waiter. Static AWS
+credential names and AWS credential actions in PR-capable workflows fail CI.
 
 ## GHCR and artifact inspection
 
@@ -227,7 +259,7 @@ reviewed source commit
   → immutable GitHub Action SHAs
   → isolated GitHub runner + BuildKit
   → scanned GHCR OCI digest
-  → future Stage 29 deployment by digest
+  → Stage 29 ECS deployment by digest
 ```
 
 Mutable third-party actions can compromise a build, poisoned untrusted caches

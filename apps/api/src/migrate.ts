@@ -4,14 +4,15 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Pool } from "pg";
 
-const databaseUrl = process.env.DATABASE_URL?.trim();
-
-if (!databaseUrl) {
-  throw new Error("DATABASE_URL is required");
-}
+import {
+  createDatabasePoolConfig,
+  databaseConfigurationFromEnvironment,
+} from "./database/database-config";
 
 async function main() {
-  const pool = new Pool({ connectionString: databaseUrl });
+  const pool = new Pool(
+    createDatabasePoolConfig(databaseConfigurationFromEnvironment(process.env)),
+  );
 
   try {
     await migrate(drizzle(pool), {
