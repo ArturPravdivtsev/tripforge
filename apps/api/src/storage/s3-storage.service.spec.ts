@@ -98,6 +98,7 @@ describe("S3StorageService", () => {
       etag: '"etag"',
     });
     expect(internalSend.mock.calls[0]?.[0]).toBeInstanceOf(HeadObjectCommand);
+    expect(internalSend.mock.calls[0]?.[1]?.abortSignal).toBeInstanceOf(AbortSignal);
   });
 
   it("maps an S3 404 HEAD to a missing object", async () => {
@@ -109,5 +110,20 @@ describe("S3StorageService", () => {
     internalSend.mockResolvedValue({});
     await service.deleteObject("opaque");
     expect(internalSend.mock.calls[0]?.[0]).toBeInstanceOf(DeleteObjectCommand);
+    expect(internalSend.mock.calls[0]?.[1]?.abortSignal).toBeInstanceOf(AbortSignal);
+  });
+
+  it("propagates the bounded operation deadline instead of waiting indefinitely", async () => {
+    const controller = new AbortController();
+    const timeout = vi.spyOn(AbortSignal, "timeout").mockReturnValue(controller.signal);
+    internalSend.mockImplementation((_command, options: { abortSignal: AbortSignal }) => new Promise((_resolve, reject) => {
+      options.abortSignal.addEventListener("abort", () => reject(new Error("Deadline exceeded")), { once: true });
+    }));
+    try {
+      const pending = service.headObject("opaque");
+      controller.abort();
+      await expect(pending).rejects.toThrow("Deadline exceeded");
+      expect(timeout).toHaveBeenCalledWith(10_000);
+    } finally { timeout.mockRestore(); }
   });
 });

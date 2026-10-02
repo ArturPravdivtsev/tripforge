@@ -672,6 +672,7 @@ function DayDropZone({ dayId, index }: Readonly<{ dayId: string; index: number }
     <div
       ref={ref}
       aria-hidden="true"
+      tabIndex={-1}
       className={`min-h-10 rounded-[var(--radius-md)] border border-dashed px-3 py-2 text-center text-sm text-[var(--muted-foreground)] transition ${
         isDropTarget ? "border-[var(--primary)] bg-[var(--surface)]" : "border-[var(--border)]"
       }`}

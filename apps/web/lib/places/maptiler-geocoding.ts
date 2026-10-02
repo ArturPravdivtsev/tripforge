@@ -1,5 +1,6 @@
 import type { ItineraryPlaceInput } from "@tripforge/contracts";
 import { z } from "zod";
+import "@/lib/security/zod-csp";
 
 const MAPTILER_GEOCODING_URL = "https://api.maptiler.com/geocoding";
 

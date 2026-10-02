@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { NOTIFICATION_REALTIME_EVENTS } from "@tripforge/contracts";
 import { z } from "zod";
+import "@/lib/security/zod-csp";
 
 import { notificationKeys } from "@/lib/notifications/query-keys";
 import { getRealtimeSocket } from "@/lib/realtime/socket";

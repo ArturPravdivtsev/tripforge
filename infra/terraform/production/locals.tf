@@ -17,17 +17,31 @@ locals {
     { name = "TRIPFORGE_VERSION", value = substr(sha256("${var.web_image}:${var.api_image}"), 0, 16) },
   ]
 
-  application_environment = concat(local.runtime_environment, [
+  database_environment = [
+    { name = "DATABASE_HOST", value = aws_db_instance.main.address },
+    { name = "DATABASE_PORT", value = tostring(aws_db_instance.main.port) },
+    { name = "DATABASE_NAME", value = var.database_name },
+    { name = "DATABASE_SSL", value = "true" },
+    { name = "DATABASE_POOL_IDLE_TIMEOUT_MS", value = "30000" },
+    { name = "DATABASE_POOL_CONNECTION_TIMEOUT_MS", value = "2000" },
+  ]
+
+  application_environment = concat(local.runtime_environment, local.database_environment, [
     { name = "S3_REGION", value = var.aws_region },
     { name = "S3_BUCKET", value = aws_s3_bucket.documents.id },
     { name = "S3_FORCE_PATH_STYLE", value = "false" },
-    { name = "DATABASE_SSL", value = "true" },
   ])
 
   database_secrets = [
-    for key in ["host", "port", "dbname", "username", "password"] : {
-      name      = "DATABASE_${key == "dbname" ? "NAME" : upper(key)}"
-      valueFrom = "${aws_db_instance.main.master_user_secret[0].secret_arn}:${key}::"
+    for key in ["username", "password"] : {
+      name      = "DATABASE_${key == "username" ? "USER" : "PASSWORD"}"
+      valueFrom = "${var.application_database_secret_arn}:${key}::"
+    }
+  ]
+  migrator_database_secrets = [
+    for key in ["username", "password"] : {
+      name      = "DATABASE_${key == "username" ? "USER" : "PASSWORD"}"
+      valueFrom = "${var.migrator_database_secret_arn == null ? aws_db_instance.main.master_user_secret[0].secret_arn : var.migrator_database_secret_arn}:${key}::"
     }
   ]
 

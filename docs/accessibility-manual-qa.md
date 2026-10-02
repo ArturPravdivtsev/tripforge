@@ -67,3 +67,10 @@ plus issue link. Automated axe results do not satisfy these checks.
 
 No item is passed until a human records evidence. Current Stage 24 status:
 automated JSDOM checks passed; browser/manual and screen-reader checks pending.
+
+Stage 31 update (2026-10-02): Chromium six-screen axe, 320/375/768px reflow,
+pointer/keyboard DnD + Move, keyboard menu/combobox/composer and skip link passed.
+Only that scoped automated-browser debt is closed. Human matrix remains Not run:
+VoiceOver + Safari, actual 200%/400% zoom, text spacing, forced colors, reduced
+motion and repeated upload/cancel resource profiling are not passed by JSDOM or
+viewport emulation. Record human evidence before changing this matrix.

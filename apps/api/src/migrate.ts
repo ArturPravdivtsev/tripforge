@@ -11,7 +11,7 @@ import {
 
 async function main() {
   const pool = new Pool(
-    createDatabasePoolConfig(databaseConfigurationFromEnvironment(process.env)),
+    createDatabasePoolConfig({ ...databaseConfigurationFromEnvironment(process.env), poolMax: 1 }),
   );
 
   try {

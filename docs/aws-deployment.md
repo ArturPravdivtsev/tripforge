@@ -43,7 +43,9 @@ complete: certificate issuance, HTTPS, origins, WSS, and secure cookies remain
 untested.
 
 ALB routes hosts without path rewriting. HTTP permanently redirects to HTTPS.
-API `/health` and web `/health` must return 200; the web response is only `ok`
+API `/ready` and web `/health` must return 200 for ALB routing. API `/health`
+is liveness only; `/ready` is a bounded PostgreSQL-only probe. Redis, S3,
+ORS, OpenAI and Collector do not gate readiness. The web response is only `ok`
 and exposes no version or endpoints. The API target uses HTTP/1.1 and a
 120-second ALB idle timeout. Socket.IO stays WebSocket-only; Redis Streams
 provides cross-node fan-out, so sticky sessions are intentionally disabled.
@@ -100,11 +102,13 @@ RDS runs PostgreSQL `18.6`, encrypted gp3 storage, private subnets, managed
 master password in Secrets Manager, TLS application connections, automated
 backups, bounded backup retention, CloudWatch PostgreSQL/upgrade logs, deletion
 protection, and a required final snapshot. Major upgrades are never automatic.
-The current app uses the managed master account; a dedicated least-privileged DB
-role is explicit Stage 31 debt.
+API/worker reference required external `application_database_secret_arn` for a
+dedicated DML role, never master. Migration uses `migrator_database_secret_arn`
+when supplied, otherwise managed RDS admin only in one-off migration tasks.
+Actual AWS provisioning/permission/rotation QA remains pending.
 
 Local/test keep `DATABASE_URL`. AWS tasks receive `DATABASE_HOST`, `PORT`,
-`NAME`, `USER`, and `PASSWORD` as JSON-key secret references plus
+`NAME` from RDS resources/variables, and only `USER`/`PASSWORD` as JSON-key secret references plus
 `DATABASE_SSL=true`. Mixed or incomplete modes fail startup. Secret injection
 happens only at task start; rotation requires a new ECS deployment/restart.
 
@@ -206,7 +210,7 @@ After an intentional apply/deploy, verify:
    worker running, RDS/Redis available, S3 private.
 2. Register/login/me/logout and the exact Secure, HttpOnly, SameSite=Lax,
    Path=/, no-Domain `__Host-tripforge_session` cookie.
-3. The 14 migration hashes occur once, `pg_trgm` exists, search ranking works,
+3. The 15 migration hashes occur once, `pg_trgm` exists, search ranking works,
    and RDS connections use TLS.
 4. ElastiCache TLS/AUTH supports BullMQ, Streams, and shared rate limits. With
    two API replicas, a mutation through one node reaches a client on another.
@@ -219,9 +223,10 @@ After an intentional apply/deploy, verify:
    rollback, safe migration-failure stop, previous-digest rollback, and a
    post-apply no-change drift plan.
 
-Controlled Redis failover, RDS restore, destructive deployment tests, load/
-soak/chaos, SLOs, WAF, CDN, RDS Proxy, autoscaling tuning, and blue/green/canary
-decisions belong to Stage 31. No cloud QA is claimed until real credentials,
+Stage 31 records local resilience/load, SLO and edge/scaling decisions in
+[production readiness](./production-readiness.md). AWS Redis failover, PITR and
+bad-revision rollback use the [runbooks](./runbooks/README.md) and remain pending.
+No cloud QA is claimed until real credentials,
 region, domains, and an intentionally approved apply are available.
 
 ## OpenAI configuration
@@ -240,3 +245,37 @@ assistant endpoints to `AI_ASSISTANT_UNAVAILABLE`; ALB health and other product
 flows remain independent. Cloud QA should verify ALB → private API Fargate → NAT
 → OpenAI, inspect the task-definition secret reference, and confirm the key is
 absent from web/worker/migrate/logs/traces.
+
+## Stage 31 role/pool handoff
+
+Authorized DB administrator provisions `tripforge_app` out of band using
+[`bootstrap-roles.sql`](../infra/database/bootstrap-roles.sql), `psql -X`,
+ON_ERROR_STOP, verified TLS and a temporary password environment variable sourced
+from the external secret. Do not echo/log SQL/passwords or use CLI password args,
+tfvars or Terraform SQL provisioners. Script needs CREATE ROLE authority and
+schema ownership; it is not app startup or an idempotent rotation command.
+
+Grant only CONNECT, public-schema USAGE, table DML and sequence USAGE/SELECT.
+No superuser/CREATEDB/CREATEROLE/REPLICATION/schema CREATE/DDL. Transactions and
+locks still work; AI uses ordinary authorized repositories, never model SQL.
+Set default privileges for each actual object-owning migrator; the wrong owner's
+defaults do not grant future objects. Review owner inventory, never broad
+REASSIGN OWNED on master. Prefer a dedicated migration schema owner in the
+optional migration secret; fallback admin remains migration-only.
+
+Secrets Manager JSON `{username,password}` for app/migrator stays separate;
+only ARNs enter Terraform. Rotate out of band, verify privileges, redeploy tasks
+because injected secrets refresh only on task start. Operator cloud QA is pending.
+
+API max 10, worker 4, migrate 1; idle 30s/acquisition 2s; readiness max 1/API.
+Default peak rolling budget: 88 API + 8 worker + 1 migrate + 20 operations = 117.
+Record TLS RDS `SHOW max_connections` and other consumers/headroom, then set
+`verified_database_max_connections`; supplied insufficient limit blocks API task
+definition, null is unqualified. No RDS Proxy or larger pools inferred necessary.
+
+Safe default probe: `pnpm smoke:operational --api="$QUALIFICATION_API_ORIGIN"
+--web="$QUALIFICATION_WEB_ORIGIN"`. For an approved pre-provisioned disposable
+account only, add `--disposable` and secret env `SMOKE_DISPOSABLE_ACK=1`, prefix
+`stage31-smoke-<unique>`, matching `<prefix>@<test-domain>` email and password.
+Script creates/reads/deletes only its new Trip, logs out and reports cleanup
+failure; account retained. No destructive `readiness:cloud` command exists.

@@ -26,7 +26,8 @@ component tests, with progressively fewer integration and browser tests.
   Testcontainers and applies the real committed Drizzle migrations. Trips
   coverage exercises CRUD, pagination, timestamps, browser mutation policy,
   and cross-user ownership against the same PostgreSQL image.
-- **Browser E2E tests:** critical user journeys only. They are not implemented yet.
+- **Browser E2E tests:** Stage 31 Playwright Chromium critical journeys on real
+  disposable persistence and production-built web/API.
 
 Trip search adds a dedicated real-PostgreSQL integration suite. It applies the
 committed migration and checks extension/index catalogs, generated-column
@@ -39,7 +40,7 @@ query keys, and realtime invalidation mapping.
 Stage 8 covers browser authentication with React Testing Library component
 tests, mocked Fetch client tests, Nest CORS/browser-policy HTTP tests, real
 PostgreSQL authentication integration tests, and manual browser QA. Installing
-Playwright remains intentionally deferred.
+Playwright was deferred at Stage 8; Stage 31 now supplies the real browser layer.
 
 Stage 10 adds fresh-`QueryClient` component tests for Trips loading, empty,
 authentication-required and retryable-error states; URL pagination and retained
@@ -184,8 +185,8 @@ screen-reader manual checks
 `axe-core@4.13.0`; it does not replace explicit interaction tests. JSDOM cannot
 verify CSS contrast, layout/reflow, focus obstruction, forced colors, or real
 browser focus, so these stay in the reusable manual checklist. The repository
-has no Playwright runner yet; browser axe remains deferred rather than silently
-skipped. See [Accessibility](./accessibility.md) and the
+now has a Stage 31 Playwright runner: six-screen browser axe is verified, while
+human AT/zoom remains pending. See [Accessibility](./accessibility.md) and the
 [manual checklist](./accessibility-manual-qa.md).
 
 ## Commands
@@ -250,7 +251,7 @@ database persistence path remains independently testable without that token.
 | `pnpm ci:integration` | `CI / Integration` Testcontainers services |
 | `pnpm db:migrate` twice + migration verifier | `CI / Database` fresh PostgreSQL 18.6 |
 | Compose config, production image builds, Trivy, smoke | `CI / Docker` |
-| all five results | stable `CI / Gate` required check |
+| Terraform + browser/k6 smoke; all seven job results | stable `CI / Gate` required check |
 
 `pnpm ci:verify` approximates the mandatory non-container gates locally.
 Hosted Docker publication and GitHub-plan features still require a real workflow
@@ -292,3 +293,44 @@ without announcing every token.
 `pnpm ai:eval:live` is manual, optional, paid, and requires an intentionally
 supplied `OPENAI_API_KEY`. It is not a PR gate and no live provider result is
 claimed when credentials are unavailable.
+
+## Stage 31 release evidence
+
+`pnpm test:e2e`: Playwright 1.63.0 Chromium, one worker, retries zero, unique
+users/Trips and independent cookie jars. Production Next + compiled Nest with
+test-only DI run on PG 18.6/Redis 8.10.1/S3 emulator 4.14.0. Business responses
+are never intercepted; only MapTiler HTTP and OpenAI/ORS provider boundaries are
+deterministic/credential-free. No production debug route is introduced.
+
+Twelve tests cover auth/Back, Trip, RBAC/revoke, pointer/keyboard DnD + cross-Day
+Move, transport, two-user equal/custom expense and settlement, direct file bytes,
+notification read/unread multi-tab, search, assistant Stop/preview/Apply/Dismiss,
+mobile keyboard menu/place/composer, private viewer conversation and six-screen
+axe/CSP/reflow. Trace/video retained on failure, screenshots failure-only.
+Docker excludes harness/fixtures/reports. Playwright MCP also inspected the
+running local production-built login UI; no production browser actions occurred.
+
+`pnpm readiness:test` owns all disposable service containers: pool/role tests,
+PG/Redis/worker/S3/Collector/provider outages, logical new-DB restore, 100 cross-
+node sockets and active HTTP/worker drain. `readiness:unit` tests target/profile/
+migration guards, operational-smoke authority and real deploy shell via fake AWS.
+`perf:load` uses session-once bounded metadata and separate login measurements.
+`readiness:realtime-soak` is a read-only 100-client companion to an already running
+disposable load stack; it refuses arbitrary URLs/non-fixture identities.
+The soak launcher starts that companion itself, waits for all authenticated
+joins and keeps the API alive until both HTTP and socket timers finish. Run labels
+isolate repeated evidence sets. After load, the business pool must evict idle
+connections and reach zero waiters/connections before shutdown (50s bound).
+
+REST integration suites bind ephemeral loopback listeners for their full
+lifecycle, closing them with `app.close()`, rather than reopening a Socket.IO-
+attached HTTP server for every Supertest request. A metrics privacy assertion
+checks attributes, not coincidental digits in OTel timestamps. Redis Streams
+adapter 0.3.1 ignores ephemeral PUBLISH promises: the specific publisher client
+observes failures safely without changing the original returned promise or
+suppressing other unhandled errors. Redis shutdown drains with quit, bounded 2s.
+
+Next checks build in a source copy to preserve user's separate next-env.d.ts;
+reports ignored, credential fixtures 0600/not uploaded. Fixed local readiness
+ports require sequential stacks. AWS/AT/zoom/live-provider qualification remains
+explicit in [readiness matrix](./production-readiness.md), not inferred from mocks.

@@ -121,7 +121,7 @@ export function configureApplication(app: INestApplication): void {
   app.use(cookieParser());
 
   app.setGlobalPrefix("api", {
-    exclude: [{ path: "health", method: RequestMethod.GET }],
+    exclude: ["health", "ready"].map((path) => ({ path, method: RequestMethod.GET })),
   });
 
   app.useGlobalPipes(

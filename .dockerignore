@@ -27,5 +27,11 @@ coverage
 *.log
 **/*.log
 .DS_Store
+e2e
+performance/k6
+scripts/readiness
+playwright-report
+test-results
+readiness-results
 .idea
 .vscode

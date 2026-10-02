@@ -102,6 +102,7 @@ locals {
         { name = "PORT", value = "4000" },
         { name = "WEB_ORIGIN", value = local.web_origin },
         { name = "SECURITY_RATE_LIMITING_ENABLED", value = "true" },
+        { name = "DATABASE_POOL_MAX", value = tostring(var.api_database_pool_max) },
         { name = "AI_ASSISTANT_ENABLED", value = tostring(var.openai_api_key_secret_arn != null) },
         { name = "OPENAI_MODEL", value = "gpt-6-luna" },
         { name = "OPENAI_REASONING_EFFORT", value = "medium" },
@@ -141,7 +142,7 @@ locals {
       image       = var.api_image
       essential   = true
       command     = ["node", "dist/worker.js"]
-      environment = local.application_environment
+      environment = concat(local.application_environment, [{ name = "DATABASE_POOL_MAX", value = tostring(var.worker_database_pool_max) }])
       secrets = concat(
         local.database_secrets,
         [{ name = "REDIS_URL", valueFrom = aws_secretsmanager_secret.redis.arn }],
@@ -173,13 +174,11 @@ locals {
 
   migrate_container = merge(
     {
-      name      = "migrate"
-      image     = var.migrate_image
-      essential = true
-      environment = concat(local.runtime_environment, [
-        { name = "DATABASE_SSL", value = "true" },
-      ])
-      secrets     = local.database_secrets
+      name        = "migrate"
+      image       = var.migrate_image
+      essential   = true
+      environment = concat(local.runtime_environment, local.database_environment, [{ name = "DATABASE_POOL_MAX", value = "1" }])
+      secrets     = local.migrator_database_secrets
       stopTimeout = 120
       linuxParameters = {
         initProcessEnabled = true
@@ -234,6 +233,15 @@ resource "aws_ecs_task_definition" "api" {
   runtime_platform {
     operating_system_family = "LINUX"
     cpu_architecture        = "X86_64"
+  }
+
+  lifecycle {
+    precondition {
+      condition = var.verified_database_max_connections == null ? true : (
+        local.peak_database_connections <= var.verified_database_max_connections
+      )
+      error_message = "Rolling-deployment DB pool budget exceeds the operator-verified RDS max_connections."
+    }
   }
 }
 

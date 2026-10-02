@@ -270,7 +270,7 @@ describe("Trip documents with PostgreSQL and LocalStack S3", () => {
     const module = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = module.createNestApplication();
     configureApplication(app);
-    await app.init();
+    await app.listen(0, "127.0.0.1");
     documentsRepository = app.get(TripDocumentsRepository);
     const applicationDatabase = app.get<Database>(DATABASE);
     storage = app.get(S3StorageService);

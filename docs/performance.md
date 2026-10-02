@@ -240,9 +240,9 @@ shape, notably expenses and reservations. They were not dropped without
 production `pg_stat_user_indexes`, write volume, and workload evidence. No new
 index or migration was justified by the measured plans.
 
-The API uses `pg.Pool` defaults: maximum 10 connections, 10 s idle timeout, no
-connection acquisition timeout, and no maximum lifetime. Production tuning is
-deferred until task count, RDS limits, and workload are known. Transaction
+At Stage 25 the API used `pg.Pool` defaults. Stage 31 now sets API max 10,
+worker 4, migrate 1, idle 30s/acquisition 2s and separate max-1 readiness pool.
+Further tuning needs actual RDS limits and hosted workload evidence. Transaction
 boundaries, integer money calculations, runtime validation, authorization,
 direct-to-S3 transfers, and external I/O placement remain unchanged. No custom
 compression middleware or Redis response cache was added.
@@ -335,3 +335,21 @@ remain authoritative; server-only Pino/OTel packages must not enter static chunk
 GitHub Actions does not replace the deferred real-browser profiling checklist or
 introduce a speculative container-size budget. Trusted delivery reports image
 sizes for trend review without failing on an unmeasured threshold.
+
+## Stage 31 browser and HTTP qualification
+
+Earlier “browser unavailable” notes are historical Stage 25 evidence. Chromium
+now verifies forms, real pointer/keyboard reorder, responsive/axe/CSP, file bytes
+and assistant. It does not establish field LCP/INP/CLS or RUM/profiler timings.
+
+k6 v2.3.0: loopback-only disposable targets, actual HTTP, sessions once, 80%
+reads/20% bounded writes, no providers/files. Profiles 2 VU/1m, 20 VU/10m,
+25/50/75/100 ramp targets over 8m, 20 VU/30m soak. Candidate p95 <500ms/p99
+<1000ms/unexpected 5xx/network <1% are local release diagnostics, not proof of
+99.9% production availability. Ten sequential logins separately include Argon2.
+
+See [capacity](./capacity.md) and [qualification](./stage31-qualification.md)
+for accepted RPS/errors, host CPU/RSS/heap/GC/pool/loop observations and limitations.
+No cache/index/scaling optimization or relaxed bundle budget was introduced.
+CSP-safe Zod jitless side-effect configuration preserves tree shaking and all
+ten budgets. Local socket soak and two-node/worker recovery are separate evidence.

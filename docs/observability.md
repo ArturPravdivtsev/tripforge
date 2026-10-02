@@ -305,3 +305,24 @@ input, cached input, output, and reasoning counts. Monetary price is deliberatel
 not stored because pricing is external mutable policy. An OpenAI outage is an
 optional-feature degradation and must not make `/health` fail or page as a full
 TripForge outage.
+
+## Stage 31 interpretation
+
+`/health` is process liveness; ALB uses PG-only bounded API `/ready`, web stays
+`/health`. Optional provider/Collector failure must not withdraw core targets.
+Readiness is not complete feature health: Redis-protected actions may fail closed
+503 and still affect their legitimate customer-facing availability.
+
+See [SLO](./slo.md) for 99.9% core objective, latency candidates, provider/AI
+separation and budget freeze. Existing six tested symptom rules remain; CPU/
+memory aid diagnosis rather than automatic full-outage paging. Multi-window
+burn alerts/network-failure SLI and hosted notification delivery need baseline/
+routing qualification; no 30-day compliance is claimed.
+
+Test-only bootstrap sends local IPC samples (not production endpoints/labels):
+CPU, RSS, heap, GC count/duration, event-loop p99, request-listener count and PG
+total/idle/waiting. Runtime production metrics remain established OTel series.
+Collector-unreachable drill ran instrumented core requests and remained healthy.
+100-socket two-node/restart evidence, 30m socket/resource companion and worker
+backlog recovery are separate from HTTP percentiles. Use [runbooks](./runbooks/README.md)
+and safe request/trace IDs; never add private content/credential labels.

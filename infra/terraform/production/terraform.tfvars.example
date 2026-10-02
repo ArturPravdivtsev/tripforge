@@ -23,6 +23,8 @@ migrate_image = "ghcr.io/replace/tripforge-migrate@sha256:0000000000000000000000
 # ghcr_credentials_secret_arn = "arn:aws:secretsmanager:REGION:ACCOUNT:secret:tripforge-ghcr"
 # openrouteservice_api_key_secret_arn = "arn:aws:secretsmanager:REGION:ACCOUNT:secret:tripforge-ors"
 # openai_api_key_secret_arn = "arn:aws:secretsmanager:REGION:ACCOUNT:secret:tripforge-openai"
+application_database_secret_arn = "arn:aws:secretsmanager:REGION:ACCOUNT:secret:tripforge-app-db"
+# migrator_database_secret_arn = "arn:aws:secretsmanager:REGION:ACCOUNT:secret:tripforge-migrator-db"
 
 # HA profile defaults: 2 web, 2 API, 1 worker, NAT per AZ, Multi-AZ RDS,
 # and Redis primary + replica. Lower-cost non-HA profile:

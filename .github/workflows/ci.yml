@@ -61,6 +61,8 @@ jobs:
         run: pnpm test:coverage
       - name: Enforce accessibility tests
         run: pnpm test:a11y
+      - name: Review destructive migration policy
+        run: pnpm migrations:safety && pnpm readiness:unit
       - name: Build production applications
         run: pnpm build
       - name: Enforce bundle budgets
@@ -312,6 +314,50 @@ jobs:
         if: ${{ always() }}
         run: echo "### Terraform and IaC security — ${{ job.status }}" >> "$GITHUB_STEP_SUMMARY"
 
+  browser:
+    name: Browser and bounded load
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - name: Install frozen dependencies and Chromium
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm exec playwright install --with-deps chromium
+      - name: Qualify real production-built browser workflows
+        run: pnpm test:e2e
+      - name: Install checksum-verified k6 2.3.0 and run bounded smoke
+        run: |
+          export K6_BINARY="$(node scripts/readiness/install-k6.mjs)"
+          pnpm perf:load smoke
+      - name: Upload browser failures only
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: chromium-failure-${{ github.sha }}
+          path: test-results/
+          retention-days: 7
+      - name: Upload compact load summary without fixture/session data
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: load-smoke-${{ github.sha }}
+          path: readiness-results/k6-smoke.json
+          retention-days: 7
+
   gate:
     name: Gate
     if: ${{ always() }}
@@ -322,6 +368,7 @@ jobs:
       - security
       - docker
       - infrastructure
+      - browser
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
@@ -331,10 +378,11 @@ jobs:
       SECURITY_RESULT: ${{ needs.security.result }}
       DOCKER_RESULT: ${{ needs.docker.result }}
       INFRASTRUCTURE_RESULT: ${{ needs.infrastructure.result }}
+      BROWSER_RESULT: ${{ needs.browser.result }}
     steps:
       - name: Require every mandatory gate
         run: |
-          for result in "$QUALITY_RESULT" "$DATABASE_RESULT" "$INTEGRATION_RESULT" "$SECURITY_RESULT" "$DOCKER_RESULT" "$INFRASTRUCTURE_RESULT"; do
+          for result in "$QUALITY_RESULT" "$DATABASE_RESULT" "$INTEGRATION_RESULT" "$SECURITY_RESULT" "$DOCKER_RESULT" "$INFRASTRUCTURE_RESULT" "$BROWSER_RESULT"; do
             test "$result" = success
           done
       - name: Summarize aggregate gate
@@ -350,6 +398,7 @@ jobs:
             echo "| Security | $SECURITY_RESULT |"
             echo "| Docker | $DOCKER_RESULT |"
             echo "| Infrastructure | $INFRASTRUCTURE_RESULT |"
+            echo "| Browser and load | $BROWSER_RESULT |"
           } >> "$GITHUB_STEP_SUMMARY"
 
   publish:

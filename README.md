@@ -60,6 +60,11 @@ pnpm lint       # Lint all workspaces
 pnpm typecheck  # Type-check all workspaces
 pnpm test       # Run workspace tests
 pnpm test:a11y  # Run representative accessibility component checks
+pnpm test:e2e   # Real Chromium critical paths on a disposable production-built stack
+pnpm readiness:test # Local controlled outage/recovery, restore and drain drills
+pnpm readiness:unit # Safety guards, migration/deployment protection and smoke tests
+pnpm perf:load smoke load # Bounded local k6 profiles (requires k6 v2.3.0)
+pnpm migrations:safety # Review dangerous SQL changes against SHA-bound approvals
 pnpm test:coverage # Run tests and generate coverage reports
 pnpm perf:bundle # Build web and enforce deterministic bundle budgets
 pnpm perf:db     # Profile an isolated deterministic PostgreSQL fixture
@@ -83,10 +88,12 @@ Local services:
 
 - Web: <http://127.0.0.1:3000>
 - API health: <http://127.0.0.1:4000/health>
+- API readiness: <http://127.0.0.1:4000/ready> (bounded PostgreSQL-only probe)
 
 ## CI/CD
 
-GitHub Actions runs stable Quality, Database, Integration, Security, Docker, and Terraform
+GitHub Actions runs stable Quality, Database, Integration, Security, Docker, Terraform,
+and mandatory Chromium/browser + k6 smoke
 checks for pull requests and trusted main/tag pushes. `CI / Gate` is the single
 required aggregate check. Only a successful trusted push may publish immutable
 web, API/worker, and migration images to GHCR; images include BuildKit SBOM and
@@ -104,6 +111,9 @@ defaults are:
 NODE_ENV=development
 PORT=4000
 DATABASE_URL=postgresql://tripforge:tripforge@127.0.0.1:5433/tripforge
+DATABASE_POOL_MAX=10
+DATABASE_POOL_IDLE_TIMEOUT_MS=30000
+DATABASE_POOL_CONNECTION_TIMEOUT_MS=2000
 WEB_ORIGIN=http://127.0.0.1:3000
 REDIS_URL=redis://127.0.0.1:6379
 SECURITY_RATE_LIMITING_ENABLED=true
@@ -170,11 +180,19 @@ privacy/cardinality policy, PromQL, alerts, and incident runbooks.
 See [AWS production deployment](docs/aws-deployment.md) and
 [infrastructure operations](infra/README.md) for VPC/ECS/RDS/Redis/S3,
 Terraform state, cost profiles, OIDC promotion, rollback, and cloud QA.
+See [Production readiness](docs/production-readiness.md),
+[Stage 31 qualification](docs/stage31-qualification.md), [Capacity](docs/capacity.md),
+[SLOs](docs/slo.md), [Release checklist](docs/release-checklist.md), and
+[Incident runbooks](docs/runbooks/README.md) for local evidence, explicit external
+qualification gaps, recovery procedures and release-owner decisions.
 
 The separate worker validates the database/S3 settings above plus `REDIS_URL`;
 it does not require `WEB_ORIGIN`. The API opens an independently configured
 realtime Redis connection, but Redis availability is not part of HTTP health
-and does not gate REST startup or mutations.
+and does not gate ordinary database reads or PostgreSQL readiness. Security-protected
+limiter actions remain fail-closed during Redis outages. Worker pool defaults to 4;
+the one-off migrator uses 1. Normal API/worker traffic uses the dedicated DML role,
+not the RDS master secret; provisioning and rotation are operator-controlled.
 
 ## Testing and quality
 
@@ -187,7 +205,14 @@ Coverage is observed during early development but is not yet used as a global
 quality gate. Thresholds will be introduced when the domain and test architecture
 are sufficiently mature.
 
-Browser E2E tests are intentionally deferred to a later stage.
+Playwright 1.63.0 runs mandatory Chromium critical-path E2E with real PostgreSQL,
+Redis, local S3 and production builds; provider-only deterministic boundaries avoid
+paid external calls. Install Chromium with `pnpm exec playwright install chromium`
+before `pnpm test:e2e`. Docker must be available; qualification owns only newly
+created disposable containers and refuses occupied fixture ports. Full stress/soak
+are separate opt-in profiles, never ordinary unit tests or casual production load.
+VoiceOver/Safari, actual browser zoom and real AWS/provider drills remain explicit
+release checks; green local tests alone do not establish production readiness.
 
 ## Trips dashboard
 

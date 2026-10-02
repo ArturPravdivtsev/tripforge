@@ -184,7 +184,7 @@ export function AssistantScreen({ tripId }: AssistantScreenProps) {
     }
   }
 
-  const canApply = tripQuery.data?.accessRole !== "viewer";
+  const canApply = tripQuery.data?.accessRole === "owner" || tripQuery.data?.accessRole === "editor";
   const mutationError =
     createMutation.error ?? deleteMutation.error ?? proposalMutation.error;
 
@@ -293,7 +293,7 @@ export function AssistantScreen({ tripId }: AssistantScreenProps) {
                 <Label htmlFor="assistant-message">Message</Label>
                 <Textarea
                   id="assistant-message"
-                  disabled={isStreaming}
+                  disabled={isStreaming || !conversationQuery.data}
                   maxLength={4000}
                   placeholder="What do we have planned for Day 3?"
                   value={message}
@@ -310,7 +310,7 @@ export function AssistantScreen({ tripId }: AssistantScreenProps) {
                   {isStreaming ? (
                     <Button variant="secondary" onClick={() => abortRef.current?.abort()}>Stop</Button>
                   ) : (
-                    <Button disabled={!message.trim()} type="submit">Send</Button>
+                    <Button disabled={!message.trim() || !conversationQuery.data} type="submit">Send</Button>
                   )}
                 </div>
               </form>

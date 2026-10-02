@@ -1,4 +1,5 @@
 import { z } from "zod";
+import "@/lib/security/zod-csp";
 
 const emailSchema = z
   .string()

@@ -66,6 +66,17 @@ describe("AssistantScreen", () => {
     vi.spyOn(tripsApi, "listItineraryItems").mockResolvedValue([]);
   });
 
+  it("keeps the composer disabled until conversation details are ready", async () => {
+    let resolve!: (value: AiConversationDetail) => void;
+    vi.mocked(assistantApi.getConversation).mockReturnValue(new Promise((done) => { resolve = done; }));
+    renderWithQueryClient(<AssistantScreen tripId={trip.id} />);
+    const composer = await screen.findByLabelText("Message");
+    expect(composer).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
+    resolve(conversation);
+    await waitFor(() => expect(composer).toBeEnabled());
+  });
+
   it("renders accessible chat controls and read-only proposal UX", async () => {
     const { container } = renderWithQueryClient(<AssistantScreen tripId={trip.id} />);
     expect(await screen.findByText("I prepared a move for review.")).toBeVisible();
@@ -109,6 +120,7 @@ describe("AssistantScreen", () => {
     renderWithQueryClient(<AssistantScreen tripId={trip.id} />);
 
     const composer = await screen.findByLabelText("Message");
+    await waitFor(() => expect(composer).toBeEnabled());
     await user.type(composer, "What's planned?{Control>}{Enter}{/Control}");
 
     expect(await screen.findByText("Checking Day 3.")).toBeVisible();
@@ -132,7 +144,9 @@ describe("AssistantScreen", () => {
     const user = userEvent.setup();
     renderWithQueryClient(<AssistantScreen tripId={trip.id} />);
 
-    await user.type(await screen.findByLabelText("Message"), "Long answer");
+    const composer = await screen.findByLabelText("Message");
+    await waitFor(() => expect(composer).toBeEnabled());
+    await user.type(composer, "Long answer");
     await user.click(screen.getByRole("button", { name: "Send" }));
     await user.click(await screen.findByRole("button", { name: "Stop" }));
 
@@ -160,7 +174,9 @@ describe("AssistantScreen", () => {
     const user = userEvent.setup();
     renderWithQueryClient(<AssistantScreen tripId={trip.id} />);
 
-    await user.type(await screen.findByLabelText("Message"), "Try provider");
+    const composer = await screen.findByLabelText("Message");
+    await waitFor(() => expect(composer).toBeEnabled());
+    await user.type(composer, "Try provider");
     await user.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByText("The assistant provider is busy.")).toBeVisible();
 

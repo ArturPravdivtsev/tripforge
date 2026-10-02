@@ -86,7 +86,7 @@ describe("Authentication with PostgreSQL", () => {
     authRepository = testingModule.get(AuthRepository);
     app = testingModule.createNestApplication();
     configureApplication(app);
-    await app.init();
+    await app.listen(0, "127.0.0.1");
 
     pool = new Pool({ connectionString: databaseUrl });
   });

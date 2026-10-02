@@ -1,4 +1,5 @@
 import { z } from "zod";
+import "@/lib/security/zod-csp";
 
 import { isCalendarDate } from "./calendar-date";
 

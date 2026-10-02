@@ -13,6 +13,7 @@ pull_request (untrusted source)
   ├─ Database
   ├─ Integration
   ├─ Security
+  ├─ Browser E2E + bounded k6 smoke
   ├─ Docker build + Trivy + smoke
   └─ Terraform fmt + validate + tests + Trivy IaC
            │
@@ -20,8 +21,8 @@ pull_request (untrusted source)
         CI / Gate
 ```
 
-The six jobs run in parallel on `ubuntu-latest`; each has a finite timeout.
-`CI / Gate` always runs and succeeds only when all six results are `success`.
+The seven jobs run in parallel on `ubuntu-latest`; each has a finite timeout.
+`CI / Gate` succeeds only when all seven results are `success`.
 The stable required-check name is `CI / Gate` (workflow `CI`, job `Gate`).
 CodeQL and Dependency Review are separate, plan-dependent checks and do not
 weaken or replace the mandatory local security gates.
@@ -101,7 +102,7 @@ the security job owns the security-specific real-service cases.
 `Docker` validates both base and observability Compose models and builds the
 exact production Dockerfiles for web, API/worker, and migrate without pushing.
 It runs Trivy `0.74.0` and container smoke tests: migration against disposable
-PostgreSQL, API `/health`, and web HTTP with `OTEL_ENABLED=false`. Redis is used
+PostgreSQL, API `/health` + `/ready`, and web HTTP with `OTEL_ENABLED=false`. Redis is used
 for API realtime startup; LocalStack is not required for this basic smoke path.
 
 Trivy first reports all HIGH/CRITICAL findings, including unfixed ones. The
@@ -279,3 +280,20 @@ request jobs or image builds.
 `pnpm ai:eval:live` is an explicit manual command for a trusted environment with
 an intentionally supplied provider key. Probabilistic paid output is diagnostic,
 not a merge gate, and is never passed between workflows as an artifact.
+
+## Stage 31 qualification
+
+Mandatory `Browser and bounded load`: locked Playwright 1.63.0 Chromium,
+`pnpm test:e2e` on production-built web/API + disposable PG/Redis/S3, then
+checksum-verified k6 v2.3.0 + `pnpm perf:load smoke` (2 VU/1m). Core persistence
+is real; only external providers use test-only DI/scoped HTTP interception.
+No fake production route, paid credential or retry masking. Browser success gates
+merge/publish. Hosted execution/protection is still pending, not proven by YAML.
+
+`Release qualification` is workflow_dispatch only: selected smoke/load/stress/
+soak + browser + local failure/restore drills on disposable runner services.
+No schedule/AWS secrets/OIDC write grant/production chaos. Heavy profiles are
+outside `pnpm test`. Compact summaries retain 14 days; browser failure evidence
+7 days; ordinary CI smoke summary 7 days. Credential-bearing `stack.json` and
+`load-fixture.json` never upload. Migration safety + readiness unit/deployment
+shell fake-AWS gating remain Quality checks, not cloud-mutation tests.

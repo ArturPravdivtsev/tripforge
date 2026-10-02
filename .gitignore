@@ -20,6 +20,10 @@ coverage/
 
 # Logs
 *.log
+playwright-report/
+test-results/
+readiness-results/
+.playwright-mcp/
 pnpm-debug.log*
 
 # Terraform local state and operator inputs

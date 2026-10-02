@@ -235,7 +235,9 @@ async function createApplication(module: unknown): Promise<INestApplication> {
   }).compile();
   const app = testingModule.createNestApplication();
   configureApplication(app);
-  await app.init();
+  // Keep both nodes bound for the suite; do not let Supertest reopen/close them
+  // on every alternating request while Socket.IO is attached to the same server.
+  await app.listen(0, "127.0.0.1");
   return app;
 }
 

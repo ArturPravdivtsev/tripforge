@@ -29,6 +29,8 @@ locals {
     var.ghcr_credentials_secret_arn == null ? [] : [var.ghcr_credentials_secret_arn],
     var.openrouteservice_api_key_secret_arn == null ? [] : [var.openrouteservice_api_key_secret_arn],
     var.openai_api_key_secret_arn == null ? [] : [var.openai_api_key_secret_arn],
+    [var.application_database_secret_arn],
+    var.migrator_database_secret_arn == null ? [] : [var.migrator_database_secret_arn],
   ))
 }
 

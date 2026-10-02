@@ -1,5 +1,6 @@
 import { TRIP_REALTIME_RESOURCES } from "@tripforge/contracts";
 import { z } from "zod";
+import "@/lib/security/zod-csp";
 
 const tripId = z.string().uuid();
 

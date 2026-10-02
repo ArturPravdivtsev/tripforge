@@ -86,7 +86,9 @@ describe("TripForgeMetrics", () => {
     const data = metricData(exporter);
     const requestSeries = metric(data, METRIC_NAMES.httpRequests).dataPoints;
     expect(requestSeries).toHaveLength(2);
-    expect(JSON.stringify(requestSeries)).not.toMatch(/10000000|20000000/iu);
+    expect(
+      JSON.stringify(requestSeries.map((point) => point.attributes)),
+    ).not.toMatch(/10000000|20000000/iu);
     expect(pointValue(metric(data, METRIC_NAMES.httpInFlight))).toBe(0);
     expect(pointValue(metric(data, METRIC_NAMES.realtimeActiveSockets))).toBe(0);
     expect(pointValue(metric(data, METRIC_NAMES.realtimeActiveJoins))).toBe(0);
@@ -145,7 +147,7 @@ describe("TripForgeMetrics", () => {
 });
 
 type ExportedMetric = {
-  dataPoints: Array<{ value: number }>;
+  dataPoints: Array<{ value: number; attributes: Record<string, unknown> }>;
   descriptor: { name: string };
 };
 

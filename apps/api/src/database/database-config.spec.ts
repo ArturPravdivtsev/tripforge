@@ -11,7 +11,7 @@ describe("database configuration", () => {
       createDatabasePoolConfig({
         databaseUrl: "postgresql://tripforge:tripforge@localhost:5432/tripforge",
       }),
-    ).toEqual({
+    ).toMatchObject({
       connectionString:
         "postgresql://tripforge:tripforge@localhost:5432/tripforge",
     });
@@ -27,7 +27,7 @@ describe("database configuration", () => {
         password: "secret",
         ssl: "true",
       }),
-    ).toEqual({
+    ).toMatchObject({
       host: "database.example.internal",
       port: 5432,
       database: "tripforge",
@@ -61,5 +61,12 @@ describe("database configuration", () => {
       password: "secret",
       ssl: "true",
     });
+  });
+
+  it("bounds pool acquisition and validates explicit capacity", () => {
+    expect(createDatabasePoolConfig({ databaseUrl: "postgresql://localhost/tripforge", poolMax: 4 }))
+      .toMatchObject({ max: 4, idleTimeoutMillis: 30_000, connectionTimeoutMillis: 2_000 });
+    expect(() => createDatabasePoolConfig({ databaseUrl: "postgresql://localhost/tripforge", poolMax: 0 }))
+      .toThrow("DATABASE_POOL_MAX");
   });
 });

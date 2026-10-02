@@ -124,6 +124,21 @@ variable "openai_api_key_secret_arn" {
   default     = null
 }
 
+variable "application_database_secret_arn" {
+  description = "Externally provisioned least-privilege PostgreSQL application credential JSON (username/password); required for API and worker."
+  type        = string
+  validation {
+    condition     = can(regex("^arn:.*:secretsmanager:.*:secret:", var.application_database_secret_arn))
+    error_message = "Supply the dedicated application role's Secrets Manager ARN."
+  }
+}
+
+variable "migrator_database_secret_arn" {
+  description = "Optional separately provisioned schema-owner credential JSON; null uses the managed RDS administrator only for migrations."
+  type        = string
+  default     = null
+}
+
 variable "redis_auth_token" {
   description = "Strong ElastiCache AUTH token supplied through TF_VAR_redis_auth_token, never committed tfvars."
   type        = string
@@ -291,6 +306,33 @@ variable "api_max_count" {
   type        = number
   description = "Maximum autoscaled API task count."
   default     = 4
+}
+
+variable "api_database_pool_max" {
+  type        = number
+  description = "Business PostgreSQL connections per API task; readiness adds one separate connection."
+  default     = 10
+  validation {
+    condition     = var.api_database_pool_max >= 1 && var.api_database_pool_max <= 100 && floor(var.api_database_pool_max) == var.api_database_pool_max
+    error_message = "API DB pool must be an integer in 1..100."
+  }
+}
+
+variable "worker_database_pool_max" {
+  type        = number
+  description = "PostgreSQL connections per worker task."
+  default     = 4
+  validation {
+    condition     = var.worker_database_pool_max >= 1 && var.worker_database_pool_max <= 100 && floor(var.worker_database_pool_max) == var.worker_database_pool_max
+    error_message = "Worker DB pool must be an integer in 1..100."
+  }
+}
+
+variable "verified_database_max_connections" {
+  type        = number
+  description = "Operator-recorded SHOW max_connections on the actual RDS instance; null means cloud qualification pending."
+  default     = null
+  nullable    = true
 }
 
 variable "enable_container_insights" {

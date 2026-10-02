@@ -141,6 +141,7 @@ export function validateWorkflow(source, filename = "workflow.yml") {
       "security",
       "docker",
       "infrastructure",
+      "browser",
     ];
     const gateNeeds = Array.isArray(gate?.needs) ? gate.needs : [];
 
@@ -152,6 +153,10 @@ export function validateWorkflow(source, filename = "workflow.yml") {
     }
     if (publish?.needs !== "gate") {
       errors.push(`${filename}: publish must depend only on the successful gate`);
+    }
+    const browserText = JSON.stringify(jobs.browser ?? {});
+    for (const required of ["pnpm test:e2e", "playwright install --with-deps chromium", "pnpm perf:load smoke", "install-k6.mjs"]) {
+      if (!browserText.includes(required)) errors.push(`${filename}: mandatory browser/load policy is missing ${required}`);
     }
     if (!String(publish?.if ?? "").includes("github.event_name == 'push'")) {
       errors.push(`${filename}: publish must be guarded against pull_request events`);

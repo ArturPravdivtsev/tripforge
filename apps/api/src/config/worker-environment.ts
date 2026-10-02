@@ -29,6 +29,9 @@ export const workerEnvironmentSchema = Joi.object({
   DATABASE_USER: Joi.string().trim().min(1).max(63).optional(),
   DATABASE_PASSWORD: Joi.string().min(1).optional(),
   DATABASE_SSL: Joi.boolean().truthy("true").falsy("false").default(false),
+  DATABASE_POOL_MAX: Joi.number().integer().min(1).max(100).default(4),
+  DATABASE_POOL_IDLE_TIMEOUT_MS: Joi.number().integer().min(1_000).max(300_000).default(30_000),
+  DATABASE_POOL_CONNECTION_TIMEOUT_MS: Joi.number().integer().min(100).max(10_000).default(2_000),
   REDIS_URL: Joi.string()
     .uri({ scheme: ["redis", "rediss"] })
     .when("NODE_ENV", {

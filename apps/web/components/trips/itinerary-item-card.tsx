@@ -50,7 +50,7 @@ export function ItineraryItemCard({
       } ${selected ? "border-[var(--primary)] ring-2 ring-[var(--focus-ring)]" : ""
       }`}
     >
-      <div className="flex min-w-0 items-start gap-2">
+      <div className="flex min-w-0 flex-wrap items-start gap-2">
         {canEdit ? (
           <Button
             ref={handleRef}
@@ -103,7 +103,7 @@ export function ItineraryItemCard({
         </div>
 
         {canEdit ? (
-          <div className="flex shrink-0 gap-1">
+          <div className="flex w-full justify-end gap-1">
             <Button
               ref={moveActionRef}
               aria-label={`Move “${item.title}” without dragging`}

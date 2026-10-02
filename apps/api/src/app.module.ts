@@ -8,6 +8,8 @@ import { ApiExceptionFilter } from "./common/filters/api-exception.filter";
 import { validateEnvironment } from "./config/environment";
 import { DatabaseModule } from "./database/database.module";
 import { HealthController } from "./health.controller";
+import { ReadyController } from "./ready.controller";
+import { ReadinessService } from "./readiness.service";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { ObservabilityModule } from "./observability/observability.module";
 import { RealtimeModule } from "./realtime/realtime.module";
@@ -30,8 +32,9 @@ import { TripsModule } from "./trips/trips.module";
     SecurityModule,
     TripsModule,
   ],
-  controllers: [HealthController],
+  controllers: [HealthController, ReadyController],
   providers: [
+    ReadinessService,
     {
       provide: APP_FILTER,
       useClass: ApiExceptionFilter,

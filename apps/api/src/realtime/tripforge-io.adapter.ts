@@ -62,6 +62,10 @@ export class TripForgeIoAdapter extends IoAdapter {
       this.metrics.realtimeEvent("publisher_failure");
       this.logger.event("warn", "realtime.redis.unavailable");
     });
+    observeRedisPublicationFailures(this.redisClient, () => {
+      this.metrics.realtimeEvent("publisher_failure");
+      this.logger.event("warn", "realtime.publisher.failed", { operation: "ephemeral" });
+    });
     server.adapter(
       createAdapter(this.redisClient, {
         channelPrefix: SOCKET_STREAM_NAME,
@@ -77,10 +81,41 @@ export class TripForgeIoAdapter extends IoAdapter {
   override async close(server: Server): Promise<void> {
     await super.close(server);
 
-    if (this.redisClient?.status !== "end") {
-      this.redisClient?.disconnect();
+    const client = this.redisClient;
+    if (client?.status === "ready") {
+      let deadline: ReturnType<typeof setTimeout> | undefined;
+      try {
+        // Flush queued publications before closing; never wait forever on Redis.
+        await Promise.race([
+          client.quit(),
+          new Promise<never>((_, reject) => {
+            deadline = setTimeout(() => reject(new Error("Redis shutdown deadline")), 2_000);
+          }),
+        ]);
+      } catch {
+        this.logger.event("warn", "realtime.redis.shutdown_forced");
+        client.disconnect();
+      } finally {
+        clearTimeout(deadline);
+      }
+    } else if (client && client.status !== "end") {
+      client.disconnect();
     }
   }
+}
+
+export function observeRedisPublicationFailures(
+  client: Pick<Redis, "publish">,
+  onFailure: () => void,
+): void {
+  const publish = client.publish.bind(client);
+  client.publish = (...args) => {
+    const pending = publish(...args);
+    // redis-streams-adapter 0.3.1 ignores its ephemeral PUBLISH promise.
+    // Observe that failure without changing the promise returned to callers.
+    void pending.catch(() => onFailure());
+    return pending;
+  };
 }
 
 export function isAllowedSocketOrigin(

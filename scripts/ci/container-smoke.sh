@@ -6,6 +6,9 @@ postgres="${network}-postgres"
 redis="${network}-redis"
 api="${network}-api"
 web="${network}-web"
+api_image="${SMOKE_API_IMAGE:-tripforge-ci-api:local}"
+migrate_image="${SMOKE_MIGRATE_IMAGE:-tripforge-ci-migrate:local}"
+web_image="${SMOKE_WEB_IMAGE:-tripforge-ci-web:local}"
 
 cleanup() {
   status=$?
@@ -47,7 +50,7 @@ for _ in 1 2; do
   docker run --rm --network "$network" \
     -e NODE_ENV=production \
     -e DATABASE_URL="postgresql://tripforge:tripforge@${postgres}:5432/tripforge" \
-    tripforge-ci-migrate:local
+    "$migrate_image"
 done
 
 # The disposable Redis is plaintext; production configuration requires TLS.
@@ -63,7 +66,7 @@ docker run -d --name "$api" --network "$network" -p 127.0.0.1::4000 \
   -e S3_REGION=us-east-1 \
   -e AWS_ACCESS_KEY_ID=test \
   -e AWS_SECRET_ACCESS_KEY=test \
-  tripforge-ci-api:local >/dev/null
+  "$api_image" >/dev/null
 api_port="$(docker port "$api" 4000/tcp | sed 's/.*://')"
 
 for _ in {1..60}; do
@@ -73,6 +76,7 @@ for _ in {1..60}; do
   sleep 1
 done
 curl --fail --silent "http://127.0.0.1:${api_port}/health" >/dev/null
+curl --fail --silent "http://127.0.0.1:${api_port}/ready" >/dev/null
 
 API_SMOKE_PORT="$api_port" node <<'NODE'
 const base = `http://127.0.0.1:${process.env.API_SMOKE_PORT}`;
@@ -109,7 +113,7 @@ NODE
 docker run -d --name "$web" -p 127.0.0.1::3000 \
   -e NODE_ENV=production \
   -e OTEL_ENABLED=false \
-  tripforge-ci-web:local >/dev/null
+  "$web_image" >/dev/null
 web_port="$(docker port "$web" 3000/tcp | sed 's/.*://')"
 
 for _ in {1..60}; do
@@ -121,4 +125,4 @@ done
 curl --fail --silent "http://127.0.0.1:${web_port}/" >/dev/null
 curl --fail --silent "http://127.0.0.1:${web_port}/health" >/dev/null
 
-echo "Container smoke passed: migrate twice, API /health, auth, Trip creation, and web /health (AI and OTEL disabled)."
+echo "Container smoke passed: migrate twice, API /health + /ready, auth, Trip creation, and web /health (AI and OTEL disabled)."

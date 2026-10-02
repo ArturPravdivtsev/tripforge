@@ -250,8 +250,8 @@ authorization matrix for owner, editor, viewer, outsider, and removed member.
 - Stage 27 owns structured security event observability and alerting.
 - Stage 29 owns TLS 1.2+ (prefer 1.3), load-balancer trust/proxy policy, private
   database networking, cloud storage encryption/IAM, WAF, and secret manager.
-- Production CSP runtime still needs real-browser verification across Next,
-  Socket.IO, MapLibre/MapTiler, and direct S3 upload/download.
+- Stage 31 verifies critical-screen Next/Socket.IO/local-S3 CSP in Chromium;
+  real restricted MapTiler/ORS/AWS provider and broader penetration QA remain pending.
 - LocalStack community tests cannot claim production IAM enforcement, and the
   pinned Compose image requires an external auth token.
 - Client source-map publication remains a deployment decision; Next production
@@ -360,3 +360,32 @@ OpenAI HTTP bodies and authorization headers are not captured. The assistant
 has no web search, MCP, arbitrary URL, SQL, shell, code execution, File Search,
 or destructive tool. The secret scanner recognizes obvious `sk-*` key shapes.
 See [AI Trip Assistant](./ai-assistant.md) for the complete data boundary.
+
+## Stage 31 security qualification
+
+Chromium verifies HttpOnly isolation/logout/Back, two-user RBAC/live revocation,
+private assistant/viewer controls and zero app CSP violations on six screens.
+Zod's caught eval capability probe caused real CSP violations; client jitless
+configuration fixes this without unsafe-eval, weakened validation or server changes.
+Assistant Send waits for conversation readiness; Apply stays disabled until an
+explicit editable role is known, avoiding permissive transient UI state.
+
+API/worker use external app DML-role secrets, not master; real local CREATE ROLE/
+TABLE/DROP DB denial plus CRUD/worker/locks are verified. Migration owner/admin
+only reaches one-off migrate. AWS provisioning/rotation/TLS enforcement remains
+pending; see [AWS handoff](./aws-deployment.md). Readiness exposes only status;
+S3 HEAD/Delete has a 10s total bound. Operational smoke is read-only by default,
+mutations require explicit disposable acknowledgement/prefix/credentials.
+Chaos only touches owned disposable containers; no production target switch.
+Audit/secrets/privacy/pinned workflow and runtime tooling exclusion remain gates.
+
+Local Trivy 0.75.0 image scans on 2026-10-02 found 53 HIGH and 4 CRITICAL
+Debian **package findings per image**, with no FixedVersion in the scanner data;
+these are not 57 distinct CVEs. Runtime npm HIGH/CRITICAL and fixable image
+HIGH/CRITICAL are zero in that evidence. Existing CI reports all such findings
+and blocks fixable HIGH/CRITICAL with `--ignore-unfixed`; its Trivy version is
+0.74.0. Passing that policy is not a clean-image/exploitability assertion or
+automatic acceptance of unfixed OS risk. Release owner must review vendor status,
+runtime reachability/mitigations, record a named exception or block release, and
+re-scan immutable candidate images with current data. No package ignore or weaker
+scan exit policy was added in Stage 31.

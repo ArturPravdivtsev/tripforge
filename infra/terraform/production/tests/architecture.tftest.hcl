@@ -61,16 +61,17 @@ run "production_boundaries" {
   command = plan
 
   variables {
-    aws_region                = "eu-west-1"
-    app_domain                = "app.example.com"
-    api_domain                = "api.example.com"
-    github_organization       = "example"
-    github_repository         = "tripforge"
-    redis_auth_token          = "test-only-token-32-characters-long"
-    web_image                 = "ghcr.io/example/tripforge-web@sha256:0000000000000000000000000000000000000000000000000000000000000000"
-    api_image                 = "ghcr.io/example/tripforge-api@sha256:1111111111111111111111111111111111111111111111111111111111111111"
-    migrate_image             = "ghcr.io/example/tripforge-migrate@sha256:2222222222222222222222222222222222222222222222222222222222222222"
-    openai_api_key_secret_arn = "arn:aws:secretsmanager:eu-west-1:123456789012:secret:tripforge-openai"
+    aws_region                      = "eu-west-1"
+    app_domain                      = "app.example.com"
+    api_domain                      = "api.example.com"
+    github_organization             = "example"
+    github_repository               = "tripforge"
+    redis_auth_token                = "test-only-token-32-characters-long"
+    web_image                       = "ghcr.io/example/tripforge-web@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    api_image                       = "ghcr.io/example/tripforge-api@sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    migrate_image                   = "ghcr.io/example/tripforge-migrate@sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    openai_api_key_secret_arn       = "arn:aws:secretsmanager:eu-west-1:123456789012:secret:tripforge-openai"
+    application_database_secret_arn = "arn:aws:secretsmanager:eu-west-1:123456789012:secret:tripforge-app-db"
   }
 
   assert {
@@ -81,6 +82,11 @@ run "production_boundaries" {
   assert {
     condition     = aws_db_instance.main.publicly_accessible == false
     error_message = "RDS must remain private."
+  }
+
+  assert {
+    condition     = output.database_connection_budget.total == 117
+    error_message = "Default rolling deployment must account for readiness, workers, migrator and operational headroom."
   }
 
   assert {
@@ -123,10 +129,37 @@ run "production_boundaries" {
 
   assert {
     condition = (
+      aws_lb_target_group.api.health_check[0].path == "/ready" &&
+      aws_lb_target_group.web.health_check[0].path == "/health" &&
+      alltrue([for secret in local.database_secrets : startswith(secret.valueFrom, var.application_database_secret_arn)])
+    )
+    error_message = "API traffic must use DB readiness and dedicated application credentials."
+  }
+
+  assert {
+    condition = (
       length([for secret in local.api_container.secrets : secret if secret.name == "OPENAI_API_KEY"]) == 1 &&
       length([for secret in local.worker_container.secrets : secret if secret.name == "OPENAI_API_KEY"]) == 0 &&
       length([for secret in local.migrate_container.secrets : secret if secret.name == "OPENAI_API_KEY"]) == 0
     )
     error_message = "OpenAI credentials must never be injected into worker or migration tasks."
   }
+}
+
+run "reject_insufficient_verified_connection_limit" {
+  command = plan
+  variables {
+    aws_region                        = "eu-west-1"
+    app_domain                        = "app.example.com"
+    api_domain                        = "api.example.com"
+    github_organization               = "example"
+    github_repository                 = "tripforge"
+    redis_auth_token                  = "test-only-token-32-characters-long"
+    web_image                         = "ghcr.io/example/tripforge-web@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    api_image                         = "ghcr.io/example/tripforge-api@sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    migrate_image                     = "ghcr.io/example/tripforge-migrate@sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    application_database_secret_arn   = "arn:aws:secretsmanager:eu-west-1:123456789012:secret:tripforge-app-db"
+    verified_database_max_connections = 100
+  }
+  expect_failures = [aws_ecs_task_definition.api]
 }

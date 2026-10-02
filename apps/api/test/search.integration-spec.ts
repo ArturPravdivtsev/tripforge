@@ -193,7 +193,7 @@ describe("Trip search with PostgreSQL", () => {
     const module = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = module.createNestApplication();
     configureApplication(app);
-    await app.init();
+    await app.listen(0, "127.0.0.1");
     pool = new Pool({ connectionString: databaseUrl });
   });
 

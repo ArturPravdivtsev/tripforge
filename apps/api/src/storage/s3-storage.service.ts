@@ -14,6 +14,7 @@ import {
   DOWNLOAD_URL_TTL_SECONDS,
   S3_INTERNAL_CLIENT,
   S3_SIGNING_CLIENT,
+  S3_OPERATION_TIMEOUT_MS,
   UPLOAD_URL_TTL_SECONDS,
 } from "./storage.constants";
 
@@ -77,6 +78,7 @@ export class S3StorageService {
     try {
       const result = await this.internalClient.send(
         new HeadObjectCommand({ Bucket: this.bucket, Key: storageKey }),
+        { abortSignal: AbortSignal.timeout(S3_OPERATION_TIMEOUT_MS) },
       );
       return {
         contentLength: result.ContentLength ?? -1,
@@ -92,6 +94,7 @@ export class S3StorageService {
   async deleteObject(storageKey: string): Promise<void> {
     await this.internalClient.send(
       new DeleteObjectCommand({ Bucket: this.bucket, Key: storageKey }),
+      { abortSignal: AbortSignal.timeout(S3_OPERATION_TIMEOUT_MS) },
     );
   }
 }
