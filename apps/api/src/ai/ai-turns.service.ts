@@ -223,8 +223,11 @@ function mapProviderError(error: unknown, signal: AbortSignal): AiPublicErrorCod
 }
 
 function postgresCode(error: unknown): string | undefined {
-  return error && typeof error === "object" && "code" in error && typeof error.code === "string"
-    ? error.code
+  if (!error || typeof error !== "object") return undefined;
+  if ("code" in error && typeof error.code === "string") return error.code;
+  const cause = "cause" in error ? error.cause : undefined;
+  return cause && typeof cause === "object" && "code" in cause && typeof cause.code === "string"
+    ? cause.code
     : undefined;
 }
 

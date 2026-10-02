@@ -50,10 +50,12 @@ for _ in 1 2; do
     tripforge-ci-migrate:local
 done
 
+# The disposable Redis is plaintext; production configuration requires TLS.
 docker run -d --name "$api" --network "$network" -p 127.0.0.1::4000 \
-  -e NODE_ENV=production \
+  -e NODE_ENV=development \
   -e PORT=4000 \
   -e OTEL_ENABLED=false \
+  -e AI_ASSISTANT_ENABLED=false \
   -e DATABASE_URL="postgresql://tripforge:tripforge@${postgres}:5432/tripforge" \
   -e WEB_ORIGIN=http://127.0.0.1:3000 \
   -e REDIS_URL="redis://${redis}:6379" \
@@ -72,6 +74,38 @@ for _ in {1..60}; do
 done
 curl --fail --silent "http://127.0.0.1:${api_port}/health" >/dev/null
 
+API_SMOKE_PORT="$api_port" node <<'NODE'
+const base = `http://127.0.0.1:${process.env.API_SMOKE_PORT}`;
+const headers = {
+  "Content-Type": "application/json",
+  Origin: "http://127.0.0.1:3000",
+  "X-TripForge-Request": "1",
+};
+
+async function check() {
+  const registered = await fetch(`${base}/api/auth/register`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ email: "container-smoke@example.com", password: "a sufficiently long password" }),
+  });
+  if (registered.status !== 201) throw new Error(`Registration failed: ${registered.status}`);
+  const cookie = registered.headers.get("set-cookie")?.split(";", 1)[0];
+  if (!cookie) throw new Error("Registration did not set a session cookie");
+
+  const me = await fetch(`${base}/api/auth/me`, { headers: { Cookie: cookie } });
+  if (me.status !== 200) throw new Error(`Session check failed: ${me.status}`);
+
+  const trip = await fetch(`${base}/api/trips`, {
+    method: "POST",
+    headers: { ...headers, Cookie: cookie },
+    body: JSON.stringify({ name: "Smoke Trip", startsOn: "2027-04-12", endsOn: "2027-04-13" }),
+  });
+  if (trip.status !== 201) throw new Error(`Ordinary Trip creation failed: ${trip.status}`);
+}
+
+check().catch((error) => { console.error(error); process.exitCode = 1; });
+NODE
+
 docker run -d --name "$web" -p 127.0.0.1::3000 \
   -e NODE_ENV=production \
   -e OTEL_ENABLED=false \
@@ -85,5 +119,6 @@ for _ in {1..60}; do
   sleep 1
 done
 curl --fail --silent "http://127.0.0.1:${web_port}/" >/dev/null
+curl --fail --silent "http://127.0.0.1:${web_port}/health" >/dev/null
 
-echo "Container smoke passed: migrate twice, API /health, and web HTTP (OTEL disabled)."
+echo "Container smoke passed: migrate twice, API /health, auth, Trip creation, and web /health (AI and OTEL disabled)."

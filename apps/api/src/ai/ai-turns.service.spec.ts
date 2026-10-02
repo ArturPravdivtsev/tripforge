@@ -194,16 +194,19 @@ describe("AiTurnsService", () => {
     expect(events).toHaveBeenCalledWith(expect.objectContaining({ code: "AI_CLIENT_DISCONNECTED" }));
   });
 
-  it("returns a stable busy event for the pending-turn uniqueness constraint", async () => {
-    const subject = createSubject();
-    subject.repository.startTurn.mockRejectedValue({ code: "23505" });
-    const events = vi.fn();
+  it.each([{ code: "23505" }, { cause: { code: "23505" } }])(
+    "returns a stable busy event for the pending-turn uniqueness constraint (%j)",
+    async (error) => {
+      const subject = createSubject();
+      subject.repository.startTurn.mockRejectedValue(error);
+      const events = vi.fn();
 
-    await subject.service.run("user", "trip", "conversation", "hello", new AbortController().signal, events);
+      await subject.service.run("user", "trip", "conversation", "hello", new AbortController().signal, events);
 
-    expect(subject.model.generate).not.toHaveBeenCalled();
-    expect(events).toHaveBeenCalledWith(expect.objectContaining({ code: "AI_CONVERSATION_BUSY" }));
-  });
+      expect(subject.model.generate).not.toHaveBeenCalled();
+      expect(events).toHaveBeenCalledWith(expect.objectContaining({ code: "AI_CONVERSATION_BUSY" }));
+    },
+  );
 });
 
 function completed(

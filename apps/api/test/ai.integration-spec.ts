@@ -14,6 +14,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { AiConversationsService } from "../src/ai/ai-conversations.service";
 import { AiProposalsService } from "../src/ai/ai-proposals.service";
 import { AiRepository } from "../src/ai/ai.repository";
+import { AiToolRegistry } from "../src/ai/ai-tool-registry";
 import { TripRealtimePublisher } from "../src/realtime/trip-realtime.publisher";
 
 const ownerId = "10000000-0000-4000-8000-000000000001";
@@ -32,6 +33,7 @@ describe("AI persistence, privacy, and proposal transactions", () => {
   let conversations: AiConversationsService;
   let proposals: AiProposalsService;
   let repository: AiRepository;
+  let tools: AiToolRegistry;
   let realtime: TripRealtimePublisher;
 
   beforeAll(async () => {
@@ -58,6 +60,7 @@ describe("AI persistence, privacy, and proposal transactions", () => {
     conversations = module.get(AiConversationsService);
     proposals = module.get(AiProposalsService);
     repository = module.get(AiRepository);
+    tools = module.get(AiToolRegistry);
     realtime = module.get(TripRealtimePublisher);
     pool = new Pool({ connectionString: databaseUrl });
   });
@@ -127,6 +130,40 @@ describe("AI persistence, privacy, and proposal transactions", () => {
     ).resolves.toMatchObject({ id: editorConversation.id });
   });
 
+  it("scopes tool reads to the authorized Trip on real PostgreSQL", async () => {
+    const otherTripId = "20000000-0000-4000-8000-000000000002";
+    const otherDayId = "30000000-0000-4000-8000-000000000003";
+    await pool.query(
+      "INSERT INTO trips (id, owner_id, name, starts_on, ends_on) VALUES ($1, $2, 'Private Trip', '2027-05-01', '2027-05-01')",
+      [otherTripId, outsiderId],
+    );
+    await pool.query(
+      "INSERT INTO trip_days (id, trip_id, date) VALUES ($1, $2, '2027-05-01')",
+      [otherDayId, otherTripId],
+    );
+    await pool.query(
+      "INSERT INTO itinerary_items (trip_day_id, kind, title, position) VALUES ($1, 'activity', 'Private item', 0)",
+      [otherDayId],
+    );
+
+    const itinerary = await tools.execute(
+      "get_itinerary",
+      JSON.stringify({ dayIds: [], endDate: null, limit: 100, startDate: null }),
+      { tripId, userId: ownerId },
+    );
+    expect(itinerary.output).toContain("Temple");
+    expect(itinerary.output).not.toContain("Private item");
+
+    const crossTripDay = await tools.execute(
+      "get_itinerary",
+      JSON.stringify({ dayIds: [otherDayId], endDate: null, limit: 100, startDate: null }),
+      { tripId, userId: ownerId },
+    );
+    expect(JSON.parse(crossTripDay.output)).toMatchObject({ value: [] });
+    await expect(tools.execute("get_trip_overview", "{}", { tripId, userId: outsiderId }))
+      .rejects.toMatchObject({ response: { code: "TRIP_NOT_FOUND" } });
+  });
+
   it("enforces direct constraints and cascades AI-private data", async () => {
     await expect(
       pool.query(
@@ -144,7 +181,7 @@ describe("AI persistence, privacy, and proposal transactions", () => {
     );
     await expect(
       repository.startTurn(tripId, ownerId, conversation.id, "Second pending turn"),
-    ).rejects.toMatchObject({ code: "23505" });
+    ).rejects.toMatchObject({ cause: { code: "23505" } });
     await repository.failTurn(pending!.id, "TEST_COMPLETE");
 
     await expect(
@@ -203,6 +240,34 @@ describe("AI persistence, privacy, and proposal transactions", () => {
       error_code: "AI_STALE_PENDING_TURN",
       status: "failed",
     });
+  });
+
+  it("persists completed turns and proposal drafts atomically", async () => {
+    const conversation = await conversations.create(ownerId, tripId);
+    const pending = await repository.startTurn(tripId, ownerId, conversation.id, "Add a stop");
+    const payload = {
+      dayId: firstDayId,
+      endTime: null,
+      kind: "activity" as const,
+      notes: null,
+      startTime: null,
+      title: "Museum",
+      type: "itinerary_create" as const,
+    };
+    const completed = await repository.completeTurn(
+      pending!.id,
+      "Here is a suggestion",
+      "gpt-6-luna",
+      { cachedInputTokens: 0, inputTokens: 10, outputTokens: 5, reasoningTokens: 0 },
+      [{ payload }],
+    );
+
+    expect(completed).toMatchObject({
+      assistantContent: "Here is a suggestion",
+      proposals: [{ payload, status: "pending", type: "itinerary_create" }],
+      status: "completed",
+    });
+    expect(await repository.getTurn(pending!.id)).toMatchObject(completed);
   });
 
   it("applies create/update/move exactly once through domain transactions", async () => {
@@ -289,6 +354,22 @@ describe("AI persistence, privacy, and proposal transactions", () => {
     });
     expect(
       (await pool.query("SELECT status FROM trip_ai_proposals WHERE id = $1", [staleProposal])).rows[0].status,
+    ).toBe("stale");
+    const staleDayProposal = await insertProposal(pool, ownerConversation.id, "itinerary_create", {
+      dayId: secondDayId,
+      endTime: null,
+      kind: "activity",
+      notes: null,
+      startTime: null,
+      title: "Missing Day",
+      type: "itinerary_create",
+    });
+    await pool.query("DELETE FROM trip_days WHERE id = $1", [secondDayId]);
+    await expect(proposals.apply(ownerId, tripId, staleDayProposal)).rejects.toMatchObject({
+      response: { code: "AI_PROPOSAL_STALE" },
+    });
+    expect(
+      (await pool.query("SELECT status FROM trip_ai_proposals WHERE id = $1", [staleDayProposal])).rows[0].status,
     ).toBe("stale");
 
     const dismissId = await insertProposal(pool, ownerConversation.id, "itinerary_create", {
