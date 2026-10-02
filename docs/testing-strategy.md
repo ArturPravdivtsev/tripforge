@@ -271,3 +271,24 @@ The local Docker QA layer validates actual OTLP acceptance, Jaeger service/spans
 Prometheus scrape/custom/runtime series, and operation with telemetry services
 stopped. Manual UI inspection remains necessary for span waterfall semantics
 and bounded label spot-checks; it does not replace automated privacy tests.
+
+## AI testing
+
+`pnpm ai:test` covers provider request construction (`store:false`), strict tool
+schemas, identity-field exclusion, prompt-injection instructions, and bounded
+tool availability. `pnpm ai:eval` runs deterministic fixtures for Trip lookup,
+multi-day reasoning, reservations, expenses, search, all proposal types,
+unsupported live information, and destructive/prompt-injection boundaries.
+Neither command needs an OpenAI credential and both run in normal CI.
+
+Integration coverage targets conversation ownership, outsider/removed-member
+authorization, one-pending-turn uniqueness and stale recovery, tool output
+bounds/privacy, moderation fail-closed behavior, turn/proposal atomicity,
+viewer/role-change races, stale references, concurrent idempotent Apply, and
+normal realtime invalidation. Frontend tests cover split/multiple SSE chunks,
+UTF-8, completion/error handling, Stop, proposal controls, and accessibility
+without announcing every token.
+
+`pnpm ai:eval:live` is manual, optional, paid, and requires an intentionally
+supplied `OPENAI_API_KEY`. It is not a PR gate and no live provider result is
+claimed when credentials are unavailable.

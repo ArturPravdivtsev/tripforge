@@ -341,3 +341,22 @@ as secret-bearing because ElastiCache AUTH passes through provider state.
 Document/state buckets and RDS use deliberate deletion barriers. IAM wildcards
 are limited to APIs that cannot be resource-scoped, never admin managed
 policies. See [AWS deployment](./aws-deployment.md).
+
+## AI assistant threat model
+
+| Threat | Mitigation |
+|---|---|
+| Prompt injection in Trip text | Developer prompt treats every tool result as untrusted data, never instructions |
+| Foreign Trip access | Tool schemas contain no Trip/user identity; authorized scope is server-injected |
+| Model mutates without approval | Provider tools only read data or create inert proposal drafts |
+| Hallucinated or stale references | Runtime validation before persistence and again under lock on Apply |
+| Viewer applies a proposal | Current `requireEditable` permission is checked on every Apply |
+| Prompt leaks to telemetry | Prompt, answer, tool output, query, and entity identifiers are forbidden in logs/metrics/traces |
+| OpenAI key reaches browser | SDK/key are API-only; no `NEXT_PUBLIC_*` key or web dependency |
+| Unlimited provider spend | User/day rate limits, history/output/tool-loop bounds, timeout, and no automatic retry UX |
+| Provider state becomes authoritative | Every request uses `store:false`; PostgreSQL owns history and proposal state |
+
+OpenAI HTTP bodies and authorization headers are not captured. The assistant
+has no web search, MCP, arbitrary URL, SQL, shell, code execution, File Search,
+or destructive tool. The secret scanner recognizes obvious `sk-*` key shapes.
+See [AI Trip Assistant](./ai-assistant.md) for the complete data boundary.

@@ -223,3 +223,20 @@ Controlled Redis failover, RDS restore, destructive deployment tests, load/
 soak/chaos, SLOs, WAF, CDN, RDS Proxy, autoscaling tuning, and blue/green/canary
 decisions belong to Stage 31. No cloud QA is claimed until real credentials,
 region, domains, and an intentionally approved apply are available.
+
+## OpenAI configuration
+
+Create the OpenAI API key secret outside Terraform and pass only its ARN through
+`openai_api_key_secret_arn`. Terraform never accepts the key value. ECS injects
+the secret as `OPENAI_API_KEY` only into the API container and enables the
+assistant there; web, worker, and migrate definitions receive neither the key nor
+the OpenAI SDK configuration. Add a customer-managed secret KMS ARN to
+`secret_kms_key_arns` when applicable.
+
+The API remains in private application subnets with `assign_public_ip=false` and
+reaches `api.openai.com` through existing HTTPS/NAT egress. Do not add inbound
+access or a task public IP. Missing/invalid provider configuration degrades only
+assistant endpoints to `AI_ASSISTANT_UNAVAILABLE`; ALB health and other product
+flows remain independent. Cloud QA should verify ALB → private API Fargate → NAT
+→ OpenAI, inspect the task-definition secret reference, and confirm the key is
+absent from web/worker/migrate/logs/traces.

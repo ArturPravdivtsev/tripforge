@@ -67,10 +67,12 @@ export function ItineraryItemCard({
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
             <h3 className="min-w-0 flex-1 break-words font-semibold">{item.title}</h3>
-            {item.startTime ? (
-              <time className="shrink-0 text-sm font-semibold" dateTime={item.startTime}>
-                {item.startTime}
-              </time>
+            {item.startTime || item.endTime ? (
+              <span className="shrink-0 text-sm font-semibold">
+                {item.startTime ? <time dateTime={item.startTime}>{item.startTime}</time> : "—"}
+                {" – "}
+                {item.endTime ? <time dateTime={item.endTime}>{item.endTime}</time> : "—"}
+              </span>
             ) : null}
           </div>
           <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">

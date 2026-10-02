@@ -27,5 +27,13 @@ export {
   tripExpenseSplits,
 } from "./trip-expenses";
 export { trips } from "./trips";
+export {
+  tripAiConversations,
+  tripAiProposals,
+  tripAiProposalStatus,
+  tripAiProposalType,
+  tripAiTurns,
+  tripAiTurnStatus,
+} from "./trip-ai";
 export { userNotifications, userNotificationType } from "./user-notifications";
 export { users } from "./users";

@@ -101,6 +101,25 @@ export const environmentSchema = Joi.object({
     otherwise: Joi.number().default(1),
   }),
   TRIPFORGE_VERSION: Joi.string().trim().min(1).max(128).optional(),
+  AI_ASSISTANT_ENABLED: Joi.boolean()
+    .truthy("true")
+    .falsy("false")
+    .default(false),
+  OPENAI_API_KEY: Joi.string().trim().empty("").min(1).optional(),
+  OPENAI_MODEL: Joi.string().trim().min(1).max(100).default("gpt-6-luna"),
+  OPENAI_REASONING_EFFORT: Joi.string()
+    .valid("none", "low", "medium", "high", "xhigh", "max")
+    .default("medium"),
+  OPENAI_TIMEOUT_MS: Joi.number()
+    .integer()
+    .min(5_000)
+    .max(120_000)
+    .default(45_000),
+  OPENAI_MAX_OUTPUT_TOKENS: Joi.number()
+    .integer()
+    .min(128)
+    .max(4_000)
+    .default(1_500),
   OPENROUTESERVICE_API_KEY: Joi.string().trim().empty("").min(1).optional(),
   S3_BUCKET: Joi.string().trim().min(3).default("tripforge-documents"),
   S3_REGION: Joi.string().trim().min(1).default("us-east-1"),

@@ -99,6 +99,13 @@
       "when": 1790595226069,
       "tag": "0013_swift_wiccan",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1790925094073,
+      "tag": "0014_foamy_jackal",
+      "breakpoints": true
     }
   ]
 }

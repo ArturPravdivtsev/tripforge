@@ -61,15 +61,16 @@ run "production_boundaries" {
   command = plan
 
   variables {
-    aws_region          = "eu-west-1"
-    app_domain          = "app.example.com"
-    api_domain          = "api.example.com"
-    github_organization = "example"
-    github_repository   = "tripforge"
-    redis_auth_token    = "test-only-token-32-characters-long"
-    web_image           = "ghcr.io/example/tripforge-web@sha256:0000000000000000000000000000000000000000000000000000000000000000"
-    api_image           = "ghcr.io/example/tripforge-api@sha256:1111111111111111111111111111111111111111111111111111111111111111"
-    migrate_image       = "ghcr.io/example/tripforge-migrate@sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    aws_region                = "eu-west-1"
+    app_domain                = "app.example.com"
+    api_domain                = "api.example.com"
+    github_organization       = "example"
+    github_repository         = "tripforge"
+    redis_auth_token          = "test-only-token-32-characters-long"
+    web_image                 = "ghcr.io/example/tripforge-web@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    api_image                 = "ghcr.io/example/tripforge-api@sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    migrate_image             = "ghcr.io/example/tripforge-migrate@sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    openai_api_key_secret_arn = "arn:aws:secretsmanager:eu-west-1:123456789012:secret:tripforge-openai"
   }
 
   assert {
@@ -118,5 +119,14 @@ run "production_boundaries" {
   assert {
     condition     = aws_ecs_service.api.network_configuration[0].assign_public_ip == false
     error_message = "Application tasks must not receive public IPs."
+  }
+
+  assert {
+    condition = (
+      length([for secret in local.api_container.secrets : secret if secret.name == "OPENAI_API_KEY"]) == 1 &&
+      length([for secret in local.worker_container.secrets : secret if secret.name == "OPENAI_API_KEY"]) == 0 &&
+      length([for secret in local.migrate_container.secrets : secret if secret.name == "OPENAI_API_KEY"]) == 0
+    )
+    error_message = "OpenAI credentials must never be injected into worker or migration tasks."
   }
 }

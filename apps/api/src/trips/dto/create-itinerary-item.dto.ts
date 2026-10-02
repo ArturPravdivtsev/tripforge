@@ -45,6 +45,10 @@ export class CreateItineraryItemDto implements CreateItineraryItemRequest {
   @IsWallClockTime()
   startTime?: string | null;
 
+  @ValidateIf((_object, value: unknown) => value !== null && value !== undefined)
+  @IsWallClockTime()
+  endTime?: string | null;
+
   @Transform(({ value }: { value: unknown }) => {
     if (typeof value !== "string") return value;
     const normalized = value.trim();

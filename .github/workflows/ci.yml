@@ -53,6 +53,10 @@ jobs:
         run: pnpm typecheck
       - name: Run unit and component tests
         run: pnpm test
+      - name: Run deterministic AI tests and evals
+        run: |
+          pnpm ai:test
+          pnpm ai:eval
       - name: Enforce coverage gates
         run: pnpm test:coverage
       - name: Enforce accessibility tests

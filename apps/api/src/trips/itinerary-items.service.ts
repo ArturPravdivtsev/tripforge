@@ -7,6 +7,7 @@ import type {
   UpdateItineraryItemRequest,
 } from "@tripforge/contracts";
 
+import type { DatabaseTransaction } from "../database/database.provider";
 import { TripRealtimePublisher } from "../realtime/trip-realtime.publisher";
 import {
   InvalidItineraryOrderError,
@@ -67,18 +68,26 @@ export class ItineraryItemsService {
     input: CreateItineraryItemRequest,
   ): Promise<ItineraryItem> {
     await this.permissions.requireEditable(userId, tripId);
-    const item = await this.itemsRepository.create(tripId, {
-      dayId: input.dayId,
-      kind: input.kind,
-      notes: normalizeItineraryNotes(input.notes),
-      place: normalizeItineraryPlace(input.place) ?? null,
-      startTime: input.startTime ?? null,
-      title: input.title.trim(),
-    });
+    const item = await this.itemsRepository.create(
+      tripId,
+      normalizeCreateInput(input),
+    );
 
     if (!item) throw this.dayNotFound();
     this.realtime.invalidate(tripId, ["itinerary"]);
     return item;
+  }
+
+  createInTransaction(
+    transaction: DatabaseTransaction,
+    tripId: string,
+    input: CreateItineraryItemRequest,
+  ): Promise<ItineraryItem | undefined> {
+    return this.itemsRepository.createInTransaction(
+      transaction,
+      tripId,
+      normalizeCreateInput(input),
+    );
   }
 
   async update(
@@ -99,12 +108,7 @@ export class ItineraryItemsService {
       );
     }
 
-    const update: UpdateItineraryItemRequest = {};
-    if (input.kind !== undefined) update.kind = input.kind;
-    if (input.title !== undefined) update.title = input.title.trim();
-    if (input.startTime !== undefined) update.startTime = input.startTime;
-    if (input.notes !== undefined) update.notes = normalizeItineraryNotes(input.notes);
-    if (input.place !== undefined) update.place = normalizeItineraryPlace(input.place);
+    const update = normalizeUpdateInput(input);
 
     const item = await this.itemsRepository.update(tripId, itemId, update);
     if (!item) throw this.itemNotFound();
@@ -113,6 +117,36 @@ export class ItineraryItemsService {
       input.place === undefined ? ["itinerary"] : ["itinerary", "routes"],
     );
     return item;
+  }
+
+  updateInTransaction(
+    transaction: DatabaseTransaction,
+    tripId: string,
+    itemId: string,
+    input: UpdateItineraryItemRequest,
+  ): Promise<ItineraryItem | undefined> {
+    return this.itemsRepository.updateInTransaction(
+      transaction,
+      tripId,
+      itemId,
+      normalizeUpdateInput(input),
+    );
+  }
+
+  moveInTransaction(
+    transaction: DatabaseTransaction,
+    tripId: string,
+    itemId: string,
+    targetDayId: string,
+    targetPosition: number,
+  ): Promise<ItineraryItem | undefined> {
+    return this.itemsRepository.moveInTransaction(
+      transaction,
+      tripId,
+      itemId,
+      targetDayId,
+      targetPosition,
+    );
   }
 
   async delete(userId: string, tripId: string, itemId: string): Promise<void> {
@@ -166,4 +200,29 @@ export class ItineraryItemsService {
       HttpStatus.NOT_FOUND,
     );
   }
+}
+
+function normalizeCreateInput(input: CreateItineraryItemRequest) {
+  return {
+    dayId: input.dayId,
+    endTime: input.endTime ?? null,
+    kind: input.kind,
+    notes: normalizeItineraryNotes(input.notes),
+    place: normalizeItineraryPlace(input.place) ?? null,
+    startTime: input.startTime ?? null,
+    title: input.title.trim(),
+  };
+}
+
+function normalizeUpdateInput(
+  input: UpdateItineraryItemRequest,
+): UpdateItineraryItemRequest {
+  const update: UpdateItineraryItemRequest = {};
+  if (input.kind !== undefined) update.kind = input.kind;
+  if (input.endTime !== undefined) update.endTime = input.endTime;
+  if (input.title !== undefined) update.title = input.title.trim();
+  if (input.startTime !== undefined) update.startTime = input.startTime;
+  if (input.notes !== undefined) update.notes = normalizeItineraryNotes(input.notes);
+  if (input.place !== undefined) update.place = normalizeItineraryPlace(input.place);
+  return update;
 }

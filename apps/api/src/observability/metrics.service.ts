@@ -7,6 +7,11 @@ import { METRIC_NAMES } from "./metrics.constants";
 export { METRIC_NAMES } from "./metrics.constants";
 
 export class TripForgeMetrics {
+  private readonly aiDuration;
+  private readonly aiProposals;
+  private readonly aiTokenCounter;
+  private readonly aiToolCalls;
+  private readonly aiTurns;
   private readonly authOutcomes;
   private readonly dbPoolConnections;
   private readonly dbPoolWaitingRequests;
@@ -27,6 +32,11 @@ export class TripForgeMetrics {
   private pool?: Pool;
 
   constructor(meter: Meter) {
+    this.aiDuration = meter.createHistogram(METRIC_NAMES.aiDuration, { unit: "s" });
+    this.aiProposals = meter.createCounter(METRIC_NAMES.aiProposals, { unit: "{proposal}" });
+    this.aiTokenCounter = meter.createCounter(METRIC_NAMES.aiTokens, { unit: "{token}" });
+    this.aiToolCalls = meter.createCounter(METRIC_NAMES.aiToolCalls, { unit: "{call}" });
+    this.aiTurns = meter.createCounter(METRIC_NAMES.aiTurns, { unit: "{turn}" });
     this.authOutcomes = meter.createCounter(METRIC_NAMES.authOutcomes);
     this.dbPoolConnections = meter.createObservableGauge(
       METRIC_NAMES.dbPoolConnections,
@@ -99,6 +109,38 @@ export class TripForgeMetrics {
 
   auth(outcome: "login_failure" | "login_success" | "registration_success"): void {
     this.authOutcomes.add(1, { outcome });
+  }
+
+  aiTurn(model: string, outcome: string, durationSeconds: number): void {
+    const attributes = { model, outcome };
+    this.aiTurns.add(1, attributes);
+    this.aiDuration.record(durationSeconds, attributes);
+  }
+
+  aiTool(toolName: string, outcome: "failure" | "success"): void {
+    this.aiToolCalls.add(1, { outcome, tool_name: toolName });
+  }
+
+  aiProposal(
+    proposalType: string,
+    outcome: "applied" | "dismissed" | "generated",
+  ): void {
+    this.aiProposals.add(1, { outcome, proposal_type: proposalType });
+  }
+
+  aiTokens(
+    model: string,
+    usage: Readonly<{
+      cachedInputTokens: number;
+      inputTokens: number;
+      outputTokens: number;
+      reasoningTokens: number;
+    }>,
+  ): void {
+    this.aiTokenCounter.add(usage.inputTokens, { kind: "input", model });
+    this.aiTokenCounter.add(usage.cachedInputTokens, { kind: "cached_input", model });
+    this.aiTokenCounter.add(usage.outputTokens, { kind: "output", model });
+    this.aiTokenCounter.add(usage.reasoningTokens, { kind: "reasoning", model });
   }
 
   httpStart(method: string): void {

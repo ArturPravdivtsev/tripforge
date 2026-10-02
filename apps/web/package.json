@@ -9,7 +9,7 @@
     "start": "next start --port 3000",
     "lint": "eslint .",
     "test": "vitest run",
-    "test:a11y": "vitest run components/auth/login-form.test.tsx components/trips/trips-dashboard.test.tsx components/trips/trip-workspace.test.tsx components/trips/days-section.test.tsx components/places/place-search-combobox.test.tsx components/trips/routes-section.test.tsx components/trips/reservation-form.test.tsx components/trips/expense-form.test.tsx components/trips/documents-screen.test.tsx components/notifications/notifications-screen.test.tsx components/trips/trip-search-screen.test.tsx",
+    "test:a11y": "vitest run components/auth/login-form.test.tsx components/trips/trips-dashboard.test.tsx components/trips/trip-workspace.test.tsx components/trips/days-section.test.tsx components/places/place-search-combobox.test.tsx components/trips/routes-section.test.tsx components/trips/reservation-form.test.tsx components/trips/expense-form.test.tsx components/trips/documents-screen.test.tsx components/notifications/notifications-screen.test.tsx components/trips/trip-search-screen.test.tsx components/trips/assistant-screen.test.tsx",
     "test:observability": "vitest run lib/observability instrumentation.test.ts",
     "test:security": "vitest run lib/security components/auth/login-form.test.tsx components/auth/register-form.test.tsx lib/auth/cache.test.ts",
     "test:coverage": "vitest run --coverage",

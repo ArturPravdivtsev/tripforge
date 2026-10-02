@@ -41,6 +41,7 @@ vi.mock("@/components/places/place-search-combobox", () => ({
 import { ItineraryItemForm } from "./itinerary-item-form";
 
 const defaults = {
+  endTime: "",
   kind: "activity" as const,
   notes: "",
   place: null,

@@ -48,6 +48,7 @@ type ReorderVariables = Readonly<{
 }>;
 
 const emptyItemValues: ItineraryItemFormValues = {
+  endTime: "",
   kind: "activity",
   notes: "",
   place: null,
@@ -194,6 +195,7 @@ export function DaysSection({
       await saveItem.mutateAsync({
         dayId,
         input: {
+          endTime: values.endTime || null,
           kind: values.kind,
           notes: values.notes.trim() || null,
           place: values.place,
@@ -681,6 +683,7 @@ function DayDropZone({ dayId, index }: Readonly<{ dayId: string; index: number }
 
 function toFormValues(item: ItineraryItem): ItineraryItemFormValues {
   return {
+    endTime: item.endTime ?? "",
     kind: item.kind,
     notes: item.notes ?? "",
     place: item.place,

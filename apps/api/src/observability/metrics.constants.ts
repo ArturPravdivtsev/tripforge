@@ -1,4 +1,9 @@
 export const METRIC_NAMES = {
+  aiDuration: "tripforge.ai.duration",
+  aiProposals: "tripforge.ai.proposals",
+  aiTokens: "tripforge.ai.tokens",
+  aiToolCalls: "tripforge.ai.tool_calls",
+  aiTurns: "tripforge.ai.turns",
   authOutcomes: "tripforge.auth.outcomes",
   dbPoolConnections: "tripforge.db.pool.connections",
   dbPoolWaitingRequests: "tripforge.db.pool.waiting_requests",
@@ -18,5 +23,5 @@ export const METRIC_NAMES = {
 } as const;
 
 export const DURATION_BUCKETS_SECONDS = [
-  0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5,
+  0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 15, 30, 45,
 ] as const;

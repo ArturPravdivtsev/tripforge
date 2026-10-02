@@ -113,6 +113,35 @@ describe("TripForgeMetrics", () => {
     );
     expect(pointValue(metric(data, METRIC_NAMES.dbPoolWaitingRequests))).toBe(1);
   });
+
+  it("records AI outcomes without user content or resource identifiers", async () => {
+    const { exporter, metrics, provider } = createHarness(providers);
+    metrics.aiTurn("gpt-6-luna", "completed", 0.5);
+    metrics.aiTool("get_itinerary", "success");
+    metrics.aiProposal("itinerary_move", "generated");
+    metrics.aiTokens("gpt-6-luna", {
+      cachedInputTokens: 3,
+      inputTokens: 10,
+      outputTokens: 5,
+      reasoningTokens: 2,
+    });
+    await provider.forceFlush();
+
+    const data = metricData(exporter);
+    const serialized = JSON.stringify(
+      [
+        METRIC_NAMES.aiTurns,
+        METRIC_NAMES.aiDuration,
+        METRIC_NAMES.aiToolCalls,
+        METRIC_NAMES.aiProposals,
+        METRIC_NAMES.aiTokens,
+      ].map((name) => metric(data, name)),
+    );
+    expect(serialized).toMatch(/gpt-6-luna/iu);
+    expect(serialized).toMatch(/get_itinerary/iu);
+    expect(serialized).toMatch(/itinerary_move/iu);
+    expect(serialized).not.toMatch(/prompt|message|userId|tripId|conversationId/iu);
+  });
 });
 
 type ExportedMetric = {

@@ -288,3 +288,20 @@ Redis, and zero-tolerance evictions. SNS email is opt-in.
 Cloud QA must confirm safe logs, an API/PG trace, worker trace, runtime metrics,
 and absence of passwords, cookies, AWS credentials, presigned URLs, search
 queries, Redis AUTH, and database secrets. See [AWS deployment](./aws-deployment.md).
+
+## AI observability
+
+The API records `tripforge.ai.turns`, `tripforge.ai.duration`,
+`tripforge.ai.tokens`, `tripforge.ai.tool_calls`, and
+`tripforge.ai.proposals`. Allowed attributes are bounded `model`, `outcome`,
+`tool_name`, token `kind`, and `proposal_type`. User, Trip, conversation, prompt,
+answer, notes, search query, and tool output are never metric labels.
+
+Safe events include `ai.turn.completed`, `ai.turn.failed`, `ai.tool.failed`, and
+proposal outcomes. They contain only error categories and bounded counts/types.
+Manual AI spans may carry the same bounded attributes; hidden reasoning and
+reasoning text are never stored, logged, or returned. Token usage persists as
+input, cached input, output, and reasoning counts. Monetary price is deliberately
+not stored because pricing is external mutable policy. An OpenAI outage is an
+optional-feature degradation and must not make `/health` fail or page as a full
+TripForge outage.

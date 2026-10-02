@@ -24,6 +24,11 @@ describe("validateEnvironment", () => {
         "postgresql://tripforge:tripforge@127.0.0.1:5433/tripforge",
       NODE_ENV: "development",
       LOG_LEVEL: "debug",
+      AI_ASSISTANT_ENABLED: false,
+      OPENAI_MAX_OUTPUT_TOKENS: 1500,
+      OPENAI_MODEL: "gpt-6-luna",
+      OPENAI_REASONING_EFFORT: "medium",
+      OPENAI_TIMEOUT_MS: 45000,
       OTEL_ENABLED: false,
       PORT: 4000,
       S3_BUCKET: "tripforge-documents",
@@ -37,6 +42,23 @@ describe("validateEnvironment", () => {
   it("allows routing to remain unconfigured", () => {
     expect(validateEnvironment({ OPENROUTESERVICE_API_KEY: "" }))
       .not.toHaveProperty("OPENROUTESERVICE_API_KEY");
+  });
+
+  it("validates AI model controls without requiring a key", () => {
+    expect(validateEnvironment({ AI_ASSISTANT_ENABLED: "true" })).toMatchObject({
+      AI_ASSISTANT_ENABLED: true,
+      OPENAI_MODEL: "gpt-6-luna",
+      OPENAI_REASONING_EFFORT: "medium",
+    });
+    expect(() => validateEnvironment({ OPENAI_REASONING_EFFORT: "extreme" })).toThrow(
+      /OPENAI_REASONING_EFFORT/,
+    );
+    expect(() => validateEnvironment({ OPENAI_TIMEOUT_MS: 1000 })).toThrow(
+      /OPENAI_TIMEOUT_MS/,
+    );
+    expect(() => validateEnvironment({ OPENAI_MAX_OUTPUT_TOKENS: 10_000 })).toThrow(
+      /OPENAI_MAX_OUTPUT_TOKENS/,
+    );
   });
 
   it("accepts separate internal and public S3 endpoints", () => {

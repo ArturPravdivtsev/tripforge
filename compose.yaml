@@ -124,6 +124,10 @@ services:
       WEB_ORIGIN: http://127.0.0.1:3100
       REDIS_URL: redis://redis:6379
       OPENROUTESERVICE_API_KEY: ${OPENROUTESERVICE_API_KEY:-}
+      AI_ASSISTANT_ENABLED: ${AI_ASSISTANT_ENABLED:-false}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-6-luna}
+      OPENAI_REASONING_EFFORT: ${OPENAI_REASONING_EFFORT:-medium}
       S3_BUCKET: tripforge-documents
       S3_REGION: us-east-1
       S3_ENDPOINT: http://localstack:4566

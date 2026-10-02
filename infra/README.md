@@ -145,3 +145,13 @@ To retire production, first document retention/export decisions, disable
 protection through a reviewed change, create the required final database
 snapshot, and then destroy. Application rollback never rolls back a database
 migration.
+
+## Optional OpenAI secret
+
+`openai_api_key_secret_arn` references an externally created Secrets Manager
+plain-string secret. Only the API task receives it as `OPENAI_API_KEY`; web,
+worker, and migrate tasks remain unchanged. The raw key must not be supplied as a
+Terraform variable, tfvars value, GitHub build argument, or plaintext task
+environment entry. API tasks retain private-subnet/NAT HTTPS egress and no public
+IP. Leaving the ARN null keeps the assistant disabled without affecting health or
+other TripForge services.

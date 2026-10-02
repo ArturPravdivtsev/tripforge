@@ -118,6 +118,12 @@ variable "openrouteservice_api_key_secret_arn" {
   default     = null
 }
 
+variable "openai_api_key_secret_arn" {
+  description = "Optional externally managed Secrets Manager ARN containing the OpenAI API key as a plain secret string. Injected into API only."
+  type        = string
+  default     = null
+}
+
 variable "redis_auth_token" {
   description = "Strong ElastiCache AUTH token supplied through TF_VAR_redis_auth_token, never committed tfvars."
   type        = string

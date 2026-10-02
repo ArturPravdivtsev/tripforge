@@ -44,6 +44,7 @@ const document: TripDocument = {
 const itineraryItem: ItineraryItem = {
   createdAt: "2027-01-01T00:00:00.000Z",
   dayId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+  endTime: null,
   id: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
   kind: "food",
   notes: null,

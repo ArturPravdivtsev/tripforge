@@ -17,6 +17,7 @@ function item(id: string, dayId: string, position: number): ItineraryItem {
   return {
     createdAt: "2027-01-01T00:00:00.000Z",
     dayId,
+    endTime: null,
     id,
     kind: "activity",
     notes: null,

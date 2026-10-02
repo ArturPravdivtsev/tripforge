@@ -72,7 +72,7 @@ export function ItineraryItemForm({
         ) : null}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-3">
         <div className="space-y-2">
           <Label htmlFor={`${formId}-kind`}>Type</Label>
           <select
@@ -102,6 +102,23 @@ export function ItineraryItemForm({
           {errors.startTime ? (
             <p id={`${formId}-time-error`} className="text-sm text-[var(--danger)]">
               {errors.startTime.message}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor={`${formId}-end-time`}>End time</Label>
+          <Input
+            id={`${formId}-end-time`}
+            type="time"
+            aria-describedby={errors.endTime ? `${formId}-end-time-error` : undefined}
+            aria-invalid={Boolean(errors.endTime)}
+            disabled={isPending}
+            {...register("endTime")}
+          />
+          {errors.endTime ? (
+            <p id={`${formId}-end-time-error`} className="text-sm text-[var(--danger)]">
+              {errors.endTime.message}
             </p>
           ) : null}
         </div>

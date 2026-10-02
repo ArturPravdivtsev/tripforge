@@ -9,6 +9,9 @@ import * as schema from "./schema";
 import { ObservabilityMetrics } from "../observability/metrics.service";
 
 export type Database = NodePgDatabase<typeof schema>;
+export type DatabaseTransaction = Parameters<
+  Parameters<Database["transaction"]>[0]
+>[0];
 
 export const databaseProviders: Provider[] = [
   {

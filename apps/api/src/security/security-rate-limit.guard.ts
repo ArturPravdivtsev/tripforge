@@ -129,6 +129,8 @@ export function limiterCategory(
   tracker: "account" | "ip" | "user",
 ): string {
   const names: Record<SecurityRateLimitPolicyName, string> = {
+    aiConversationCreate: "ai_conversation_create",
+    aiTurn: "ai_turn",
     documentDownload: "document_download",
     documentUpload: "document_upload",
     login: "login",

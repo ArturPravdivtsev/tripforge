@@ -26,6 +26,7 @@ const days: TripDay[] = [
 const item: ItineraryItem = {
   createdAt: "2027-01-01T00:00:00.000Z",
   dayId: days[0]!.id,
+  endTime: null,
   id: "item-1",
   kind: "food",
   notes: "Book the terrace",
@@ -115,11 +116,13 @@ describe("DaysSection", () => {
     await user.type(screen.getByLabelText("Title"), "  Dinner in Shibuya  ");
     await user.selectOptions(screen.getByLabelText("Type"), "food");
     await user.type(screen.getByLabelText("Start time"), "19:30");
+    await user.type(screen.getByLabelText("End time"), "21:00");
     await user.type(screen.getByLabelText("Notes"), "   ");
     await user.click(screen.getByRole("button", { name: "Add item" }));
 
     expect(create).toHaveBeenCalledWith(tripId, {
       dayId: days[0]!.id,
+      endTime: "21:00",
       kind: "food",
       notes: null,
       place: null,
@@ -224,6 +227,7 @@ describe("DaysSection", () => {
 
     await waitFor(() =>
       expect(update).toHaveBeenCalledWith(tripId, item.id, {
+        endTime: null,
         kind: "food",
         notes: "Book the terrace",
         place: null,

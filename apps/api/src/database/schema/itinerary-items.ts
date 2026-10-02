@@ -34,6 +34,7 @@ export const itineraryItems = pgTable(
     kind: itineraryItemKind("kind").notNull(),
     title: varchar("title", { length: 200 }).notNull(),
     startTime: time("start_time", { precision: 0 }),
+    endTime: time("end_time", { precision: 0 }),
     notes: text("notes"),
     placeName: varchar("place_name", { length: 200 }),
     placeAddress: varchar("place_address", { length: 500 }),

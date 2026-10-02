@@ -32,6 +32,7 @@ describe("tripFormSchema", () => {
 
 describe("itineraryItemFormSchema", () => {
   const valid = {
+    endTime: "10:30",
     kind: "activity",
     notes: "",
     place: null,
@@ -55,6 +56,12 @@ describe("itineraryItemFormSchema", () => {
       ).toBe(false);
     },
   );
+
+  it("rejects a malformed end time", () => {
+    expect(
+      itineraryItemFormSchema.safeParse({ ...valid, endTime: "10:99" }).success,
+    ).toBe(false);
+  });
 
   it("rejects blank titles and notes beyond the application limit", () => {
     expect(

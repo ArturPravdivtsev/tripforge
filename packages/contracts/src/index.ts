@@ -123,6 +123,7 @@ export interface ItineraryItem {
   kind: ItineraryItemKind;
   title: string;
   startTime: string | null;
+  endTime: string | null;
   notes: string | null;
   place: ItineraryPlace | null;
   position: number;
@@ -135,6 +136,7 @@ export interface CreateItineraryItemRequest {
   kind: ItineraryItemKind;
   title: string;
   startTime?: string | null;
+  endTime?: string | null;
   notes?: string | null;
   place?: ItineraryPlaceInput | null;
 }
@@ -143,9 +145,101 @@ export interface UpdateItineraryItemRequest {
   kind?: ItineraryItemKind;
   title?: string;
   startTime?: string | null;
+  endTime?: string | null;
   notes?: string | null;
   place?: ItineraryPlaceInput | null;
 }
+
+export type AiConversationSummary = Readonly<{
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+}>;
+
+export type AiTurnStatus = "pending" | "completed" | "failed";
+export type AiProposalStatus = "pending" | "applied" | "dismissed" | "stale";
+export type AiProposalType =
+  | "itinerary_create"
+  | "itinerary_update"
+  | "itinerary_move";
+
+export type AiItineraryCreatePayload = Readonly<{
+  type: "itinerary_create";
+  dayId: string;
+  kind: ItineraryItemKind;
+  title: string;
+  startTime: string | null;
+  endTime: string | null;
+  notes: string | null;
+}>;
+
+export type AiItineraryUpdatePayload = Readonly<{
+  type: "itinerary_update";
+  itemId: string;
+  changes: Readonly<{
+    kind?: ItineraryItemKind;
+    title?: string;
+    startTime?: string | null;
+    endTime?: string | null;
+    notes?: string | null;
+  }>;
+}>;
+
+export type AiItineraryMovePayload = Readonly<{
+  type: "itinerary_move";
+  itemId: string;
+  targetDayId: string;
+  targetPosition: number;
+}>;
+
+export type AiProposalPayload =
+  | AiItineraryCreatePayload
+  | AiItineraryUpdatePayload
+  | AiItineraryMovePayload;
+
+export type AiProposal = Readonly<{
+  id: string;
+  type: AiProposalType;
+  status: AiProposalStatus;
+  payload: AiProposalPayload;
+  createdAt: string;
+  appliedAt: string | null;
+  dismissedAt: string | null;
+}>;
+
+export type AiTurn = Readonly<{
+  id: string;
+  status: AiTurnStatus;
+  userContent: string;
+  assistantContent: string | null;
+  model: string | null;
+  promptVersion: string;
+  errorCode: string | null;
+  createdAt: string;
+  completedAt: string | null;
+  proposals: AiProposal[];
+}>;
+
+export type AiConversationDetail = AiConversationSummary &
+  Readonly<{
+    turns: AiTurn[];
+  }>;
+
+export type CreateAiConversationRequest = Readonly<{
+  message?: string;
+}>;
+
+export type CreateAiTurnRequest = Readonly<{
+  message: string;
+}>;
+
+export type AiSseEvent =
+  | Readonly<{ type: "assistant.ready"; turnId: string }>
+  | Readonly<{ type: "assistant.delta"; delta: string }>
+  | Readonly<{ type: "assistant.tool"; status: string }>
+  | Readonly<{ type: "assistant.completed"; turn: AiTurn }>
+  | Readonly<{ type: "assistant.error"; code: string; message: string }>;
 
 export interface ReorderItineraryItemsRequest {
   days: Array<{

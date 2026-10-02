@@ -17,12 +17,12 @@ const tripId = "11111111-1111-4111-8111-111111111111";
 const days: TripDay[] = [{ date: "2027-04-12", destinationId: null, id: "day" }];
 const items: ItineraryItem[] = [
   {
-    createdAt: "2027-01-01T00:00:00.000Z", dayId: "day", id: "from", kind: "activity", notes: null,
+    createdAt: "2027-01-01T00:00:00.000Z", dayId: "day", endTime: null, id: "from", kind: "activity", notes: null,
     place: { address: "Asakusa", latitude: 35.7, longitude: 139.7, name: "Senso-ji", provider: "maptiler", providerReference: null },
     position: 0, startTime: "09:00", title: "Temple", updatedAt: "2027-01-01T00:00:00.000Z",
   },
   {
-    createdAt: "2027-01-01T00:00:00.000Z", dayId: "day", id: "to", kind: "activity", notes: null,
+    createdAt: "2027-01-01T00:00:00.000Z", dayId: "day", endTime: null, id: "to", kind: "activity", notes: null,
     place: { address: "Sumida", latitude: 35.8, longitude: 139.8, name: "Tokyo Skytree", provider: "maptiler", providerReference: null },
     position: 1, startTime: "14:00", title: "Tower", updatedAt: "2027-01-01T00:00:00.000Z",
   },

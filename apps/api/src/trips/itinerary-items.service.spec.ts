@@ -100,6 +100,7 @@ describe("ItineraryItemsService", () => {
     expect(permissions.requireEditable).toHaveBeenCalledWith("editor", "trip");
     expect(repository.create).toHaveBeenCalledWith("trip", {
       dayId: "day",
+      endTime: null,
       kind: "activity",
       notes: "Visit early",
       place: null,

@@ -2,6 +2,12 @@ export const tripKeys = {
   all: ["trips"] as const,
   details: () => [...tripKeys.all, "detail"] as const,
   detail: (tripId: string) => [...tripKeys.details(), tripId] as const,
+  assistant: (tripId: string) =>
+    [...tripKeys.detail(tripId), "assistant"] as const,
+  assistantConversations: (tripId: string) =>
+    [...tripKeys.assistant(tripId), "conversations"] as const,
+  assistantConversation: (tripId: string, conversationId: string) =>
+    [...tripKeys.assistantConversations(tripId), conversationId] as const,
   days: (tripId: string) => [...tripKeys.detail(tripId), "days"] as const,
   destinations: (tripId: string) =>
     [...tripKeys.detail(tripId), "destinations"] as const,

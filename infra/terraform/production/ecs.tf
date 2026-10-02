@@ -80,6 +80,10 @@ locals {
       name      = "OPENROUTESERVICE_API_KEY"
       valueFrom = var.openrouteservice_api_key_secret_arn
     }],
+    var.openai_api_key_secret_arn == null ? [] : [{
+      name      = "OPENAI_API_KEY"
+      valueFrom = var.openai_api_key_secret_arn
+    }],
   )
 
   api_container = merge(
@@ -98,6 +102,9 @@ locals {
         { name = "PORT", value = "4000" },
         { name = "WEB_ORIGIN", value = local.web_origin },
         { name = "SECURITY_RATE_LIMITING_ENABLED", value = "true" },
+        { name = "AI_ASSISTANT_ENABLED", value = tostring(var.openai_api_key_secret_arn != null) },
+        { name = "OPENAI_MODEL", value = "gpt-6-luna" },
+        { name = "OPENAI_REASONING_EFFORT", value = "medium" },
       ])
       secrets = local.api_secrets
       healthCheck = {

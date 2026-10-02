@@ -21,6 +21,7 @@ const days: TripDay[] = [
 const item: ItineraryItem = {
   createdAt: "2027-01-01T00:00:00.000Z",
   dayId: "day-1",
+  endTime: null,
   id: "senso",
   kind: "activity",
   notes: null,

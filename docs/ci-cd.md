@@ -267,3 +267,15 @@ can cross privilege boundaries, registry credentials can leak through build
 args, and untrusted artifacts can become code execution in a privileged job.
 The pinning, cache policy, same-workflow trusted publisher, no artifact bridge,
 and digest handoff directly address those threats.
+
+## AI gates
+
+Normal CI runs deterministic `pnpm ai:test` and `pnpm ai:eval` without an
+OpenAI credential. Database migration generation/checks, security/secret scans,
+frontend SSE tests, build, bundle budget, observability, Docker, Terraform, and
+IaC Trivy remain ordinary required gates. No OpenAI secret is available to pull
+request jobs or image builds.
+
+`pnpm ai:eval:live` is an explicit manual command for a trusted environment with
+an intentionally supplied provider key. Probabilistic paid output is diagnostic,
+not a merge gate, and is never passed between workflows as an artifact.

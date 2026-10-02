@@ -16,6 +16,9 @@ sharing, access changes, and selected reservation, expense, and document events;
 Socket.IO carries only best-effort cache invalidations.
 Each Trip also has permission-safe PostgreSQL full-text and typo-tolerant search
 across destinations, itinerary, reservations, expenses, and ready documents.
+Each Trip also offers a private, grounded AI assistant that reads bounded
+authorized data and creates human-reviewed itinerary proposals; it has no live
+web access and cannot mutate Trip data directly.
 Production-oriented observability adds correlated Pino JSON logs plus
 OpenTelemetry traces and metrics routed through a local Collector to Jaeger and
 Prometheus; telemetry backends remain optional to product correctness.
@@ -66,6 +69,9 @@ pnpm test:security    # Run focused security tests, including real Redis/Postgre
 pnpm observability:test # Run logger, privacy, tracing, metrics, and request tests
 pnpm observability:config:check # Validate Collector, Prometheus, and alert rules
 pnpm observability:overhead # Compare local API latency with OTel off/on
+pnpm ai:test    # Run deterministic AI orchestration/security tests
+pnpm ai:eval    # Run deterministic prompt/tool evaluation fixtures
+pnpm ai:eval:live # Optional paid OpenAI smoke test; requires OPENAI_API_KEY
 pnpm check      # Run lint, typecheck, tests, and build
 pnpm ci:verify  # Approximate mandatory non-container CI gates locally
 pnpm infra:fmt      # Check Terraform formatting
@@ -102,6 +108,12 @@ WEB_ORIGIN=http://127.0.0.1:3000
 REDIS_URL=redis://127.0.0.1:6379
 SECURITY_RATE_LIMITING_ENABLED=true
 OPENROUTESERVICE_API_KEY=
+AI_ASSISTANT_ENABLED=false
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-6-luna
+OPENAI_REASONING_EFFORT=medium
+OPENAI_TIMEOUT_MS=45000
+OPENAI_MAX_OUTPUT_TOKENS=1500
 S3_BUCKET=tripforge-documents
 S3_REGION=us-east-1
 S3_ENDPOINT=http://127.0.0.1:4566
@@ -143,6 +155,8 @@ fan-out. See [Notifications](docs/notifications.md) for inbox durability,
 transactional fan-out, cursor pagination, snapshots, and optimistic read state.
 See [Trip-wide search](docs/search.md) for indexed fields, ranking, access scope,
 browser behavior, and intentionally deferred search features.
+See [AI Trip Assistant](docs/ai-assistant.md) for privacy, grounding, tools,
+proposal approval, SSE, provider retention, configuration, and evaluation.
 See [Accessibility](docs/accessibility.md) for the WCAG 2.2 AA target, automated
 coverage, implementation decisions, known limitations, and manual QA checklist.
 See [Performance](docs/performance.md) for the measured bundle baseline, Core Web

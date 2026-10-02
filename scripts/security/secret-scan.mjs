@@ -23,6 +23,10 @@ const PATTERNS = [
       /(?:OPENROUTESERVICE_API_KEY|LOCALSTACK_AUTH_TOKEN)\s*[:=]\s*["']?(?!process\.env\b|test\b|fake\b|placeholder\b|changeme\b)[A-Za-z0-9_./+=-]{20,}/u,
   },
   {
+    name: "OpenAI API key",
+    pattern: /\bsk-(?:proj-|svcacct-)?[A-Za-z0-9_-]{20,}\b/u,
+  },
+  {
     name: "AWS secret key",
     pattern:
       /AWS_SECRET_ACCESS_KEY\s*[:=]\s*["']?(?!test\b|fake-key\b|placeholder\b|changeme\b)[A-Za-z0-9/+=]{32,}/u,

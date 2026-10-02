@@ -3,6 +3,7 @@ import { ConfigModule } from "@nestjs/config";
 import { APP_FILTER } from "@nestjs/core";
 
 import { AuthModule } from "./auth/auth.module";
+import { AiModule } from "./ai/ai.module";
 import { ApiExceptionFilter } from "./common/filters/api-exception.filter";
 import { validateEnvironment } from "./config/environment";
 import { DatabaseModule } from "./database/database.module";
@@ -21,6 +22,7 @@ import { TripsModule } from "./trips/trips.module";
       validate: validateEnvironment,
     }),
     ObservabilityModule,
+    AiModule,
     AuthModule,
     DatabaseModule,
     NotificationsModule,

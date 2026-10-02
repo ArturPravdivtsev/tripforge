@@ -46,6 +46,7 @@ const optionalWallClockTime = z.string().refine(
 );
 
 export const itineraryItemFormSchema = z.object({
+  endTime: optionalWallClockTime,
   kind: z.enum(["activity", "food", "transport", "accommodation", "other"]),
   notes: z
     .string()

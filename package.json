@@ -5,6 +5,9 @@
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
+    "ai:eval": "pnpm --filter @tripforge/api ai:eval",
+    "ai:eval:live": "pnpm --filter @tripforge/api ai:eval:live",
+    "ai:test": "pnpm --filter @tripforge/api ai:test",
     "ci:integration": "pnpm test:integration",
     "infra:fmt": "terraform fmt -check -recursive infra/terraform",
     "infra:test": "terraform -chdir=infra/terraform/bootstrap test && terraform -chdir=infra/terraform/production test",

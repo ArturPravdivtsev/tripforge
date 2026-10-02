@@ -50,6 +50,7 @@ const days = [{ date: "2027-04-14", destinationId: null, id: "day" }];
 const items = [{
   createdAt: "2027-01-01T00:00:00.000Z",
   dayId: "day",
+  endTime: null,
   id: "item",
   kind: "transport" as const,
   notes: null,

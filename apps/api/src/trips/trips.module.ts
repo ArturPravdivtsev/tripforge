@@ -74,6 +74,18 @@ import { TripsService } from "./trips.service";
     TripSearchService,
     OpenRouteServiceClient,
   ],
-  exports: [TripPermissionsService],
+  exports: [
+    ItineraryItemsRepository,
+    ItineraryItemsService,
+    TripDaysService,
+    TripDestinationsService,
+    TripDocumentsService,
+    TripExpensesService,
+    TripPermissionsService,
+    TripReservationsService,
+    TripRoutesService,
+    TripSearchService,
+    TripsService,
+  ],
 })
 export class TripsModule {}

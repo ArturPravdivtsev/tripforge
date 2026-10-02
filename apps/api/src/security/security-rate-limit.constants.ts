@@ -1,6 +1,8 @@
 export const SECURITY_RATE_LIMIT_POLICY = "tripforge:security-rate-limit-policy";
 
 export type SecurityRateLimitPolicyName =
+  | "aiConversationCreate"
+  | "aiTurn"
   | "documentDownload"
   | "documentUpload"
   | "login"
@@ -18,6 +20,28 @@ export type SecurityRateLimitPolicy = Readonly<{
 export const SECURITY_RATE_LIMITS: Readonly<
   Record<SecurityRateLimitPolicyName, readonly SecurityRateLimitPolicy[]>
 > = {
+  aiConversationCreate: [
+    {
+      blockDurationMs: 60_000,
+      limit: 20,
+      tracker: "user",
+      windowMs: 60 * 60_000,
+    },
+  ],
+  aiTurn: [
+    {
+      blockDurationMs: 60_000,
+      limit: 10,
+      tracker: "user",
+      windowMs: 60_000,
+    },
+    {
+      blockDurationMs: 60 * 60_000,
+      limit: 100,
+      tracker: "user",
+      windowMs: 24 * 60 * 60_000,
+    },
+  ],
   documentDownload: [
     {
       blockDurationMs: 60_000,

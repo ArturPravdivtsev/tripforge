@@ -71,6 +71,7 @@ export function registerObservability(serviceName: TripForgeServiceName): void {
       url: `${config.otlpEndpoint}/v1/traces`,
     }),
     views: [
+      METRIC_NAMES.aiDuration,
       METRIC_NAMES.httpDuration,
       METRIC_NAMES.providerDuration,
       METRIC_NAMES.workerDuration,

@@ -10,6 +10,7 @@ import { and, asc, eq, inArray, max, or } from "drizzle-orm";
 
 import { DATABASE } from "../database/database.constants";
 import type { Database } from "../database/database.provider";
+import type { DatabaseTransaction } from "../database/database.provider";
 import {
   itineraryItems,
   tripDays,
@@ -19,6 +20,7 @@ import {
 const itemSelection = {
   createdAt: itineraryItems.createdAt,
   dayId: itineraryItems.tripDayId,
+  endTime: itineraryItems.endTime,
   id: itineraryItems.id,
   kind: itineraryItems.kind,
   notes: itineraryItems.notes,
@@ -37,6 +39,7 @@ const itemSelection = {
 type ItemRow = {
   createdAt: Date;
   dayId: string;
+  endTime: string | null;
   id: string;
   kind: ItineraryItemKind;
   notes: string | null;
@@ -54,6 +57,7 @@ type ItemRow = {
 
 type CreateItem = Readonly<{
   dayId: string;
+  endTime: string | null;
   kind: ItineraryItemKind;
   notes: string | null;
   place: ItineraryPlaceInput | null;
@@ -64,6 +68,7 @@ type CreateItem = Readonly<{
 function toItem(row: ItemRow): ItineraryItem {
   return {
     dayId: row.dayId,
+    endTime: row.endTime?.slice(0, 5) ?? null,
     id: row.id,
     kind: row.kind,
     notes: row.notes,
@@ -131,7 +136,16 @@ export class ItineraryItemsRepository {
   }
 
   async create(tripId: string, input: CreateItem): Promise<ItineraryItem | undefined> {
-    return this.database.transaction(async (transaction) => {
+    return this.database.transaction((transaction) =>
+      this.createInTransaction(transaction, tripId, input),
+    );
+  }
+
+  async createInTransaction(
+    transaction: DatabaseTransaction,
+    tripId: string,
+    input: CreateItem,
+  ): Promise<ItineraryItem | undefined> {
       const [day] = await transaction
         .select({ id: tripDays.id })
         .from(tripDays)
@@ -149,6 +163,7 @@ export class ItineraryItemsRepository {
         .insert(itineraryItems)
         .values({
           kind: input.kind,
+          endTime: input.endTime,
           notes: input.notes,
           ...placeColumns(input.place),
           position: (positionRow?.position ?? -1) + 1,
@@ -160,7 +175,6 @@ export class ItineraryItemsRepository {
 
       if (!row) throw new Error("Itinerary item insert did not return a row");
       return toItem(row);
-    });
   }
 
   async update(
@@ -168,7 +182,17 @@ export class ItineraryItemsRepository {
     itemId: string,
     input: UpdateItineraryItemRequest,
   ): Promise<ItineraryItem | undefined> {
-    return this.database.transaction(async (transaction) => {
+    return this.database.transaction((transaction) =>
+      this.updateInTransaction(transaction, tripId, itemId, input),
+    );
+  }
+
+  async updateInTransaction(
+    transaction: DatabaseTransaction,
+    tripId: string,
+    itemId: string,
+    input: UpdateItineraryItemRequest,
+  ): Promise<ItineraryItem | undefined> {
       const [current] = await transaction
         .select({
           id: itineraryItems.id,
@@ -190,6 +214,7 @@ export class ItineraryItemsRepository {
 
       const changes = {
         ...(input.kind === undefined ? {} : { kind: input.kind }),
+        ...(input.endTime === undefined ? {} : { endTime: input.endTime }),
         ...(input.notes === undefined ? {} : { notes: input.notes }),
         ...(input.startTime === undefined ? {} : { startTime: input.startTime }),
         ...(input.title === undefined ? {} : { title: input.title }),
@@ -222,7 +247,62 @@ export class ItineraryItemsRepository {
         .returning(itemSelection);
 
       return row ? toItem(row) : undefined;
-    });
+  }
+
+  async moveInTransaction(
+    transaction: DatabaseTransaction,
+    tripId: string,
+    itemId: string,
+    targetDayId: string,
+    targetPosition: number,
+  ): Promise<ItineraryItem | undefined> {
+    const [targetDay] = await transaction
+      .select({ id: tripDays.id })
+      .from(tripDays)
+      .where(and(eq(tripDays.id, targetDayId), eq(tripDays.tripId, tripId)))
+      .for("update")
+      .limit(1);
+    const [current] = await transaction
+      .select({ dayId: itineraryItems.tripDayId })
+      .from(itineraryItems)
+      .innerJoin(tripDays, eq(tripDays.id, itineraryItems.tripDayId))
+      .where(and(eq(itineraryItems.id, itemId), eq(tripDays.tripId, tripId)))
+      .for("update", { of: itineraryItems })
+      .limit(1);
+    if (!targetDay || !current) return undefined;
+
+    const dayIds = [...new Set([current.dayId, targetDayId])];
+    const rows = await transaction
+      .select({
+        dayId: itineraryItems.tripDayId,
+        id: itineraryItems.id,
+      })
+      .from(itineraryItems)
+      .where(inArray(itineraryItems.tripDayId, dayIds))
+      .orderBy(asc(itineraryItems.position), asc(itineraryItems.id))
+      .for("update");
+    const byDay = new Map(dayIds.map((dayId) => [
+      dayId,
+      rows.filter((row) => row.dayId === dayId && row.id !== itemId).map(({ id }) => id),
+    ]));
+    const target = byDay.get(targetDayId);
+    if (!target || targetPosition > target.length) return undefined;
+    target.splice(targetPosition, 0, itemId);
+
+    for (const [dayId, itemIds] of byDay) {
+      for (const [position, id] of itemIds.entries()) {
+        await transaction
+          .update(itineraryItems)
+          .set({ position, tripDayId: dayId, updatedAt: new Date() })
+          .where(eq(itineraryItems.id, id));
+      }
+    }
+    const [row] = await transaction
+      .select(itemSelection)
+      .from(itineraryItems)
+      .where(eq(itineraryItems.id, itemId))
+      .limit(1);
+    return row ? toItem(row) : undefined;
   }
 
   async delete(tripId: string, itemId: string): Promise<boolean> {

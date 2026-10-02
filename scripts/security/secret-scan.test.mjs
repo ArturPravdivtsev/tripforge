@@ -7,6 +7,7 @@ test("detects high-risk committed secret shapes without returning values", () =>
   const source = [
     `AWS_ACCESS_KEY_ID=${"AKIA" + "ABCDEFGHIJKLMNOP"}`,
     `OPENROUTESERVICE_API_KEY=${"live_" + "a".repeat(30)}`,
+    `OPENAI_API_KEY=${"sk-proj-" + "b".repeat(32)}`,
     `cookie=${"tripforge_session=" + "z".repeat(43)}`,
     `-----BEGIN ${"PRIVATE KEY"}-----`,
   ].join("\n");
@@ -14,7 +15,13 @@ test("detects high-risk committed secret shapes without returning values", () =>
 
   assert.deepEqual(
     findings.map(({ name }) => name),
-    ["AWS access key", "provider secret", "raw session token", "private key"],
+    [
+      "AWS access key",
+      "provider secret",
+      "OpenAI API key",
+      "raw session token",
+      "private key",
+    ],
   );
   assert.equal(JSON.stringify(findings).includes("live_"), false);
 });
@@ -24,6 +31,7 @@ test("allows explicit empty and fake fixture values", () => {
     ".env.example",
     [
       "OPENROUTESERVICE_API_KEY=",
+      "OPENAI_API_KEY=",
       "LOCALSTACK_AUTH_TOKEN=placeholder",
       "AWS_SECRET_ACCESS_KEY=test",
       "tripforge_session=opaque-token",
