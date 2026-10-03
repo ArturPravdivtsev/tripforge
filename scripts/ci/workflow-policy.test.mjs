@@ -1,9 +1,18 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { validateWorkflow } from "./workflow-policy.mjs";
 
 const SHA = "0123456789abcdef0123456789abcdef01234567";
+
+test("documentation validation cannot disappear or become advisory", async () => {
+  const source = await readFile(new URL("../../.github/workflows/ci.yml", import.meta.url), "utf8");
+  assert.deepEqual(validateWorkflow(source, "ci.yml"), []);
+  for (const replacement of ["run: echo skipped", "continue-on-error: true\n        run: pnpm docs:check", "if: false\n        run: pnpm docs:check"]) {
+    assert.ok(validateWorkflow(source.replace("run: pnpm docs:check", replacement), "ci.yml").some((error) => error.includes("blocking pnpm docs:check")));
+  }
+});
 
 test("accepts an immutable read-only workflow", () => {
   const source = `

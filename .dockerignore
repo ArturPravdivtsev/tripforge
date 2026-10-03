@@ -30,6 +30,9 @@ coverage
 e2e
 performance/k6
 scripts/readiness
+scripts/portfolio
+scripts/docs
+docs/assets/portfolio
 playwright-report
 test-results
 readiness-results

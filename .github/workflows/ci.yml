@@ -49,6 +49,8 @@ jobs:
           pnpm db:check
       - name: Lint
         run: pnpm lint
+      - name: Validate documentation and curated assets
+        run: pnpm docs:check
       - name: Type-check
         run: pnpm typecheck
       - name: Run unit and component tests

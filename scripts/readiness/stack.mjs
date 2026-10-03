@@ -46,14 +46,16 @@ export async function snapshot() {
 }
 
 export async function startStack({ web = true, replicas = 1, worker = true } = {}) {
-  for (let index = 0; index < replicas; index++) {
+  const ports = [...(web ? [3310] : []), ...Array.from({ length: replicas }, (_, index) => 4410 + index)];
+  for (const port of ports) {
     let occupied = false;
-    try { await fetch(`http://127.0.0.1:${4410 + index}/health`, { signal: AbortSignal.timeout(500) }); occupied = true; } catch { /* No existing HTTP listener. */ }
-    if (occupied) throw new Error(`Port ${4410 + index} occupied: stop the earlier readiness stack before running another qualification`);
+    try { await fetch(`http://127.0.0.1:${port}/health`, { signal: AbortSignal.timeout(500) }); occupied = true; } catch { /* No existing HTTP listener. */ }
+    if (occupied) throw new Error(`Port ${port} occupied: stop the earlier readiness stack before running another qualification`);
   }
   await mkdir(resultsDir, { recursive: true });
   const originalHash = createHash("sha256").update(await readFile(join(root, "apps/web/next-env.d.ts"))).digest("hex");
-  if (!process.env.CI && originalHash !== "0f70629890b72a0a82e91972cc032c04b658b26c265373cb711cf576bfbf8fcc") throw new Error("User next-env.d.ts SHA mismatch; refusing build");
+  // Preserve the caller's file, including a clean checkout; do not require one
+  // developer's local generated-file hash. close() verifies it is unchanged.
   const { PostgreSqlContainer } = apiRequire("@testcontainers/postgresql");
   const { RedisContainer } = apiRequire("@testcontainers/redis");
   const { LocalstackContainer } = apiRequire("@testcontainers/localstack");

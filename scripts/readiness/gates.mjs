@@ -9,7 +9,7 @@ const before = createHash("sha256").update(await readFile(join(root, "apps/web/n
 const directory = await snapshot();
 await mkdir(resultsDir, { recursive: true });
 const env = { ...process.env, GIT_DIR: join(root, ".git"), GIT_WORK_TREE: directory, NEXT_PUBLIC_API_URL: "http://127.0.0.1:4000", NEXT_PUBLIC_S3_UPLOAD_ORIGIN: "http://localhost:4566", NEXT_PUBLIC_MAPTILER_KEY: "test", NEXT_TELEMETRY_DISABLED: "1", OTEL_ENABLED: "false" };
-const commands = ["db:generate", "db:check", "lint", "typecheck", "test", "test:coverage", "test:a11y", "security:audit", "security:secrets", "test:security", "build", "perf:bundle:check", "perf:test", "observability:config:check", "observability:test", "ai:test", "ai:eval", "check", "test:integration", "check:full", "peers check", "ci:workflow:test", "ci:workflow:check", "readiness:unit", "migrations:safety"];
+const commands = ["docs:check", "db:generate", "db:check", "lint", "typecheck", "test", "test:coverage", "test:a11y", "security:audit", "security:secrets", "test:security", "build", "perf:bundle:check", "perf:test", "observability:config:check", "observability:test", "ai:test", "ai:eval", "check", "test:integration", "check:full", "peers check", "ci:workflow:test", "ci:workflow:check", "readiness:unit", "migrations:safety"];
 const results = [];
 for (const command of commands) {
   console.log(`GATE ${command}`);

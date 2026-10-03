@@ -28,11 +28,13 @@ const model = {
     const drafted = outputs.some((item) => JSON.parse(item.output).proposalDrafted);
     if (message.includes("suggest") && !drafted) {
       const days = outputs.map((item) => JSON.parse(item.output)).find((item) => Array.isArray(item.value) && item.value[0]?.date);
-      yield completed(days ? [call("propose_itinerary_create", { dayId: days.value[0].id, kind: "activity", title: "Browser AI suggestion", startTime: "09:00", endTime: "10:00", notes: null })]
+      yield completed(days ? [call("propose_itinerary_create", { dayId: days.value[0].id, kind: "activity", title: process.env.PORTFOLIO_FIXTURE === "1" ? "A quiet walk through Nezu Shrine" : "Browser AI suggestion", startTime: "09:00", endTime: "10:00", notes: null })]
         : [call("get_trip_days", { startDate: null, endDate: null, limit: 14 })]);
       return;
     }
-    const chunks = message.includes("slow") ? Array(100).fill("Planning… ") : ["Grounded ", "browser ", "response."];
+    const chunks = message.includes("slow") ? Array(100).fill("Planning… ") : process.env.PORTFOLIO_FIXTURE === "1"
+      ? ["Your first Tokyo day has room for a quiet walking stop. ", "I prepared an activity proposal for review. ", "Nothing has been changed; choose Apply only if it fits your plan. Opening hours are not verified."]
+      : ["Grounded ", "browser ", "response."];
     for (const delta of chunks) {
       if (signal.aborted) throw new Error("Stopped");
       await new Promise((done) => setTimeout(done, message.includes("slow") ? 100 : 80));

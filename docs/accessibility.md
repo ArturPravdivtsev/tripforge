@@ -100,10 +100,11 @@ Two rules are deliberately disabled in this component helper:
 - `region`: isolated component fragments do not own page landmarks.
   Replacement: shell semantic tests and route-by-route landmark inspection.
 
-No Playwright configuration exists in this repository, so Stage 24 does not add
-`@axe-core/playwright` or create an unrelated E2E platform. Browser axe remains
-a future CI/E2E layer. `axe-core` is dev/test-only and is never called by
-production code.
+Stage 24 initially used component checks only. Stage 31 added Playwright Chromium
+and `@axe-core/playwright`: six critical screens now have browser axe, CSP,
+keyboard and responsive checks. Human AT and native browser zoom remain pending;
+see [Stage 31 qualification](./stage31-qualification.md). Both axe packages are
+dev/test-only and are never called by production code.
 
 Representative axe coverage includes auth validation, Trips dashboard, Trip
 workspace navigation, itinerary Move state, expanded place combobox, routes,

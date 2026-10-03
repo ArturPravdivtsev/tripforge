@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "turbo run dev",
+    "docs:check": "node --test scripts/docs/*.test.mjs && node scripts/docs/check.mjs",
+    "portfolio:screenshots": "node scripts/portfolio/screenshots.mjs",
     "build": "turbo run build",
     "ai:eval": "pnpm --filter @tripforge/api ai:eval",
     "ai:eval:live": "pnpm --filter @tripforge/api ai:eval:live",
@@ -12,7 +14,7 @@
     "infra:fmt": "terraform fmt -check -recursive infra/terraform",
     "infra:test": "terraform -chdir=infra/terraform/bootstrap test && terraform -chdir=infra/terraform/production test",
     "infra:validate": "terraform -chdir=infra/terraform/bootstrap init -backend=false && terraform -chdir=infra/terraform/bootstrap validate && terraform -chdir=infra/terraform/production init -backend=false && terraform -chdir=infra/terraform/production validate",
-    "ci:quality": "pnpm db:check && pnpm lint && pnpm typecheck && pnpm test && pnpm test:coverage && pnpm test:a11y && pnpm build && pnpm perf:bundle:check && pnpm observability:config:check && pnpm observability:test && pnpm peers check && pnpm ci:workflow:test && pnpm ci:workflow:check",
+    "ci:quality": "pnpm docs:check && pnpm db:check && pnpm lint && pnpm typecheck && pnpm test && pnpm test:coverage && pnpm test:a11y && pnpm build && pnpm perf:bundle:check && pnpm observability:config:check && pnpm observability:test && pnpm peers check && pnpm ci:workflow:test && pnpm ci:workflow:check",
     "ci:security": "pnpm security:audit && pnpm security:secrets && pnpm test:security",
     "ci:verify": "pnpm db:generate && git diff --exit-code -- apps/api/drizzle && pnpm ci:quality && pnpm ci:security && git diff --check",
     "ci:workflow:check": "node scripts/ci/workflow-policy.mjs",

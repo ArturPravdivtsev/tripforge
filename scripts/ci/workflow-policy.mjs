@@ -144,6 +144,9 @@ export function validateWorkflow(source, filename = "workflow.yml") {
       "browser",
     ];
     const gateNeeds = Array.isArray(gate?.needs) ? gate.needs : [];
+    if (!(jobs.quality?.steps ?? []).some((step) => step.run === "pnpm docs:check" && step["continue-on-error"] !== true && step.if === undefined) || jobs.quality?.["continue-on-error"] === true) {
+      errors.push(`${filename}: Quality must run an unconditional blocking pnpm docs:check`);
+    }
 
     if (gate?.name !== "Gate" || !String(gate?.if ?? "").includes("always()")) {
       errors.push(`${filename}: gate must expose stable CI / Gate and use always()`);
