@@ -10,9 +10,10 @@ testing and an AWS deployment architecture.
 
 **Status: release candidate / portfolio project, not a published v1.0.**
 Stage 31 browser, integration, security, performance and resilience qualification
-passed locally. Stage 32 regression passed 25 of 26 gates; dependency audit now
-blocks on an unfixed HIGH in the ESLint dependency chain (see the
-[current verification report](docs/stage32-verification.md)). Terraform is locally
+passed locally. Stage 32 dependency closure accepts one time-bounded HIGH advisory
+in development-only ESLint tooling after proving it absent from deployable artifacts;
+the machine-checkable audit remains blocking for every unexpected HIGH/CRITICAL
+(see the [current verification report](docs/stage32-verification.md)). Terraform is locally
 validated; real AWS
 deployment and cloud recovery qualification remain pending. No live demo is
 currently published.

@@ -206,8 +206,23 @@ The security runtime additions are `@nestjs/throttler@6.7.1` and
 advisory by updating Next and its matching tooling from 16.3.4 to 16.3.6. It
 also fixed high/moderate Multer DoS findings with 2.4.0 and patched transitive
 `brace-expansion`, `@grpc/grpc-js`, and `fast-uri` versions through narrow pnpm
-workspace overrides. `pnpm security:audit` now reports no known production
-vulnerabilities and fails on future high/critical findings.
+workspace overrides. `pnpm security:audit` reports no known production-runtime
+dependency vulnerability under the release policy and fails on every unexpected
+high/critical finding.
+
+One exact HIGH exception is recorded in `security/audit-exceptions.json` for
+`braces@3.0.3` (`GHSA-vfj7-8cjw-p6xm`, `CVE-2026-93687`). The only path is
+`@tripforge/eslint-config → eslint-config-next → @next/eslint-plugin-next →
+fast-glob → micromatch → braces`. This is lint tooling: TripForge never invokes
+the brace parser after container startup, and no network/user input reaches it.
+The final web, API/worker and migrate images and browser chunks contain no
+`braces` package or identifiable implementation. Current parent releases still
+retain the same chain and no fixed `braces` release exists, so an update would
+not remediate it. The checker requires the exact advisory, package, installed
+version and dependency path; it rejects new HIGH/CRITICAL findings, changed or
+obsolete exceptions, and dates after the 2026-11-01 review deadline. Remove the
+exception when a compatible upstream fix appears, or immediately if artifact or
+runtime reachability changes.
 
 The full development audit has one accepted moderate advisory:
 `esbuild@0.18.20` (`GHSA-67mh-4wv8-2f99`) is reachable only through the

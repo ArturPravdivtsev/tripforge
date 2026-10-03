@@ -35,6 +35,9 @@ rollback owner. A checked local row does not satisfy its AWS counterpart.
 
 ## Security, migration and data recovery
 
+- [ ] `pnpm security:audit` exits zero with no HIGH/CRITICAL findings except exact,
+      documented, unexpired non-production exceptions. Review artifact reachability
+      and remove obsolete exceptions; undocumented or changed findings block release.
 - [ ] Re-scan immutable images with fresh vulnerability data; investigate vendor
       status/runtime exposure of unfixed base-OS HIGH/CRITICAL findings. Named
       release owner approves a documented exception/mitigation or blocks production;

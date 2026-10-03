@@ -25,8 +25,9 @@ and v1.0; it must not manufacture a live deployment to make the portfolio look c
 - [ ] Review unfixed base-OS HIGH/CRITICAL findings with vendor/reachability/
       mitigation evidence; release owner approves a named exception or blocks
       production. No clean-image or known-exploitable-app conclusion is implied.
-- [ ] Resolve or explicitly review the current blocking `braces` HIGH in the
-      ESLint chain (GHSA-vfj7-8cjw-p6xm); Stage 32 does not suppress the audit.
+- [ ] Re-review the exact ESLint-only `braces` HIGH exception
+      (GHSA-vfj7-8cjw-p6xm) by 2026-11-01; remove it when fixed or block if runtime
+      reachability/path changes. The policy is not a wildcard suppression.
 - [ ] Profile the small socket-client/harness heap drift over a longer interval
       and inspect retention paths before claiming no leaks. Browser upload/cancel
       resources, RUM and end-to-end network/burn SLIs remain separate debt.

@@ -2,20 +2,23 @@
 
 Date: October 3, 2026. Baseline: Stage 31 commit `3716c80`.
 
-The portfolio package is implemented. **Current regression status: 25 of 26
-gates passed; dependency audit is BLOCKED**, not green. Chromium E2E separately
-passed 12/12 without retries. No audit exception, dependency downgrade or
-runtime behavior change was made to manufacture a pass.
+The portfolio package is implemented. The security closure makes
+`security:audit` reproducibly green through one exact, expiring non-production
+exception; every unexpected HIGH/CRITICAL remains blocking. The 26-gate harness
+passed 26/26, and Chromium E2E separately passed 12/12 without retries. No
+dependency downgrade or runtime behavior change was made to manufacture a pass.
 
 `security:audit` reports HIGH `braces` <=3.0.3 through
 `packages/eslint-config → eslint-config-next → @next/eslint-plugin-next →
 fast-glob → micromatch → braces`. The
 [reviewed advisory](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) was updated
 October 2, 2026 and lists no patched version. This reported path concerns lint
-tooling; it does not itself demonstrate remotely exploitable application behavior.
-The unchanged workspace-wide audit nevertheless blocks. Dependency remediation
-or an owner-reviewed policy decision is separate from the documentation scope.
-Historical Stage 31 audit/image results remain dated evidence, not today's clean bill.
+tooling. Current parent updates retain the chain; final web/API/migrate images and
+browser chunks contain no `braces`, and no production or attacker-input path invokes
+its parser. `security/audit` validates the exact advisory/version/path against
+`security/audit-exceptions.json`, reports the acceptance, expires it after
+2026-11-01, and rejects obsolete or unrelated findings. This is bounded risk
+acceptance, not a claim that upstream patched the package.
 
 ## Commands and retained results
 
@@ -25,8 +28,12 @@ owner's local generated file. Raw logs/stack descriptors remain ignored under
 raw sessions or fixture database URLs.
 
 ```bash
-READINESS_RUN_LABEL=stage32-final node scripts/readiness/gates.mjs
-READINESS_RUN_LABEL=stage32-e2e pnpm exec playwright test
+READINESS_RUN_LABEL=stage32-security-closure node scripts/readiness/gates.mjs
+READINESS_RUN_LABEL=stage32-security-e2e pnpm exec playwright test
+READINESS_RUN_LABEL=stage32-security-readiness pnpm readiness:test
+docker compose config && docker compose build
+SMOKE_WEB_IMAGE=tripforge-web:local SMOKE_API_IMAGE=tripforge-api:local \
+  SMOKE_MIGRATE_IMAGE=tripforge-api-migrate:local scripts/ci/container-smoke.sh
 PORTFOLIO_BASE_URL=http://127.0.0.1:3310 READINESS_RUN_LABEL=stage32-captures-final pnpm portfolio:screenshots
 READINESS_RUN_LABEL=stage32-quickstart pnpm readiness:serve
 pnpm docs:check
@@ -38,7 +45,7 @@ git diff --check
 | Frozen install, DB generate/check, migrations safety | PASS; no migration generated |
 | Lint / typecheck / unit / coverage | PASS; 310 API + 279 web + 2 UI unit tests |
 | Component accessibility | PASS; 73 tests across 12 files |
-| `security:audit` | **FAIL: 1 HIGH braces; no patched version; no suppression** |
+| `security:audit` | PASS under exact exception: 1 lint-only HIGH; review after 2026-11-01 |
 | Secret scan / security regression | PASS; worktree patterns and security suites |
 | Build / check / check:full | PASS; production Next 16.3.6/Webpack/API/shared builds |
 | PG/Testcontainers integration | PASS; 98 tests across 13 files |
@@ -49,9 +56,33 @@ git diff --check
 | Chromium E2E, separate from 26 gates | PASS; 12 scenarios, no retries, production-built local stack |
 | Terraform fmt / validate / mock tests | PASS; bootstrap 1 / production 2 tests |
 | Trivy IaC HIGH/CRITICAL policy | PASS; zero tested HIGH/CRITICAL misconfigurations |
-| Long k6 / 13 recovery drills | Not rerun for docs-only changes; retained Stage 31 evidence |
-| Docker application image rebuild | Not rerun; no Dockerfile/runtime changes; test stacks used Docker dependencies |
+| Long k6 / 13 recovery drills | 13/13 recovery drills PASS; long k6 profiles remain retained Stage 31 evidence |
+| Docker application images / smoke | PASS; fresh web/API/migrate builds and migrate-twice/API/web smoke |
 | AWS / live providers / manual AT | Pending; not claimed as executed |
+
+## Dependency security closure
+
+- Installed version: `braces@3.0.3`; TripForge has no direct declaration.
+- Complete introducing path: `@tripforge/eslint-config → eslint-config-next@16.3.6
+  → @next/eslint-plugin-next@16.3.6 → fast-glob@3.3.1 → micromatch@4.0.8
+  → braces@3.0.3`. It is lint/build tooling, not application runtime code.
+- Investigated updates: `eslint-config-next@16.3.8` still selects the same
+  `fast-glob → micromatch → braces` chain; current `fast-glob@3.3.3`,
+  `micromatch@4.0.8`, and `braces@3.0.3` do not provide a fixed path. No package
+  or lockfile version changed, and no unsupported override was added.
+- Exposure: production-only API metadata excludes the ESLint chain. Fresh final
+  web, API/worker and migrate filesystem searches find no `braces`, `micromatch`
+  or `fast-glob`; browser static chunks contain no package or implementation marker.
+  Consequently no post-start code imports the parser and no network/user value can
+  reach brace expansion.
+- Container scan: Trivy does not report the `braces` advisory in any final image.
+  Each Debian 12.15 image reports 53 HIGH + 4 CRITICAL OS findings with no
+  `FixedVersion`; runtime npm HIGH/CRITICAL and fixable HIGH/CRITICAL are zero.
+  Existing fixable-HIGH/CRITICAL blocking policy is unchanged.
+- Policy: `security/audit-exceptions.json` records only GHSA-vfj7-8cjw-p6xm /
+  CVE-2026-93687, the exact package/version/path, false production reachability,
+  reason, remediation trigger and 2026-11-01 review date. The checker fails after
+  that date, on a changed/obsolete exception, or on any unrelated HIGH/CRITICAL.
 
 The README quick-start was exercised using a source-copy frozen install, existing
 Chromium installation, `pnpm readiness:serve`, real browser registration and
@@ -79,7 +110,7 @@ alternatives, not claimed as freshly qualified here.
    highlights → architecture → evidence → grouped stack → startup → docs → next step.
 3. **One line:** collaborative travel planning with frontend-focused end-to-end ownership.
 4. **Status:** unreleased release candidate / portfolio project; no published v1.0/live demo;
-   dated Stage 31 success plus today's explicitly blocking dependency audit.
+   dated Stage 31 success plus today's explicit lint-only dependency exception.
 5. **Product:** shared Trips, itinerary, reservations, exact expenses, private files,
    scoped search/notifications/realtime, human-reviewed AI proposals.
 6. **Highlights:** eight boundary-focused choices, not a list of every feature.
@@ -112,7 +143,7 @@ alternatives, not claimed as freshly qualified here.
 20. **Performance:** historical Stage 25 initial-byte improvements, ten current
     budgets; no field Web Vitals or unjustified optimization claims.
 21. **Security:** layered sessions/RBAC/mutation guards/private capabilities/CSP;
-    new audit blocker and existing unfixed OS findings remain visible.
+    bounded lint-only audit exception and existing unfixed OS findings remain visible.
 22. **Observability:** request ID → safe log → trace → PG/provider span with bounded
     labels; tiny health overhead benchmark is not real-workload overhead or RUM.
 23. **Delivery:** pinned actions, untrusted validation, trusted immutable publishing,
@@ -128,7 +159,7 @@ alternatives, not claimed as freshly qualified here.
 28. **Trade-off table:** sessions, search, realtime, jobs, files, ECS, RDS, AI and
     evidence-driven optimization versus their rejected/deferred alternatives.
 29. **Limits:** cloud/live/AT/field metrics/hosted delivery, OS-risk ownership,
-    current braces audit blocker and longer resource profiling.
+    expiring braces risk acceptance and longer resource profiling.
 30. **Heap drift:** 12.422 → 13.765 MiB (+1.344) client/harness median over 30 minutes;
     stable listeners alone do not prove absence of retained objects or identify a leak.
 31. **Fixture:** fictional Alex Morgan/Sam Rivera, Japan autumn 2027, Tokyo/Kyoto/Osaka,
@@ -172,7 +203,7 @@ alternatives, not claimed as freshly qualified here.
     no fabricated email or public security-report instruction.
 53. **Badges:** no guessed CI/license/release/deployment badge.
 54. **Claim audit:** local/Chromium/real PG/configured AWS/pending cloud/live/manual
-    categories remain distinct; the new dependency audit failure is explicit.
+    categories remain distinct; the dependency exception remains explicit.
 55. **Metrics:** smoke/load/stress/soak, environment/workload, historical bundle/SQL/
     telemetry, restore/outbox/socket/pool evidence with context in the case/index.
 56. **Softened claims:** no “production-grade,” battle-tested, maximum users,
@@ -185,8 +216,8 @@ alternatives, not claimed as freshly qualified here.
     seven final PNGs. Initial invalid train fixture was corrected, not called a pass.
 59. **CI docs:** unconditional blocking Quality step plus `ci:quality` and isolated
     gates; workflow-policy test rejects removal/skip/advisory conversion.
-60. **Security regression:** suites/secret checks PASS; audit **FAIL, 1 unfixed HIGH**;
-    release remains blocked until remediation/owner review, no green aggregate claim.
+60. **Security regression:** suites/secret checks PASS; audit PASS with one exact,
+    unexpired lint-only HIGH exception and no wildcard suppression.
 61. **A11y regression:** 73 component tests PASS; E2E axe/keyboard/reflow/CSP PASS;
     no Safari/VoiceOver/native zoom claim.
 62. **Browser regression:** all 12 Chromium E2E PASS without retries (1.2 minutes).
@@ -197,10 +228,10 @@ alternatives, not claimed as freshly qualified here.
 67. **Terraform:** fmt/validate/bootstrap 1 + production 2 mock tests/Trivy HIGH-CRITICAL PASS;
     no AWS plan/apply or resource mutation.
 68. **Build:** fresh isolated production Next/API/shared builds PASS; user's file preserved.
-69. **Docker:** no application-image rebuild claimed; original Dockerfiles remain
-    unchanged, docs tooling/PNG paths are excluded from context, disposable dependency
-    containers actually ran. Stage 31 image finding scope remains historical.
-70. **Public-release debt:** current braces HIGH, license/channel, hosted CI/GHCR,
+69. **Docker:** fresh final web/API/migrate images and migrate-twice/API/web smoke PASS;
+    filesystem and Trivy inspection find no braces chain. Fixable HIGH/CRITICAL are
+    zero; 53 HIGH + 4 CRITICAL unfixed Debian findings per image remain explicit debt.
+70. **Public-release debt:** expiring braces review, license/channel, hosted CI/GHCR,
     cloud/live/manual QA, unfixed OS-risk decision and longer heap profiling.
 71. **Files:** 26 Stage 32 files listed below; user next-env is excluded.
 72. **DB:** no SQL/schema/migration file changed or added.

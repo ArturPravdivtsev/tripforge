@@ -6,10 +6,12 @@ This is a claim-to-evidence map, not a claim that every configured system has ru
 in production. Stage 31 is the retained baseline; Stage 32 packages that evidence
 and reruns relevant regressions without repeating the long load qualification.
 
-**Current exception:** Stage 32 `security:audit` is red on an unfixed HIGH in the
-ESLint dependency chain (`braces`, GHSA-vfj7-8cjw-p6xm). No suppression is applied.
-See the [current verification report](./stage32-verification.md); historical Stage
-31 success must not be read as a current clean audit.
+**Current exception:** one unfixed HIGH in the ESLint-only dependency chain
+(`braces`, GHSA-vfj7-8cjw-p6xm) has an exact, expiring non-production exception
+after final-artifact reachability checks. `security:audit` is green under that
+policy and still rejects every unexpected HIGH/CRITICAL. See the
+[current verification report](./stage32-verification.md); this is not a claim that
+the advisory disappeared or that container base images are vulnerability-free.
 
 ## Reading the status labels
 

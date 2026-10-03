@@ -318,7 +318,7 @@ deterministic provider boundary, not real OpenAI.
 |12 critical E2E scenarios; real cookie/RBAC/DnD/files/SSE |Verified in Chromium |[Browser suite](../e2e/qualification.spec.ts) |
 |Real PG authorization/search/transactions + full integration gate |Verified with PostgreSQL/Testcontainers |[Testing](./testing-strategy.md) |
 |Six screens axe 0; keyboard/reflow/CSP |Verified in Chromium |[Stage 31](./stage31-qualification.md) |
-|Security/AI/privacy regressions and secret checks; dated dependency audit |Verified locally; Stage 32 dependency audit blocked |[Security](./security-hardening.md), [current report](./stage32-verification.md) |
+|Security/AI/privacy regressions and secret checks; dated dependency audit |Verified locally; one exact expiring lint-only exception |[Security](./security-hardening.md), [current report](./stage32-verification.md) |
 |Ten bundle budgets; historical before/after |Verified locally |[Performance](./performance.md) |
 |Smoke/load/stress/30m soak + 100 sockets |Verified locally |[Capacity](./capacity.md) |
 |13 dependency/recovery/restore/drain drills |Verified locally |[Drill implementation](../scripts/readiness/qualify.mjs) |
@@ -371,13 +371,14 @@ not a missing checklist item.
 
 ## Remaining limitations and future profiling
 
-- Stage 32 dependency audit is red: `braces` <=3.0.3, HIGH
+- Stage 32 retains `braces` 3.0.3, HIGH
   [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm),
   updated October 2, 2026, with no patched version listed. The reported path is
   the shared ESLint configuration → Next lint plugin → fast-glob → micromatch.
-  That is tooling scope, not evidence of a remotely exploitable application path;
-  it still blocks the unchanged audit policy. No advisory exemption or dependency
-  reclassification was applied. Historical Stage 31 passes are not a current clean audit.
+  Final web/API/migrate images and browser chunks do not contain it, and no runtime
+  or user-input path invokes it. An exact machine-validated non-production exception
+  expires after 2026-11-01; every unrelated HIGH/CRITICAL remains blocking. This is
+  risk acceptance, not a claim that the advisory was patched.
 - AWS effective IAM/TLS/WSS, deployed role rotation, RDS connection headroom,
   PITR/RPO/RTO, ElastiCache failover and ECS rollback are not verified in cloud.
 - Hosted CI/GHCR/repository protections and a public live demo are not claimed.

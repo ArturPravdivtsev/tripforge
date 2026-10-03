@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "exceptions": [
+    {
+      "advisory": "GHSA-vfj7-8cjw-p6xm",
+      "auditId": 1240992,
+      "cve": "CVE-2026-93687",
+      "package": "braces",
+      "severity": "high",
+      "installedVersions": ["3.0.3"],
+      "dependencyPaths": [
+        "packages__eslint-config>eslint-config-next>@next/eslint-plugin-next>fast-glob>micromatch>braces"
+      ],
+      "scope": "development-only lint tooling",
+      "reason": "The only installed path is the shared ESLint configuration. No fixed upstream release exists, and fresh final web, API/worker, and migrate artifacts plus browser chunks contain no braces package or implementation.",
+      "productionReachability": false,
+      "reviewAfter": "2026-11-01",
+      "remediationTrigger": "Remove this exception when braces or the ESLint parent chain publishes a compatible fix, or immediately if the package enters a deployable artifact or becomes runtime-reachable."
+    }
+  ]
+}
