@@ -1,86 +1,85 @@
 # Release qualification checklist
 
-Record release revision, previous known-good three-image digest set, target AWS
-account/region/environment, operator, evidence links, pending exceptions and
-rollback owner. A checked local row does not satisfy its AWS counterpart.
+Status vocabulary: **PASS**, **PENDING EXTERNAL**, **NOT APPLICABLE**, or
+**BLOCKED**. A local PASS never satisfies its hosted/AWS counterpart.
 
 ## Source and CI
 
-- [ ] Frozen install; generation/check; no unreviewed SQL drift; lint/typecheck,
-      tests/coverage/a11y, integration/check/check:full, audit/secret/security,
-      bundle/performance, observability, AI deterministic eval, peer/workflow and
-      whitespace checks pass on the candidate revision.
-- [ ] Mandatory `CI / Gate`, including Browser E2E + k6 smoke, succeeds in hosted
-      CI. Configure repository protection; YAML cannot do this itself.
-- [ ] All external actions full-SHA pinned; PRs receive no AWS/OpenAI credentials,
-      publishing permission or privileged artifact bridge.
-- [ ] Candidate web/API/migrate images built/scanned; immutable digests and OCI
-      revision match; worker runs the API digest. No browser/load tooling in runtime.
-- [ ] User's separate `apps/web/next-env.d.ts` is unstaged; required SHA preserved.
+- **PASS** — frozen install, DB generation/check, lint/typecheck, unit/coverage/
+  accessibility, integration/check/check:full, audit/current/history secret scans,
+  security, bundle/performance, observability, deterministic AI, peer/workflow,
+  release-policy and whitespace checks pass.
+- **PENDING EXTERNAL** — hosted `CI / Gate`, Browser E2E + k6 smoke, branch rules,
+  CodeQL and Dependency Review cannot be inspected without a remote/valid token.
+- **PASS** — policy tests require full-SHA actions and deny PR credentials,
+  publishing permissions and privileged artifact bridges.
+- **PASS** — web/API/migrate images are rebuilt and scanned; all expose `1.0.0`,
+  worker uses the API image, and runtime artifacts exclude browser/load tooling
+  and `braces`. Published registry digests/revisions remain pending hosted CI.
+- **PASS** — separate `apps/web/next-env.d.ts` remains unstaged at SHA-256
+  `0f70629890b72a0a82e91972cc032c04b658b26c265373cb711cf576bfbf8fcc`.
 
 ## Browser and accessibility
 
-- [ ] Production-built Chromium suite, retries zero: auth/Back, Trip lifecycle,
-      two-user RBAC/revoke, itinerary pointer + keyboard + Move, transport,
-      equal/custom expenses and settlements, direct upload/download bytes,
-      notification read/unread multi-tab, search/realtime, AI Stop/preview/Apply/
-      Dismiss/viewer/privacy.
-- [ ] Six-screen axe, CSP, keyboard/combobox/mobile menu/composer and 320/375/768px
-      reflow pass. Failure artifacts reviewed; flakes are investigated, not retried away.
-- [ ] Human VoiceOver + Safari and real 200%/400% browser zoom, text spacing,
-      reduced motion/forced colors and upload/cancel resource inspection recorded,
-      or named release exception remains explicit.
-- [ ] Restricted MapTiler/ORS/OpenAI live smoke only with approved disposable data
-      and credentials; absence of keys is pending, not a pass.
+- **PASS** — production-built Chromium qualification is 12/12 with retries zero:
+  auth/Back, lifecycle, RBAC/revoke, itinerary pointer/keyboard/Move, transport,
+  expenses, upload/download bytes, notification/realtime/search and AI privacy UX.
+- **PASS** — automated axe, CSP, keyboard/combobox/mobile/composer and
+  320/375/768px reflow coverage passes.
+- **PENDING EXTERNAL** — human VoiceOver/Safari, native 200%/400% zoom, text
+  spacing, forced colors and manual resource inspection need a named operator.
+- **PENDING EXTERNAL** — restricted live MapTiler/ORS/OpenAI smoke requires
+  approved disposable data and credentials.
 
 ## Security, migration and data recovery
 
-- [ ] `pnpm security:audit` exits zero with no HIGH/CRITICAL findings except exact,
-      documented, unexpired non-production exceptions. Review artifact reachability
-      and remove obsolete exceptions; undocumented or changed findings block release.
-- [ ] Re-scan immutable images with fresh vulnerability data; investigate vendor
-      status/runtime exposure of unfixed base-OS HIGH/CRITICAL findings. Named
-      release owner approves a documented exception/mitigation or blocks production;
-      zero fixable findings is not a clean-image or non-exploitability claim.
-- [ ] App DB secret references dedicated DML role; API/worker never use master.
-      Migrator/schema-owner secret separate; privileges and rotation/restart tested.
-- [ ] Actual TLS RDS `SHOW max_connections` recorded; rolling pool budget including
-      readiness/worker/migration/operations fits verified headroom.
-- [ ] `pnpm migrations:safety`; destructive change requires exact SHA/reviewer/
-      reason/compatibility/recovery metadata. Expand then migrate/backfill, verify,
-      deploy consumers, contract only after old revisions can no longer run.
-- [ ] Pre-migration RDS snapshot available when risk requires it; automated backup
-      retention and LatestRestorableTime inspected. PITR restores to NEW DB, never
-      overwrites source; observed RPO/RTO and cleanup recorded in disposable AWS.
-- [ ] S3 versions/delete-marker recovery and application metadata/authorization
-      reconciliation checked; normal product delete semantics unchanged.
+- **PASS** — dependency policy permits only the exact unexpired, dev-only
+  `braces@3.0.3` HIGH exception through 2026-11-01.
+- **PASS** — fresh image scans: each image has 52 HIGH/4 CRITICAL unfixed Debian
+  findings and zero fixable HIGH/CRITICAL after the `libpcre2-8-0` patch.
+  Production risk acceptance remains an operator decision.
+- **PASS** (local) — dedicated DML role and migrator separation are exercised;
+  **PENDING EXTERNAL** for hosted secret rotation/restart.
+- **PENDING EXTERNAL** — actual TLS RDS `SHOW max_connections` and rolling pool
+  budget require the target environment.
+- **PASS** — migration safety and repeated migration pass; Stage 33 adds no SQL.
+- **PENDING EXTERNAL** — RDS snapshot/retention/LatestRestorableTime and PITR into
+  a new DB require approved disposable AWS resources.
+- **PASS** (local) — S3 version/delete-marker recovery and authorization pass;
+  **PENDING EXTERNAL** for AWS S3 durability qualification.
 
 ## Performance and resilience
 
-- [ ] Safe fixture, smoke + 10m load thresholds; stress and 30m soak evidence,
-      RPS/p95/p99/error, CPU/RSS/heap/GC/pool/loop observations and host caveat recorded.
-- [ ] PostgreSQL, Redis outage + FLUSHDB, worker backlog, S3, Collector, ORS/AI
-      controlled drills pass locally. Only owned disposable resources mutated.
-- [ ] Active HTTP/worker drain, two-node sockets/rejoin/refetch, no listener growth,
-      pool waiters return to zero. Cloud ALB/ECS semantics qualified separately.
-- [ ] Autoscaling limits/cooldowns and worker concurrency reviewed against hosted
-      capacity; no unconditional production maximum inferred from laptop runs.
+- **PASS** — accepted Stage 31 smoke/load/stress/30-minute soak evidence remains
+  applicable; Stage 33 changes no DB/network/pool/product runtime behavior.
+- **PASS** — PostgreSQL, Redis/FLUSHDB, worker backlog, S3, Collector and ORS/AI
+  controlled drills pass on owned disposable resources.
+- **PASS** — HTTP/worker drain, two-node sockets/rejoin/refetch and pool recovery
+  pass locally; cloud ALB/ECS behavior remains **PENDING EXTERNAL**.
+- **PENDING EXTERNAL** — production autoscaling, cooldowns and hosted-capacity
+  review require a target environment.
 
 ## Deploy, observe, smoke, rollback
 
-- [ ] Correct account/region and protected Environment; TLS/domain/private ingress,
-      Redis TLS/AUTH, S3 IAM/CORS and public web build origins match target.
-- [ ] Migration task exit zero before any service update; failure evidence includes
-      task exit and no rollout. App rollback never reverses schema.
-- [ ] ALB API `/ready`, web `/health`; ECS steady state; secure cookie/WSS/realtime
-      cross-node and optional provider independence verified after deploy.
-- [ ] Read-only explicit-origin `pnpm smoke:operational` passes. Optional mutations
-      require pre-provisioned disposable prefix/credentials + acknowledgement;
-      created Trip removed, session logged out, cleanup errors surfaced.
-- [ ] Safe structured logs/traces/metrics appear; no secrets/private content;
-      alert routing and on-call access tested. Current error-budget status reviewed.
-- [ ] Previous immutable digests ready; dedicated test environment circuit-breaker
-      bad revision and manual rollback drill recorded. Never intentionally break
-      live production to prove rollback.
-- [ ] Nine runbooks accessible; SEV owner and communication channel known.
-      Pending AWS/AT/live-provider/CI qualifications explicitly accepted or block release.
+- **PENDING EXTERNAL** — account/region, protected Environment, TLS/domain,
+  ingress, Redis TLS/AUTH, S3 IAM/CORS and public origins.
+- **PASS** (local) — migration exits zero before service startup and is
+  idempotent; hosted task failure evidence remains **PENDING EXTERNAL**.
+- **PENDING EXTERNAL** — ALB/ECS steady state, secure cookie/WSS and cross-node
+  behavior after deployment.
+- **PENDING EXTERNAL** — explicit-origin operational smoke against a deployed URL.
+- **PENDING EXTERNAL** — hosted logs/traces/metrics, alert routing, on-call access
+  and current error budget.
+- **PENDING EXTERNAL** — previous published digests and deployed rollback drill.
+- **PASS** — nine runbooks are present; assignment of live SEV owner/channel is
+  **PENDING EXTERNAL**.
+
+## Publication
+
+- **BLOCKED** — no Git remote and the available GitHub CLI credential is invalid;
+  hosted main/tag CI, immutable GHCR digests and GitHub Release cannot be produced.
+- **BLOCKED** — public visibility requires an owner license decision; no license
+  is fabricated.
+- **PENDING EXTERNAL** — enable GitHub private vulnerability reporting and verify
+  repository rules, immutable releases and package visibility before publication.
+- **NOT APPLICABLE** — npm publication; every workspace package is private.

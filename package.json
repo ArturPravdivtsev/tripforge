@@ -1,6 +1,6 @@
 {
   "name": "tripforge",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "turbo run dev",
@@ -35,6 +35,7 @@
     "perf:test": "node --test scripts/performance/*.test.mjs",
     "security:audit": "node scripts/security/audit-policy.mjs",
     "security:secrets": "node scripts/security/secret-scan.mjs",
+    "security:secrets:history": "node scripts/security/secret-scan.mjs --history",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "test:a11y": "pnpm --filter @tripforge/web test:a11y",
@@ -43,6 +44,7 @@
     "readiness:test": "node scripts/readiness/qualify.mjs",
     "readiness:unit": "node --test scripts/readiness/*.test.mjs",
     "readiness:realtime-soak": "node scripts/readiness/socket-soak.mjs",
+    "release:check": "node --test scripts/release/*.test.mjs && node scripts/release/check.mjs",
     "smoke:operational": "node scripts/readiness/operational-smoke.mjs",
     "perf:load": "node scripts/readiness/load.mjs",
     "migrations:safety": "node scripts/readiness/migration-safety.mjs",

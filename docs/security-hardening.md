@@ -192,8 +192,10 @@ source table.
 
 Repository `.env` variants and credentials remain ignored; examples contain
 only local values/placeholders. The secret scan covers tracked/unignored text
-for AWS key shapes, private PEM blocks, raw session-like constants, and provider
-keys. It is a focused regression guard, not proof that no secret exists.
+and every reachable Git-history blob for AWS key shapes, GitHub tokens, private
+PEM blocks, raw session-like constants, and provider keys. History failures
+disclose only object ID, path, line and credential class, never the candidate
+value. It is a focused regression guard, not proof that no secret exists.
 Current logs were reviewed for passwords, cookies, session tokens, hashes,
 signed URLs, object keys, provider keys, raw search queries, and credentialed
 Redis URLs; none are intentionally emitted. Production browser output is also
@@ -223,6 +225,13 @@ version and dependency path; it rejects new HIGH/CRITICAL findings, changed or
 obsolete exceptions, and dates after the 2026-11-01 review deadline. Remove the
 exception when a compatible upstream fix appears, or immediately if artifact or
 runtime reachability changes.
+
+Fresh 2026-10-04 Trivy 0.74.0 scans found a fixable Debian HIGH,
+`CVE-2026-103111`, in the pinned Node base's `libpcre2-8-0`. Runtime images now
+install Debian security revision `10.42-1+deb12u2`. Web, API/worker and migrate
+rescans each report 52 HIGH and 4 CRITICAL unfixed OS findings, with zero fixable
+HIGH/CRITICAL. This satisfies the mechanical release policy but is not a claim
+that the remaining vendor findings are harmless.
 
 The full development audit has one accepted moderate advisory:
 `esbuild@0.18.20` (`GHSA-67mh-4wv8-2f99`) is reachable only through the

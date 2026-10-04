@@ -72,13 +72,10 @@ function validateException(exception, today) {
   }
 }
 
-function blockingAdvisories(report) {
-  return Object.values(report.advisories ?? {}).filter((advisory) =>
-    BLOCKING_SEVERITIES.has(String(advisory.severity).toLowerCase()),
-  );
-}
-
-export function evaluateAudit(report, policy, today = new Date().toISOString().slice(0, 10)) {
+export function validateAuditPolicy(
+  policy,
+  today = new Date().toISOString().slice(0, 10),
+) {
   if (policy?.schemaVersion !== 1 || !Array.isArray(policy.exceptions)) {
     throw new Error("Unsupported audit exception schema");
   }
@@ -92,6 +89,18 @@ export function evaluateAudit(report, policy, today = new Date().toISOString().s
     }
     exceptionsByAdvisory.set(exception.advisory, exception);
   }
+
+  return exceptionsByAdvisory;
+}
+
+function blockingAdvisories(report) {
+  return Object.values(report.advisories ?? {}).filter((advisory) =>
+    BLOCKING_SEVERITIES.has(String(advisory.severity).toLowerCase()),
+  );
+}
+
+export function evaluateAudit(report, policy, today = new Date().toISOString().slice(0, 10)) {
+  const exceptionsByAdvisory = validateAuditPolicy(policy, today);
 
   const accepted = [];
   const matchedExceptions = new Set();

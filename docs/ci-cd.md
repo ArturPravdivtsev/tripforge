@@ -37,6 +37,21 @@ trusted main or valid vX.Y.Z push
   → delivery-manifest.json
 ```
 
+A version tag additionally continues through the formal release path:
+
+```text
+trusted vX.Y.Z tag
+  → same CI / Gate
+  → GHCR image publication
+  → digest-only release manifest + SHA256SUMS
+  → complete draft GitHub Release
+  → asset verification
+  → non-prerelease latest GitHub Release
+```
+
+Main pushes continue to produce only `main`/SHA OCI artifacts. They never create
+a formal GitHub Release.
+
 There is no `pull_request_target`, `workflow_run` privilege bridge, PR registry
 login, PR secret use, or execution of a PR-produced artifact in a privileged
 job. A same-repository PR is treated as untrusted in exactly the same way as a
@@ -140,6 +155,48 @@ web/API/migrate names and digests. The job summary also records those digests an
 pulled-platform sizes. Stage 29 should deploy exactly these digests, use the API
 digest for the worker command, and run the migrate digest in the appropriate
 ordering rather than rebuilding source.
+
+## Formal source-release runbook
+
+The root `package.json` version is the canonical application/source version.
+Private workspace packages remain internal `0.0.0` modules and are not published
+to npm. `pnpm release:check` validates canonical SemVer, `CHANGELOG.md`, curated
+release notes, tag identity on tag CI, the current security-exception policy,
+the migration head and an optional release-manifest schema.
+
+Release order is intentionally strict:
+
+1. Finish release-only metadata/automation, enter release freeze, and pass every
+   local gate plus the history secret scan, container scan and clean-tree check.
+2. Commit once, push through the normal trusted main flow, and require hosted
+   `CI / Gate` for that exact commit.
+3. Create annotated `vX.Y.Z` on that commit and push it once. Never use the final
+   tag to test automation and never force-move a released tag.
+4. Trusted tag CI repeats Gate, publishes all three images, and exposes their
+   immutable digests. Convenience SemVer/`latest` tags are not artifact identity.
+5. `release-assets` generates `tripforge-vX.Y.Z-release-manifest.json` and
+   `SHA256SUMS` from those digests. The schema requires one full commit SHA,
+   three `ghcr.io/...@sha256:<64 hex>` references, the migration head and bounded
+   evidence descriptions.
+6. The only `contents: write` job downloads that same trusted-tag artifact,
+   revalidates its checksum/schema, refuses any existing release, creates a
+   complete draft with the curated notes, verifies the exact two assets, then
+   publishes it as the latest non-prerelease.
+7. Verify remote tag/commit, GHCR digest agreement, assets, SBOM/provenance and,
+   where enabled, immutable-release attestation.
+
+The GitHub Release job uses only the built-in `GITHUB_TOKEN`; no PAT, PR artifact
+or `workflow_run` bridge exists. A rerun refuses an existing draft or release
+instead of replacing assets. Released version contents are never modified in
+place: backward-compatible bug/security fixes use PATCH, backward-compatible
+features use MINOR, and intentionally incompatible documented application/REST/
+data behavior uses MAJOR.
+
+Before public repository publication, the owner must choose or deliberately
+decline a reuse license. No license is inferred by this workflow. The owner must
+also enable GitHub private vulnerability reporting/Security Advisories rather
+than inventing an email contact. Repository and GHCR visibility remain explicit
+owner settings.
 
 The migration target reuses the scanned API production runtime, adds only the
 committed SQL journal, and starts the compiled `drizzle-orm` migrator. It does
@@ -247,6 +304,12 @@ YAML cannot configure repository protection. An administrator must:
    and optionally require their stable checks.
 7. If artifact attestations are supported, set
    `ENABLE_GITHUB_ATTESTATIONS=true`; otherwise leave it unset.
+8. Enable **Immutable Releases** before the first formal release. The draft-first
+   sequence assembles and checks assets before publication.
+9. Enable GitHub private vulnerability reporting/Security Advisories. No
+   `SECURITY.md` is committed until a real reporting channel is inspectable.
+10. Make the repository public only after an explicit license/visibility decision;
+    never change repository or GHCR visibility as a side effect of release CI.
 
 Actual pull-request, trusted-push, GHCR, SBOM, provenance, and branch-protection
 QA requires a configured GitHub remote and authenticated repository access. It

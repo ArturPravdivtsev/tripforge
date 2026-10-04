@@ -42,12 +42,17 @@ RUN --mount=type=cache,id=tripforge-pnpm,target=/pnpm/store \
 
 FROM node:24.21.0-bookworm-slim@sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6 AS runtime
 
-RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends libpcre2-8-0=10.42-1+deb12u2 \
+  && rm -rf /var/lib/apt/lists/* \
+  && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 WORKDIR /app/apps/api
 
+ARG TRIPFORGE_VERSION=1.0.0
 ENV NODE_ENV=production
 ENV PORT=4000
+ENV TRIPFORGE_VERSION=$TRIPFORGE_VERSION
 
 COPY --from=production-dependencies --chown=node:node /workspace/node_modules /app/node_modules
 COPY --from=production-dependencies --chown=node:node /workspace/apps/api/node_modules ./node_modules

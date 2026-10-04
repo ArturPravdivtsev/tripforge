@@ -3,14 +3,15 @@
 [Overview](../README.md) · [Case study](./portfolio-case-study.md) · [Interview guide](./portfolio-interview-guide.md)
 
 This is a claim-to-evidence map, not a claim that every configured system has run
-in production. Stage 31 is the retained baseline; Stage 32 packages that evidence
-and reruns relevant regressions without repeating the long load qualification.
+in production. Stage 31 is the retained baseline; Stage 32 packages that evidence,
+and the [Stage 33 record](./stage33-release-verification.md) qualifies the v1.0.0
+release candidate without repeating the long load qualification.
 
 **Current exception:** one unfixed HIGH in the ESLint-only dependency chain
 (`braces`, GHSA-vfj7-8cjw-p6xm) has an exact, expiring non-production exception
 after final-artifact reachability checks. `security:audit` is green under that
 policy and still rejects every unexpected HIGH/CRITICAL. See the
-[current verification report](./stage32-verification.md); this is not a claim that
+[current release record](./stage33-release-verification.md); this is not a claim that
 the advisory disappeared or that container base images are vulnerability-free.
 
 ## Reading the status labels

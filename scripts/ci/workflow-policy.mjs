@@ -114,6 +114,13 @@ export function validateWorkflow(source, filename = "workflow.yml") {
       condition.includes("github.event_name == 'push'") &&
       condition.includes("refs/heads/main") &&
       condition.includes("refs/tags/v");
+    const isTrustedRelease =
+      basename(filename) === "ci.yml" &&
+      jobName === "release" &&
+      condition.includes("github.event_name == 'push'") &&
+      condition.includes("refs/tags/v") &&
+      !condition.includes("refs/heads/main") &&
+      scopes.every((scope) => scope === "contents");
     const isCodeql =
       basename(filename) === "codeql.yml" &&
       scopes.every((scope) => scope === "security-events");
@@ -123,7 +130,7 @@ export function validateWorkflow(source, filename = "workflow.yml") {
       job.environment === "production" &&
       scopes.every((scope) => scope === "id-token");
 
-    if (!isTrustedPublish && !isCodeql && !isAwsDeploy) {
+    if (!isTrustedPublish && !isTrustedRelease && !isCodeql && !isAwsDeploy) {
       errors.push(
         `${filename}: job ${jobName} has unexpected write permissions: ${scopes.join(", ")}`,
       );
@@ -134,6 +141,8 @@ export function validateWorkflow(source, filename = "workflow.yml") {
     const jobs = workflow.jobs ?? {};
     const gate = jobs.gate;
     const publish = jobs.publish;
+    const releaseAssets = jobs["release-assets"];
+    const release = jobs.release;
     const mandatory = [
       "quality",
       "database",
@@ -146,6 +155,9 @@ export function validateWorkflow(source, filename = "workflow.yml") {
     const gateNeeds = Array.isArray(gate?.needs) ? gate.needs : [];
     if (!(jobs.quality?.steps ?? []).some((step) => step.run === "pnpm docs:check" && step["continue-on-error"] !== true && step.if === undefined) || jobs.quality?.["continue-on-error"] === true) {
       errors.push(`${filename}: Quality must run an unconditional blocking pnpm docs:check`);
+    }
+    if (!(jobs.quality?.steps ?? []).some((step) => step.run === "pnpm release:check" && step["continue-on-error"] !== true && step.if === undefined)) {
+      errors.push(`${filename}: Quality must run an unconditional blocking pnpm release:check`);
     }
 
     if (gate?.name !== "Gate" || !String(gate?.if ?? "").includes("always()")) {
@@ -163,6 +175,47 @@ export function validateWorkflow(source, filename = "workflow.yml") {
     }
     if (!String(publish?.if ?? "").includes("github.event_name == 'push'")) {
       errors.push(`${filename}: publish must be guarded against pull_request events`);
+    }
+
+    const trustedTagCondition = (job) => {
+      const condition = String(job?.if ?? "");
+      return condition.includes("github.event_name == 'push'") &&
+        condition.includes("refs/tags/v") &&
+        !condition.includes("refs/heads/main");
+    };
+    const releaseAssetNeeds = Array.isArray(releaseAssets?.needs) ? releaseAssets.needs : [];
+    const releaseNeeds = Array.isArray(release?.needs) ? release.needs : [];
+    if (!trustedTagCondition(releaseAssets)) {
+      errors.push(`${filename}: release-assets must run only for a trusted version tag push`);
+    }
+    if (!["gate", "publish"].every((job) => releaseAssetNeeds.includes(job))) {
+      errors.push(`${filename}: release-assets must depend on Gate and image publish`);
+    }
+    if (!trustedTagCondition(release)) {
+      errors.push(`${filename}: release must run only for a trusted version tag push`);
+    }
+    if (!["gate", "publish", "release-assets"].every((job) => releaseNeeds.includes(job))) {
+      errors.push(`${filename}: release must depend on Gate, image publish and manifest generation`);
+    }
+    if (release?.permissions?.contents !== "write") {
+      errors.push(`${filename}: only the trusted release job must receive contents write`);
+    }
+    const releaseText = JSON.stringify(release ?? {});
+    for (const required of [
+      "gh release view",
+      "gh release create",
+      "--draft",
+      "SHA256SUMS",
+      "--verify-tag",
+      "gh release edit",
+    ]) {
+      if (!releaseText.includes(required)) {
+        errors.push(`${filename}: release policy is missing ${required}`);
+      }
+    }
+    const securityText = JSON.stringify(jobs.security ?? {});
+    if (!securityText.includes("pnpm security:secrets:history")) {
+      errors.push(`${filename}: Security must scan reachable Git history`);
     }
 
     for (const [jobName, job] of entries(jobs)) {
@@ -198,6 +251,7 @@ export function validateWorkflow(source, filename = "workflow.yml") {
       "type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}",
       '"provenance":"mode=max"',
       '"sbom":true',
+      'GITHUB_REF=\\"refs/tags/$REF_NAME\\" node scripts/release/check.mjs',
     ]) {
       if (!publishText.includes(required)) {
         errors.push(`${filename}: publish policy is missing ${required}`);

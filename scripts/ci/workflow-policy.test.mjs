@@ -14,6 +14,35 @@ test("documentation validation cannot disappear or become advisory", async () =>
   }
 });
 
+test("formal release is trusted-tag-only and requires Gate, images and manifest", async () => {
+  const source = await readFile(new URL("../../.github/workflows/ci.yml", import.meta.url), "utf8");
+  assert.deepEqual(validateWorkflow(source, "ci.yml"), []);
+
+  const releaseStart = source.indexOf("\n  release:\n");
+  assert.notEqual(releaseStart, -1);
+  const prefix = source.slice(0, releaseStart);
+  const release = source.slice(releaseStart);
+
+  const mainRelease = release.replace(
+    "startsWith(github.ref, 'refs/tags/v')",
+    "github.ref == 'refs/heads/main'",
+  );
+  assert.ok(
+    validateWorkflow(prefix + mainRelease, "ci.yml").some((error) =>
+      error.includes("trusted version tag push"),
+    ),
+  );
+
+  for (const dependency of ["gate", "publish", "release-assets"]) {
+    const changed = release.replace(`      - ${dependency}\n`, "");
+    assert.ok(
+      validateWorkflow(prefix + changed, "ci.yml").some((error) =>
+        error.includes("release must depend on Gate, image publish and manifest generation"),
+      ),
+    );
+  }
+});
+
 test("accepts an immutable read-only workflow", () => {
   const source = `
 name: Example

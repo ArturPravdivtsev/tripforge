@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
 
-import { scanText } from "./secret-scan.mjs";
+import { scanHistory, scanText } from "./secret-scan.mjs";
 
 test("detects high-risk committed secret shapes without returning values", () => {
   const source = [
@@ -39,4 +43,27 @@ test("allows explicit empty and fake fixture values", () => {
   );
 
   assert.deepEqual(findings, []);
+});
+
+test("scans reachable Git history without returning credential values", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tripforge-history-secret-test-"));
+  try {
+    execFileSync("git", ["init", "-q"], { cwd: root });
+    execFileSync("git", ["config", "user.email", "test@example.invalid"], { cwd: root });
+    execFileSync("git", ["config", "user.name", "TripForge Test"], { cwd: root });
+    const secret = "sk-proj-" + "h".repeat(40);
+    await writeFile(join(root, "old.env"), `OPENAI_API_KEY=${secret}\n`);
+    execFileSync("git", ["add", "old.env"], { cwd: root });
+    execFileSync("git", ["commit", "-qm", "fixture"], { cwd: root });
+    execFileSync("git", ["rm", "-q", "old.env"], { cwd: root });
+    execFileSync("git", ["commit", "-qm", "remove fixture"], { cwd: root });
+
+    const result = scanHistory(root);
+    assert.equal(result.findings.length, 1);
+    assert.equal(result.findings[0].name, "OpenAI API key");
+    assert.match(result.findings[0].object, /^[0-9a-f]{40}$/u);
+    assert.equal(JSON.stringify(result).includes(secret), false);
+  } finally {
+    await rm(root, { recursive: true });
+  }
 });

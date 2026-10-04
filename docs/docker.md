@@ -58,7 +58,10 @@ receives signatures for host-visible `localhost:4566`. Host-only mappings are
 `127.0.0.1:5433` for PostgreSQL and `127.0.0.1:4566` for LocalStack.
 Redis and the worker remain internal and expose no host ports. Both API and
 worker receive `redis://redis:6379`, but use independent connections and
-protocols. The API does not depend on Redis health for startup, REST, or its
+protocols. These local services run with `NODE_ENV=development` because the
+Compose Redis endpoint is intentionally plaintext; deployed production services
+remain fail-closed unless their endpoint uses `rediss://`. The API does not
+depend on Redis health for startup, REST, or its
 HTTP healthcheck; the worker deliberately waits for Redis because queue work is
 its purpose.
 
