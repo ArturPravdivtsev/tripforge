@@ -43,6 +43,31 @@ test("formal release is trusted-tag-only and requires Gate, images and manifest"
   }
 });
 
+test("GHCR web identity keeps API config but excludes deployment-time S3 origin", async () => {
+  const source = await readFile(new URL("../../.github/workflows/ci.yml", import.meta.url), "utf8");
+  assert.deepEqual(validateWorkflow(source, "ci.yml"), []);
+
+  const withoutApiBuildArg = source.replace(
+    "            NEXT_PUBLIC_API_URL=${{ env.PUBLIC_API_URL }}\n",
+    "",
+  );
+  assert.ok(
+    validateWorkflow(withoutApiBuildArg, "ci.yml").some((error) =>
+      error.includes("publish API build contract"),
+    ),
+  );
+
+  const withS3BuildArg = source.replace(
+    "            NEXT_PUBLIC_MAPTILER_KEY=${{ env.PUBLIC_MAPTILER_KEY }}\n",
+    "            NEXT_PUBLIC_MAPTILER_KEY=${{ env.PUBLIC_MAPTILER_KEY }}\n            NEXT_PUBLIC_S3_UPLOAD_ORIGIN=${{ vars.TRIPFORGE_PUBLIC_S3_UPLOAD_ORIGIN }}\n",
+  );
+  assert.ok(
+    validateWorkflow(withS3BuildArg, "ci.yml").some((error) =>
+      error.includes("S3 upload origin must not be a publish build input"),
+    ),
+  );
+});
+
 test("accepts an immutable read-only workflow", () => {
   const source = `
 name: Example

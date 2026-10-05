@@ -142,10 +142,14 @@ read-only package access and referenced by ARN. ORS is also an external secret.
 No AWS keys, PAT, DB password, Redis password, or ORS key belongs in Git,
 tfvars, task plaintext environment, or `NEXT_PUBLIC_*`.
 
-`NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_S3_UPLOAD_ORIGIN`, and the browser-visible
-MapTiler key are Stage 28 build inputs. A web digest is valid only for those
-origins. Changing public configuration requires a new build/digest; deployment
-must not relabel incompatible bytes.
+`NEXT_PUBLIC_API_URL` and the browser-visible MapTiler key are web build inputs.
+A web digest is valid only for those build-time public values; changing them
+requires a new digest. The documents bucket is allocated by Terraform, so
+`S3_UPLOAD_ORIGIN` is injected only into the web ECS task at runtime as
+`https://${aws_s3_bucket.documents.bucket_regional_domain_name}`. The AWS SDK v3
+signing client has no custom production endpoint and uses `forcePathStyle=false`,
+so presigned object URLs use that same regional virtual-hosted bucket origin.
+Changing only this runtime origin does not rebuild or relabel the OCI image.
 
 ## Deployment and rollback
 

@@ -3,10 +3,11 @@
 Stage 32 packages an unreleased release candidate. Stage 33 will decide publication
 and v1.0; it must not manufacture a live deployment to make the portfolio look complete.
 
-- [ ] Choose a repository license before public v1.0 publication. No LICENSE was
-      found during Stage 32 inspection; no license is selected on the owner's behalf.
-- [ ] Confirm intended public remote/visibility and hosted CI/GHCR/protection.
-      No guessed CI/license/release badges or nonexistent live-demo links.
+- [x] Owner selected MIT; the root `LICENSE` names only
+      `Copyright (c) 2026 Artur Pravdivtsev`.
+- [ ] Confirm public visibility, repository rules, Immutable Releases and GHCR
+      package visibility. Mandatory hosted `main` Gate passed; final GHCR retry
+      remains pending. No guessed release badge or nonexistent live-demo link.
 - [ ] Establish a real private vulnerability reporting channel. SECURITY.md is
       deferred until that channel and supported release policy exist; do not
       invent an email or send security reports to public issue comments.

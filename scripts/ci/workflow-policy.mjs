@@ -257,6 +257,23 @@ export function validateWorkflow(source, filename = "workflow.yml") {
         errors.push(`${filename}: publish policy is missing ${required}`);
       }
     }
+    for (const forbidden of [
+      "TRIPFORGE_PUBLIC_S3_UPLOAD_ORIGIN",
+      "PUBLIC_S3_UPLOAD_ORIGIN",
+      "NEXT_PUBLIC_S3_UPLOAD_ORIGIN",
+    ]) {
+      if (publishText.includes(forbidden)) {
+        errors.push(`${filename}: S3 upload origin must not be a publish build input: ${forbidden}`);
+      }
+    }
+    for (const required of [
+      "TRIPFORGE_PUBLIC_API_URL",
+      "NEXT_PUBLIC_API_URL=${{ env.PUBLIC_API_URL }}",
+    ]) {
+      if (!publishText.includes(required)) {
+        errors.push(`${filename}: publish API build contract is missing ${required}`);
+      }
+    }
   }
 
   if (basename(filename) === "deploy-aws.yml") {

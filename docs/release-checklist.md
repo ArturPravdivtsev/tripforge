@@ -9,8 +9,10 @@ Status vocabulary: **PASS**, **PENDING EXTERNAL**, **NOT APPLICABLE**, or
   accessibility, integration/check/check:full, audit/current/history secret scans,
   security, bundle/performance, observability, deterministic AI, peer/workflow,
   release-policy and whitespace checks pass.
-- **PENDING EXTERNAL** — hosted `CI / Gate`, Browser E2E + k6 smoke, branch rules,
-  CodeQL and Dependency Review cannot be inspected without a remote/valid token.
+- **PASS** — the complete mandatory hosted `main` qualification passed: Quality,
+  Integration, Database, Browser/load, Docker, Security, Infrastructure and Gate.
+- **PENDING EXTERNAL** — repository rules, CodeQL/Dependency Review enforcement
+  and immutable-release settings still require explicit verification.
 - **PASS** — policy tests require full-SHA actions and deny PR credentials,
   publishing permissions and privileged artifact bridges.
 - **PASS** — web/API/migrate images are rebuilt and scanned; all expose `1.0.0`,
@@ -35,8 +37,9 @@ Status vocabulary: **PASS**, **PENDING EXTERNAL**, **NOT APPLICABLE**, or
 
 - **PASS** — dependency policy permits only the exact unexpired, dev-only
   `braces@3.0.3` HIGH exception through 2026-11-01.
-- **PASS** — fresh image scans: each image has 52 HIGH/4 CRITICAL unfixed Debian
-  findings and zero fixable HIGH/CRITICAL after the `libpcre2-8-0` patch.
+- **PASS** — fresh image scans: each image has 48 HIGH/1 CRITICAL unfixed Debian
+  findings and zero fixable HIGH/CRITICAL after the targeted `libpcre2-8-0` and
+  `perl-base` security revisions.
   Production risk acceptance remains an operator decision.
 - **PASS** (local) — dedicated DML role and migrator separation are exercised;
   **PENDING EXTERNAL** for hosted secret rotation/restart.
@@ -76,10 +79,14 @@ Status vocabulary: **PASS**, **PENDING EXTERNAL**, **NOT APPLICABLE**, or
 
 ## Publication
 
-- **BLOCKED** — no Git remote and the available GitHub CLI credential is invalid;
-  hosted main/tag CI, immutable GHCR digests and GitHub Release cannot be produced.
-- **BLOCKED** — public visibility requires an owner license decision; no license
-  is fabricated.
-- **PENDING EXTERNAL** — enable GitHub private vulnerability reporting and verify
-  repository rules, immutable releases and package visibility before publication.
+- **PASS** — Git remote and GitHub CLI authentication are restored.
+- **PASS** — owner license decision is MIT; canonical root `LICENSE` is present.
+- **PASS** — mandatory hosted `main` Gate passed on the security-fixed candidate.
+- **PENDING EXTERNAL** — GHCR publication awaits the final delivery-configuration
+  commit and hosted retry. `TRIPFORGE_PUBLIC_API_URL` remains required; the
+  Terraform-allocated S3 hostname is now web runtime configuration.
+- **PENDING EXTERNAL** — verify repository rules and actual Immutable Releases state.
+- **PENDING EXTERNAL** — enable private vulnerability reporting before public visibility.
+- **PENDING EXTERNAL** — live AWS qualification; no Terraform apply or deployment occurred.
+- **PENDING EXTERNAL** — trusted `v1.0.0` tag and GitHub Release; neither exists yet.
 - **NOT APPLICABLE** — npm publication; every workspace package is private.

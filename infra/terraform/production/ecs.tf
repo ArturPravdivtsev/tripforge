@@ -44,6 +44,7 @@ locals {
       }]
       environment = concat(local.runtime_environment, [
         { name = "PORT", value = "3000" },
+        { name = "S3_UPLOAD_ORIGIN", value = local.s3_upload_origin },
       ])
       healthCheck = {
         command = [

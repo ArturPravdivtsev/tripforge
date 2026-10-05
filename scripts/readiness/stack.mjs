@@ -127,7 +127,7 @@ export async function startStack({ web = true, replicas = 1, worker = true } = {
       LOG_LEVEL: "warn",
       READINESS_API_DIR: join(directory, "apps/api"),
       NEXT_PUBLIC_API_URL: apiOrigin,
-      NEXT_PUBLIC_S3_UPLOAD_ORIGIN: new URL(s3Endpoint).origin,
+      S3_UPLOAD_ORIGIN: new URL(s3Endpoint).origin,
       NEXT_PUBLIC_MAPTILER_KEY: "readiness-provider-boundary",
       NEXT_TELEMETRY_DISABLED: "1",
     };

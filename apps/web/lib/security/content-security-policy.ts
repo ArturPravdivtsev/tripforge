@@ -16,7 +16,7 @@ export function buildContentSecurityPolicy({
   const api = exactHttpOrigin(apiOrigin, "NEXT_PUBLIC_API_URL");
   const socket = websocketOrigin(api);
   const upload = s3UploadOrigin
-    ? exactHttpOrigin(s3UploadOrigin, "NEXT_PUBLIC_S3_UPLOAD_ORIGIN")
+    ? exactHttpOrigin(s3UploadOrigin, "S3_UPLOAD_ORIGIN")
     : undefined;
   const directives = [
     ["default-src", "'self'"],
@@ -54,7 +54,11 @@ export function buildContentSecurityPolicy({
 function exactHttpOrigin(value: string, name: string): string {
   try {
     const url = new URL(value);
-    if (!["http:", "https:"].includes(url.protocol) || url.origin !== value) {
+    if (
+      !["http:", "https:"].includes(url.protocol) ||
+      url.origin !== value ||
+      url.hostname.includes("*")
+    ) {
       throw new Error();
     }
     return value;

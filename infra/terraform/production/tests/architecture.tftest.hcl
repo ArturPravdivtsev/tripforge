@@ -17,6 +17,15 @@ override_data {
   }
 }
 
+override_resource {
+  target          = aws_s3_bucket.documents
+  override_during = plan
+  values = {
+    id                          = "tripforge-production-documents-test"
+    bucket_regional_domain_name = "tripforge-production-documents-test.s3.eu-west-1.amazonaws.com"
+  }
+}
+
 override_data {
   target = data.aws_iam_policy_document.ecs_assume_role
   values = { json = "{\"Version\":\"2012-10-17\",\"Statement\":[]}" }
@@ -143,6 +152,20 @@ run "production_boundaries" {
       length([for secret in local.migrate_container.secrets : secret if secret.name == "OPENAI_API_KEY"]) == 0
     )
     error_message = "OpenAI credentials must never be injected into worker or migration tasks."
+  }
+
+  assert {
+    condition = (
+      one([for entry in local.web_container.environment : entry.value if entry.name == "S3_UPLOAD_ORIGIN"]) == "https://tripforge-production-documents-test.s3.eu-west-1.amazonaws.com" &&
+      one([for entry in local.api_container.environment : entry.value if entry.name == "S3_BUCKET"]) == "tripforge-production-documents-test" &&
+      one([for entry in local.api_container.environment : entry.value if entry.name == "S3_REGION"]) == "eu-west-1" &&
+      one([for entry in local.api_container.environment : entry.value if entry.name == "S3_FORCE_PATH_STYLE"]) == "false" &&
+      length([for entry in local.api_container.environment : entry if contains(["S3_ENDPOINT", "S3_PUBLIC_ENDPOINT"], entry.name)]) == 0 &&
+      length([for entry in local.api_container.environment : entry if entry.name == "S3_UPLOAD_ORIGIN"]) == 0 &&
+      length([for entry in local.worker_container.environment : entry if entry.name == "S3_UPLOAD_ORIGIN"]) == 0 &&
+      length([for entry in local.migrate_container.environment : entry if entry.name == "S3_UPLOAD_ORIGIN"]) == 0
+    )
+    error_message = "The web CSP origin must match the API signing client's regional virtual-hosted S3 origin."
   }
 }
 

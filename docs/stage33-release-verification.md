@@ -21,10 +21,12 @@ promise of stable independently published TypeScript package APIs.
 
 ## Source commit
 
-Stage 33 starts at security-closure commit
-`d1872352c91c261eec82579def07a90908ad7884`. The qualified release-preparation
-commit is the commit containing this document; its immutable SHA is recorded by
-the final local report and must later equal the remote main commit and tag target.
+Stage 33 began at security-closure commit
+`d1872352c91c261eec82579def07a90908ad7884`. Mandatory hosted `main`
+qualification ultimately passed at
+`baf80b7a32d2cfc001faffab0a0b8cff5184100b`. The final delivery-boundary
+correction is the commit containing this document; its immutable SHA is recorded
+by the final report and must later pass hosted `main` before becoming a tag target.
 This avoids an impossible self-referential commit hash inside its own contents.
 
 Release freeze permits only release-blocker, release-note, security-blocker or
@@ -34,7 +36,7 @@ modernization or unrelated refactor is in scope.
 ## Local gates
 
 Stage 33 results below were recorded from the complete deterministic suite on
-2026-10-04.
+2026-10-05.
 Stage 31's accepted 30-minute soak/stress evidence is retained because Stage 33
 does not change product, database, network or pool behavior; its only runtime
 package change is the targeted Debian security revision documented below.
@@ -51,15 +53,24 @@ package change is the targeted Debian security revision documented below.
 | Build, check, integration, check:full, peers | **PASS**; integration 98/98 and isolated `check:full` |
 | Docker Compose/build/smoke and Trivy | **PASS locally**; patched runtime images, functional smoke with documented LocalStack test image |
 | Terraform fmt/init/validate/test and Trivy IaC | **PASS**; tests 1/1 + 2/2, zero HIGH/CRITICAL misconfigurations |
-| Workflow/release policy tests | **PASS**; workflow 9/9, release 4/4 |
+| Workflow/release policy tests | **PASS**; workflow 11/11, release 4/4 |
 | Clean release tree install/build/release/docs | **PASS**; frozen install and production build in isolated source copy |
 
 ## Hosted gates
 
-No Git remote is configured and the available GitHub CLI credential is invalid.
-Hosted main `CI / Gate`, repository rules/settings, CodeQL/Dependency Review,
-trusted tag CI and hosted test counts are therefore **not inspected**. No remote,
-tag or release is invented.
+Git access was restored after the initial publication attempt. Hosted defects
+were closed in sequence: clean-runner workspace behavior, Chromium keyboard DnD,
+then fixable Debian container vulnerabilities. The complete mandatory `main`
+qualification at `baf80b7...` passed Quality, Integration, Database, Browser/load,
+Docker, Security, Infrastructure and aggregate Gate.
+
+The following GHCR attempt stopped before image build because both public API
+and S3 origins were configured as build preconditions. The API origin is a real
+browser build input and remains required. The S3 hostname depends on Terraform
+`bucket_prefix`, so this delivery correction moves only that value to the web
+ECS runtime. GHCR retry, repository rules, Immutable Releases, private
+vulnerability reporting and trusted-tag publication remain unverified. No tag
+or GitHub Release is inferred from the passing main Gate.
 
 ## Security status
 
@@ -75,9 +86,9 @@ portfolio screenshots were visually reviewed: all use fictional Trip/person/
 reservation data and show no email, key, AWS account, session or local path.
 Documentation checks reject absolute developer paths.
 
-The repository has no `LICENSE`, `LICENSE.md` or `COPYING`: **LICENSE DECISION
-REQUIRED BEFORE PUBLICATION** and public visibility remains blocked until the
-owner decides. No `SECURITY.md` is fabricated because a real remote private-
+The owner selected MIT. The canonical root `LICENSE` records
+`Copyright (c) 2026 Artur Pravdivtsev`; no dual license or additional holder is
+invented. No `SECURITY.md` is fabricated because a real remote private-
 reporting capability cannot be inspected; enable GitHub private vulnerability
 reporting/Security Advisories before public publication.
 
@@ -87,19 +98,19 @@ The exact allowed `node:24.21.0-bookworm-slim` multi-platform digest was checked
 on 2026-10-04 and still resolves to
 `sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6`.
 There is no newer digest on that pinned tag, so no cosmetic base churn is made.
-A fresh Trivy 0.74.0 database initially exposed one fixable HIGH in the base:
-`CVE-2026-103111` in `libpcre2-8-0 10.42-1+deb12u1`. Both runtime Dockerfiles
-install the exact Debian security revision `10.42-1+deb12u2`; rescans then report
-the same result for all three images: **52 HIGH, 4 CRITICAL, 0 fixable HIGH and
-0 fixable CRITICAL**. These are unfixed Debian findings, not a clean-image or
+A fresh Trivy 0.74.0 database initially exposed fixable Debian findings in
+`libpcre2-8-0` and later `perl-base`. Both runtime Dockerfiles install the exact
+Bookworm security revisions `10.42-1+deb12u2` and `5.36.0-7+deb12u4`; current
+rescans report the same result for all three images: **48 HIGH, 1 CRITICAL,
+0 fixable HIGH and 0 fixable CRITICAL**. These are unfixed Debian findings, not a clean-image or
 non-exploitability claim. `braces` is absent from web, API/worker, migrate and
 browser runtime artifacts.
 
 | Local image | Image ID | Size (bytes) |
 | --- | --- | ---: |
-| `tripforge-web:local` | `sha256:68b2ec11aa6e3b0ca6f75082e3edad8a45d4995e95cf6d76eea292a39a2ad397` | 322173884 |
-| `tripforge-api:local` | `sha256:c77c0c2a5678aed637f88e97312bd7610d38746ae8d4a5de52cc57f471a90bfb` | 385393947 |
-| `tripforge-api-migrate:local` | `sha256:81cf8f500bc6f6dda38bc1b4c3061dfd38adc7fa2abd91965726bc4f5e6a852c` | 386064027 |
+| `tripforge-ci-web:local` | `sha256:c47045dda2bdec965e69529e20daaa6b7af9349aafe9c62e29098422d0dfd7e5` | 329846008 |
+| `tripforge-ci-api:local` | `sha256:2bf2a8c51e0f9f59dcb45afd673dfdcea3813630bfef10209b5081707b4d5501` | 393066028 |
+| `tripforge-ci-migrate:local` | `sha256:2e43bdb9cccd021decff0b2ec798953903e443b9c1b630692e4291a0994f9e31` | 393736108 |
 
 All three expose `TRIPFORGE_VERSION=1.0.0`; the worker uses the API image. The
 local Compose API/worker use `NODE_ENV=development` with their intentionally
@@ -131,8 +142,8 @@ CI / Gate → GHCR publish → manifest + SHA256SUMS → complete draft → veri
 Only the tag-only release job gets `contents: write`; it uses the built-in token,
 refuses an existing release, validates exact assets/schema/checksum and never
 moves a tag or overwrites an asset. Immutable Releases, branch protection, GHCR
-visibility and private reporting are owner/admin settings still pending hosted
-access. No final tag, draft, release URL or GHCR digest currently exists.
+visibility and private reporting remain owner/admin settings pending verification.
+No final tag, draft or release currently exists; GHCR publication retry remains pending.
 
 ## Known limitations
 
@@ -157,6 +168,7 @@ three `@sha256` references from the release manifest and migrate before rollout.
 ## Go/no-go decision
 
 - Local release candidate: **GO — LOCALLY QUALIFIED**.
-- Remote release: **NOT PUBLISHED** — hosted GitHub access unavailable.
-- Public repository publication: **BLOCKED** — license/visibility/private-
-  reporting owner decisions and hosted repository settings remain.
+- Remote release: **NOT PUBLISHED** — mandatory main Gate passed, but final GHCR/
+  trusted-tag publication has not run successfully.
+- Public repository publication: **PENDING EXTERNAL** — MIT is resolved; visibility,
+  repository rules, Immutable Releases and private reporting remain to verify.

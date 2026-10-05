@@ -113,6 +113,7 @@ NODE
 docker run -d --name "$web" -p 127.0.0.1::3000 \
   -e NODE_ENV=production \
   -e OTEL_ENABLED=false \
+  -e S3_UPLOAD_ORIGIN=http://127.0.0.1:4566 \
   "$web_image" >/dev/null
 web_port="$(docker port "$web" 3000/tcp | sed 's/.*://')"
 
@@ -125,4 +126,16 @@ done
 curl --fail --silent "http://127.0.0.1:${web_port}/" >/dev/null
 curl --fail --silent "http://127.0.0.1:${web_port}/health" >/dev/null
 
-echo "Container smoke passed: migrate twice, API /health + /ready, auth, Trip creation, and web /health (AI and OTEL disabled)."
+WEB_SMOKE_PORT="$web_port" node <<'NODE'
+const response = await fetch(`http://127.0.0.1:${process.env.WEB_SMOKE_PORT}/`);
+const policy = response.headers.get("content-security-policy") ?? "";
+const connectSource = policy.split(";").find((directive) => directive.trim().startsWith("connect-src ")) ?? "";
+if (!connectSource.split(/\s+/u).includes("http://127.0.0.1:4566")) {
+  throw new Error("Web CSP does not contain the exact runtime S3 upload origin");
+}
+if (connectSource.includes("*") || connectSource.split(/\s+/u).includes("https:")) {
+  throw new Error("Web CSP broadened the upload connection policy");
+}
+NODE
+
+echo "Container smoke passed: migrate twice, API /health + /ready, auth, Trip creation, web /health, and exact runtime S3 CSP (AI and OTEL disabled)."

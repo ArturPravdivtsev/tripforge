@@ -192,9 +192,8 @@ place: backward-compatible bug/security fixes use PATCH, backward-compatible
 features use MINOR, and intentionally incompatible documented application/REST/
 data behavior uses MAJOR.
 
-Before public repository publication, the owner must choose or deliberately
-decline a reuse license. No license is inferred by this workflow. The owner must
-also enable GitHub private vulnerability reporting/Security Advisories rather
+The owner selected the repository's root MIT License. The owner must also enable
+GitHub private vulnerability reporting/Security Advisories rather
 than inventing an email contact. Repository and GHCR visibility remain explicit
 owner settings.
 
@@ -210,9 +209,7 @@ The web artifact is not environment-neutral. These browser-visible values are
 baked into its JavaScript by the trusted build:
 
 - required `TRIPFORGE_PUBLIC_API_URL` → `NEXT_PUBLIC_API_URL`;
-- optional `TRIPFORGE_PUBLIC_MAPTILER_KEY` → `NEXT_PUBLIC_MAPTILER_KEY`;
-- required `TRIPFORGE_PUBLIC_S3_UPLOAD_ORIGIN` →
-  `NEXT_PUBLIC_S3_UPLOAD_ORIGIN`.
+- optional `TRIPFORGE_PUBLIC_MAPTILER_KEY` → `NEXT_PUBLIC_MAPTILER_KEY`.
 
 They are GitHub repository variables, not secrets. A MapTiler browser key may be
 public client configuration, but it must be domain/referer restricted where the
@@ -225,6 +222,15 @@ server configuration. They are never Docker build arguments, labels, cache
 content or provenance inputs. Account, role, cluster, database endpoint, and
 production-domain values remain operator-owned variables rather than source
 defaults.
+
+`S3_UPLOAD_ORIGIN` is different: it is an exact, non-secret server-runtime value
+injected into the web task by the deployment. The Next.js proxy validates it as
+one HTTP(S) origin and adds only that origin to CSP `connect-src`. It is not a
+GHCR preflight input, Docker build argument, client-bundle value or OCI identity
+input. Changing only the Terraform-managed bucket hostname requires a new web
+task definition, not a rebuilt image. Production derives the value from the
+documents bucket's regional domain; local Compose uses
+`http://127.0.0.1:4566` for the browser-facing LocalStack endpoint.
 
 ## AWS promotion
 
@@ -297,8 +303,10 @@ YAML cannot configure repository protection. An administrator must:
 3. Decide whether to require the branch to be up to date. Strict mode reduces
    stale-base risk but causes an additional CI run after main advances.
 4. Enable dependency graph/Dependabot and configure GHCR package visibility.
-5. Set the three `TRIPFORGE_PUBLIC_*` repository variables before a trusted
-   publish. No PAT or admin token is needed; publication uses `GITHUB_TOKEN`.
+5. Set required `TRIPFORGE_PUBLIC_API_URL` and optional
+   `TRIPFORGE_PUBLIC_MAPTILER_KEY` before a trusted publish. The S3 bucket origin
+   is deployment-time `S3_UPLOAD_ORIGIN`, not a repository build variable. No PAT
+   or admin token is needed; publication uses `GITHUB_TOKEN`.
 6. If the plan supports GitHub Code Security, set
    `ENABLE_GITHUB_CODE_SECURITY=true`, enable code scanning/dependency review,
    and optionally require their stable checks.
@@ -308,8 +316,9 @@ YAML cannot configure repository protection. An administrator must:
    sequence assembles and checks assets before publication.
 9. Enable GitHub private vulnerability reporting/Security Advisories. No
    `SECURITY.md` is committed until a real reporting channel is inspectable.
-10. Make the repository public only after an explicit license/visibility decision;
-    never change repository or GHCR visibility as a side effect of release CI.
+10. The license decision is MIT. Make the repository public only after the
+    remaining explicit visibility decision; never change repository or GHCR
+    visibility as a side effect of release CI.
 
 Actual pull-request, trusted-push, GHCR, SBOM, provenance, and branch-protection
 QA requires a configured GitHub remote and authenticated repository access. It

@@ -231,7 +231,6 @@ jobs:
           build-args: |
             NEXT_PUBLIC_API_URL=http://127.0.0.1:4000
             NEXT_PUBLIC_MAPTILER_KEY=ci-public-placeholder
-            NEXT_PUBLIC_S3_UPLOAD_ORIGIN=http://127.0.0.1:4566
             TRIPFORGE_VERSION=1.0.0
       - name: Build API candidate
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
@@ -436,7 +435,6 @@ jobs:
     env:
       PUBLIC_API_URL: ${{ vars.TRIPFORGE_PUBLIC_API_URL }}
       PUBLIC_MAPTILER_KEY: ${{ vars.TRIPFORGE_PUBLIC_MAPTILER_KEY }}
-      PUBLIC_S3_UPLOAD_ORIGIN: ${{ vars.TRIPFORGE_PUBLIC_S3_UPLOAD_ORIGIN }}
     steps:
       - name: Check out trusted source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -448,7 +446,6 @@ jobs:
           REF_TYPE: ${{ github.ref_type }}
         run: |
           test -n "$PUBLIC_API_URL"
-          test -n "$PUBLIC_S3_UPLOAD_ORIGIN"
           if [[ "$REF_TYPE" == tag ]]; then
             [[ "$REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]
             GITHUB_REF="refs/tags/$REF_NAME" node scripts/release/check.mjs
@@ -541,7 +538,6 @@ jobs:
           build-args: |
             NEXT_PUBLIC_API_URL=${{ env.PUBLIC_API_URL }}
             NEXT_PUBLIC_MAPTILER_KEY=${{ env.PUBLIC_MAPTILER_KEY }}
-            NEXT_PUBLIC_S3_UPLOAD_ORIGIN=${{ env.PUBLIC_S3_UPLOAD_ORIGIN }}
             TRIPFORGE_VERSION=${{ steps.release-identity.outputs.version }}
       - name: Build and push API image
         id: build-api

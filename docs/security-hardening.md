@@ -188,7 +188,7 @@ source table.
 | `LOCALSTACK_AUTH_TOKEN` | local/CI secret | uncommitted runtime value |
 | `NEXT_PUBLIC_MAPTILER_KEY` | browser-visible public API key | origin-restricted, quota-limited, rotatable |
 | `NEXT_PUBLIC_API_URL` | public configuration | exact origin, embedded in web build |
-| `NEXT_PUBLIC_S3_UPLOAD_ORIGIN` | public configuration | exact upload origin for CSP |
+| `S3_UPLOAD_ORIGIN` | non-secret server runtime configuration | exact validated upload origin for CSP; never embedded in the client bundle |
 
 Repository `.env` variants and credentials remain ignored; examples contain
 only local values/placeholders. The secret scan covers tracked/unignored text
@@ -226,10 +226,10 @@ obsolete exceptions, and dates after the 2026-11-01 review deadline. Remove the
 exception when a compatible upstream fix appears, or immediately if artifact or
 runtime reachability changes.
 
-Fresh 2026-10-04 Trivy 0.74.0 scans found a fixable Debian HIGH,
-`CVE-2026-103111`, in the pinned Node base's `libpcre2-8-0`. Runtime images now
-install Debian security revision `10.42-1+deb12u2`. Web, API/worker and migrate
-rescans each report 52 HIGH and 4 CRITICAL unfixed OS findings, with zero fixable
+Fresh Trivy 0.74.0 scans found fixable Debian findings in the pinned Node base's
+`libpcre2-8-0` and `perl-base`. Runtime images install security revisions
+`10.42-1+deb12u2` and `5.36.0-7+deb12u4`. Web, API/worker and migrate rescans
+each report 48 HIGH and 1 CRITICAL unfixed OS findings, with zero fixable
 HIGH/CRITICAL. This satisfies the mechanical release policy but is not a claim
 that the remaining vendor findings are harmless.
 

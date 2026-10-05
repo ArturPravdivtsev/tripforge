@@ -129,6 +129,14 @@ browser bundle. Compose configures the API with
 than the internal container hostname. These two values must remain aligned with
 the URLs the browser actually uses.
 
+The S3 CSP boundary is runtime-only. Compose passes
+`S3_UPLOAD_ORIGIN=http://127.0.0.1:4566` to the Next.js server, which validates
+and adds that exact browser-facing LocalStack origin to `connect-src`. The value
+is not a Docker build argument and does not enter the browser bundle; starting
+the same image with a different valid origin changes only the generated response
+CSP. Missing values omit the optional upload origin, while malformed, wildcard,
+credentialed, path or query values fail closed.
+
 `OPENROUTESERVICE_API_KEY` is passed only to the API runtime service. It is not
 a web build argument or `NEXT_PUBLIC_*` value. Missing routing credentials do
 not fail the API healthcheck; saved route reads remain available while explicit

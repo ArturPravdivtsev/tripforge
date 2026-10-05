@@ -5,8 +5,9 @@ locals {
     for index, az in local.azs : az => index
   }
 
-  web_origin = "https://${var.app_domain}"
-  api_origin = "https://${var.api_domain}"
+  web_origin       = "https://${var.app_domain}"
+  api_origin       = "https://${var.api_domain}"
+  s3_upload_origin = "https://${aws_s3_bucket.documents.bucket_regional_domain_name}"
 
   runtime_environment = [
     { name = "NODE_ENV", value = "production" },

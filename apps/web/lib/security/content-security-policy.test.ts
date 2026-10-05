@@ -41,13 +41,30 @@ describe("production web security policy", () => {
   });
 
   it("rejects broad or malformed configured origins", () => {
-    expect(() =>
-      buildContentSecurityPolicy({
-        apiOrigin: "https://api.example/path",
-        development: false,
-        nonce: "nonce",
-      }),
-    ).toThrow(/exact HTTP origin/u);
+    for (const s3UploadOrigin of [
+      "https:",
+      "https://*.amazonaws.com",
+      "https://user:password@uploads.example",
+      "https://uploads.example/path",
+      "https://uploads.example?bucket=documents",
+    ]) {
+      expect(() =>
+        buildContentSecurityPolicy({
+          apiOrigin: "https://api.example",
+          development: false,
+          nonce: "nonce",
+          s3UploadOrigin,
+        }),
+      ).toThrow(/S3_UPLOAD_ORIGIN must be an exact HTTP origin/u);
+    }
+
+    const withoutUploadOrigin = buildContentSecurityPolicy({
+      apiOrigin: "https://api.example",
+      development: false,
+      nonce: "nonce",
+    });
+    expect(withoutUploadOrigin).not.toContain("amazonaws.com");
+    expect(withoutUploadOrigin).not.toMatch(/connect-src[^;]*\*/u);
   });
 
   it("sets defensive static headers and production-only HSTS", () => {

@@ -10,7 +10,7 @@ export function proxy(request: NextRequest): NextResponse {
     apiOrigin: requiredEnvironment("NEXT_PUBLIC_API_URL"),
     development: process.env.NODE_ENV === "development",
     nonce,
-    s3UploadOrigin: process.env.NEXT_PUBLIC_S3_UPLOAD_ORIGIN?.trim() || undefined,
+    s3UploadOrigin: process.env.S3_UPLOAD_ORIGIN?.trim() || undefined,
   });
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("Content-Security-Policy", policy);

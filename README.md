@@ -9,8 +9,8 @@ ownership: from accessible React interactions to transactional data, recovery
 testing and an AWS deployment architecture.
 
 **Status: v1.0.0 release candidate / portfolio project; not yet published.**
-Stage 31 browser, integration, security, performance and resilience qualification
-passed locally. Stage 32 dependency closure accepts one time-bounded HIGH advisory
+The complete mandatory hosted `main` Gate passed for the current security-fixed
+candidate. Stage 32 dependency closure accepts one time-bounded HIGH advisory
 in development-only ESLint tooling after proving it absent from deployable artifacts;
 the machine-checkable audit remains blocking for every unexpected HIGH/CRITICAL
 (see the [current verification report](docs/stage33-release-verification.md)). Terraform is locally
@@ -22,7 +22,8 @@ currently published.
 [Claim → evidence index](docs/portfolio-evidence.md) ·
 [Interview walkthrough](docs/portfolio-interview-guide.md) ·
 [v1.0.0 notes](docs/releases/v1.0.0.md) ·
-[Changelog](CHANGELOG.md)
+[Changelog](CHANGELOG.md) ·
+[MIT License](LICENSE)
 
 ## Screenshots
 
@@ -147,9 +148,11 @@ Start with the [case study](docs/portfolio-case-study.md) and
 
 ## Project status and next step
 
-Stage 33 has prepared and locally qualified the v1.0.0 release candidate. Pending:
-hosted CI/publication, an owner license decision and GitHub private vulnerability
-reporting configuration; actual AWS deploy/PITR/failover/rollback/IAM QA; live OpenAI/ORS/MapTiler;
+Stage 33 has passed the mandatory hosted `main` qualification. The owner selected
+the MIT License. GHCR publication remains pending final delivery-configuration
+qualification/retry; repository rules, immutable-release settings and private
+vulnerability reporting still require verification. Actual AWS deploy/PITR/
+failover/rollback/IAM QA remains pending, as do live OpenAI/ORS/MapTiler;
 VoiceOver/Safari and native zoom; image-risk review and longer client heap profiling.
 Known unfixed base-OS findings are not a proven exploitable TripForge bug, but
 require release-owner review. Small socket-client heap drift is recorded, not hidden.

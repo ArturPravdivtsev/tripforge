@@ -381,13 +381,14 @@ not a missing checklist item.
   risk acceptance, not a claim that the advisory was patched.
 - AWS effective IAM/TLS/WSS, deployed role rotation, RDS connection headroom,
   PITR/RPO/RTO, ElastiCache failover and ECS rollback are not verified in cloud.
-- Hosted CI/GHCR/repository protections and a public live demo are not claimed.
+- Mandatory hosted `main` Gate passed; GHCR retry, repository protections and a
+  public live demo are not yet claimed.
 - OpenAI/ORS/MapTiler live QA is separate from deterministic test fixtures.
 - VoiceOver/Safari, native 200%/400% zoom, text spacing and forced colors remain
   manual QA; XHR/Blob repeated-upload profiling and field Web Vitals/RUM are absent.
-- Final image scans reported 53 HIGH + 4 CRITICAL unfixed Debian package findings
-  per image, with no FixedVersion; no runtime npm HIGH/CRITICAL or fixable image
-  HIGH/CRITICAL in that data. These are not 57 unique CVEs, proof of exploitability,
+- Current final image scans report 48 HIGH + 1 CRITICAL unfixed Debian package
+  findings per image, with no remaining fixable HIGH/CRITICAL; no runtime npm
+  HIGH/CRITICAL is present. These are not proof of exploitability,
   or a clean-image claim. Vendor/reachability/mitigation review and a named
   release-owner exception or release block are required.
 - Socket-client/harness heap median rose 12.422 → 13.765 MiB (+1.344) over 30 minutes while
@@ -396,9 +397,10 @@ not a missing checklist item.
   analysis should distinguish harness sampling, allocator/JIT behavior and
   genuinely retained application state; no diagnosis is invented here.
 
-[Publication decisions](./portfolio-publication-checklist.md) include choosing a
-license and real private security-reporting channel. Neither is invented for the
-portfolio; no employment/title, deployment or availability badge is fabricated.
+[Publication decisions](./portfolio-publication-checklist.md) record the
+owner-approved MIT License. A real private security-reporting channel and hosted
+repository settings remain pending; no employment/title, deployment or
+availability badge is fabricated.
 
 ## What I learned
 
