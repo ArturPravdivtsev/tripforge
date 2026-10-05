@@ -112,15 +112,25 @@ test("itinerary create/edit, pointer DnD, keyboard DnD and cross-Day Move persis
   await page.mouse.up();
   await expect.poll(async () => (await items()).map(({ title }) => title)).not.toEqual(before.map(({ title }) => title));
   const keyboardBefore = (await items()).map(({ title }) => title);
-  await expect(page.getByRole("button", { name: "Move “First item” without dragging" })).toBeFocused();
   await source.scrollIntoViewIfNeeded();
   await expect(source).toBeEnabled();
   await source.focus();
   await expect(source).toBeFocused();
+  const pickupAnnouncement = page
+    .getByRole("status")
+    .filter({ hasText: /^Picked up draggable item / });
+  await expect(pickupAnnouncement).toHaveCount(0);
   await page.keyboard.press("Space");
-  await expect(page.getByText("Picked up “First item”.", { exact: true })).toBeAttached();
+  await expect(source).toHaveAttribute("aria-grabbed", "true");
+  await expect(pickupAnnouncement).toBeAttached();
   await page.keyboard.press("ArrowUp", { delay: 350 });
+  await expect(
+    page.locator('[aria-live="polite"]').filter({
+      hasText: /^Moved to position \d+ in Day \d+\.$/,
+    }),
+  ).toBeAttached();
   await page.keyboard.press("Space");
+  await expect(source).toHaveAttribute("aria-grabbed", "false");
   await expect.poll(async () => (await items()).map(({ title }) => title)).not.toEqual(keyboardBefore);
   await page.getByRole("button", { name: "Edit “First item”", exact: true }).click();
   await page.getByLabel("Title", { exact: true }).fill("Edited item");
