@@ -48,7 +48,7 @@
     "smoke:operational": "node scripts/readiness/operational-smoke.mjs",
     "perf:load": "node scripts/readiness/load.mjs",
     "migrations:safety": "node scripts/readiness/migration-safety.mjs",
-    "test:integration": "pnpm --filter @tripforge/api test:integration",
+    "test:integration": "turbo run test:integration --filter=@tripforge/api",
     "test:security": "pnpm --filter @tripforge/api test:security && pnpm --filter @tripforge/web test:security && node --test scripts/security/*.test.mjs && pnpm security:secrets",
     "test:coverage": "turbo run test:coverage",
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
