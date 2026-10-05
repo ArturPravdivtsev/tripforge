@@ -25,6 +25,22 @@
     "test:integration": {
       "dependsOn": ["^build"],
       "cache": false
+    },
+    "test:security": {
+      "dependsOn": ["^build"],
+      "cache": false
+    },
+    "ai:test": {
+      "dependsOn": ["^build"]
+    },
+    "ai:eval": {
+      "dependsOn": ["^build"]
+    },
+    "test:a11y": {
+      "dependsOn": ["^build"]
+    },
+    "test:observability": {
+      "dependsOn": ["^build"]
     }
   }
 }
