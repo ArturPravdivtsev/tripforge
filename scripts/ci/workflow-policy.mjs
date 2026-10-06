@@ -261,17 +261,12 @@ export function validateWorkflow(source, filename = "workflow.yml") {
       "TRIPFORGE_PUBLIC_S3_UPLOAD_ORIGIN",
       "PUBLIC_S3_UPLOAD_ORIGIN",
       "NEXT_PUBLIC_S3_UPLOAD_ORIGIN",
+      "TRIPFORGE_PUBLIC_API_URL",
+      "NEXT_PUBLIC_API_URL",
+      "API_ORIGIN",
     ]) {
       if (publishText.includes(forbidden)) {
-        errors.push(`${filename}: S3 upload origin must not be a publish build input: ${forbidden}`);
-      }
-    }
-    for (const required of [
-      "TRIPFORGE_PUBLIC_API_URL",
-      "NEXT_PUBLIC_API_URL=${{ env.PUBLIC_API_URL }}",
-    ]) {
-      if (!publishText.includes(required)) {
-        errors.push(`${filename}: publish API build contract is missing ${required}`);
+        errors.push(`${filename}: server runtime origin must not be a publish build input: ${forbidden}`);
       }
     }
   }

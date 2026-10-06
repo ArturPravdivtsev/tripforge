@@ -5,15 +5,23 @@ import AxeBuilder from "@axe-core/playwright";
 import { api, expect, mutationHeaders, mutate, openTrip, password, register, test } from "./fixtures";
 
 test("register, reload, logout, Back and login preserve HttpOnly isolation", async ({ page, context }) => {
+  const browserApiRequests: string[] = [];
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname.startsWith("/api/")) browserApiRequests.push(request.url());
+  });
   const email = `browser-auth-${randomUUID()}@example.com`;
   await page.goto("/register");
   await page.getByLabel("Display name").fill("Browser qualifier");
   await page.getByLabel("Email", { exact: true }).fill(email);
   await page.getByLabel("Password", { exact: true }).fill(password);
+  const registrationRequest = page.waitForRequest((request) => request.url() === `${api}/api/auth/register` && request.method() === "POST");
   await page.getByRole("button", { name: "Create account", exact: true }).click();
   await expect(page.getByRole("button", { name: "Logout", exact: true })).toBeVisible();
+  expect((await (await registrationRequest).allHeaders())["sec-fetch-site"]).toBe("same-origin");
   const cookie = (await context.cookies(api)).find(({ name }) => name.includes("session"));
   expect(cookie?.httpOnly).toBe(true);
+  expect(cookie?.sameSite).toBe("Lax");
+  expect(cookie?.domain).toBe("127.0.0.1");
   expect(await page.evaluate(() => document.cookie)).not.toContain("session");
   await page.reload();
   await expect(page.getByRole("button", { name: "Logout", exact: true })).toBeVisible();
@@ -26,6 +34,10 @@ test("register, reload, logout, Back and login preserve HttpOnly isolation", asy
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.getByRole("button", { name: "Logout", exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Logout", exact: true })).toBeVisible();
+  expect(browserApiRequests.length).toBeGreaterThan(0);
+  expect(browserApiRequests.every((url) => new URL(url).origin === api)).toBe(true);
 });
 
 test("create/open/edit trip through real browser forms", async ({ page, context, identity }) => {
@@ -55,7 +67,12 @@ test("two-user RBAC, role changes, notifications and live revocation", async ({ 
     const viewer = await register(other);
     const remote = await other.newPage();
     const tab = await other.newPage();
+    const socketOpened = remote.waitForEvent("websocket");
     await remote.goto("/notifications");
+    const socket = await socketOpened;
+    const socketUrl = new URL(socket.url());
+    expect(socketUrl.origin).toBe(api.replace("http:", "ws:"));
+    expect(socketUrl.pathname).toBe("/socket.io");
     await tab.goto("/notifications");
     await page.goto(`/trips/${trip.id}/members`);
     await page.getByLabel("Account email").fill(viewer.email);

@@ -112,8 +112,9 @@ source even if that volume is lost.
 
 The API uses the same Redis service only as Socket.IO's inter-node Streams
 transport. Its fixed `/socket.io` endpoint is WebSocket-only, so no sticky HTTP
-session routing is required. Browser cookies reach the host-visible API origin,
-while the server accepts only the exact configured web `Origin`. Redis outage
+session routing is required. Browser cookies reach the web origin; Next.js
+proxies the WebSocket handshake and cookie to the API, which accepts only the
+exact configured web `Origin`. Redis outage
 may delay presence and invalidations but does not affect authoritative REST
 CRUD; reconnect and refetch repair missed freshness hints.
 
@@ -123,11 +124,11 @@ database, Redis, S3, and AWS settings. Its healthcheck confirms the worker PID
 and runs the Redis CLI probe without opening an HTTP server. The API can remain
 healthy while cleanup is delayed.
 
-The web image compiles `NEXT_PUBLIC_API_URL=http://127.0.0.1:4000` into the
-browser bundle. Compose configures the API with
-`WEB_ORIGIN=http://127.0.0.1:3100`, matching the host-visible web origin rather
-than the internal container hostname. These two values must remain aligned with
-the URLs the browser actually uses.
+The web image uses runtime `API_ORIGIN=http://api:4000` in Compose. Browser HTTP
+and Socket.IO connect only to the web origin. Both web and API receive
+`WEB_ORIGIN=http://127.0.0.1:3100` (or the selected `TRIPFORGE_WEB_PORT`), matching
+the host-visible web origin. No API hostname is baked into the browser bundle.
+See [Render demo configuration](./hosted-demo.md).
 
 The S3 CSP boundary is runtime-only. Compose passes
 `S3_UPLOAD_ORIGIN=http://127.0.0.1:4566` to the Next.js server, which validates

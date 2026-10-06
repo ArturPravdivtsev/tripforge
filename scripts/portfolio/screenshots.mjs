@@ -19,7 +19,7 @@ try {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1, locale: "en-US", timezoneId: "UTC", reducedMotion: "reduce" });
   const headers = { Origin: stack.webOrigin, "X-TripForge-Request": "1" };
   const api = async (method, path, data) => {
-    const response = await context.request[method](`${stack.apiOrigin}/api${path}`, { headers, data });
+    const response = await context.request[method](`${stack.webOrigin}/api${path}`, { headers, data });
     assert.ok(response.ok(), `Fixture ${method} ${path}: ${response.status()}`);
     return response.status() === 204 ? undefined : response.json();
   };

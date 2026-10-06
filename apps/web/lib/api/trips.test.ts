@@ -38,7 +38,7 @@ describe("tripsApi", () => {
     await tripsApi.list({ page: 2, pageSize: 6 }, { signal: controller.signal });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:4000/api/trips?page=2&pageSize=6",
+      "/api/trips?page=2&pageSize=6",
       expect.objectContaining({ credentials: "include", signal: controller.signal }),
     );
   });
@@ -50,7 +50,7 @@ describe("tripsApi", () => {
     await tripsApi.get(trip.id);
 
     expect(fetchMock.mock.calls[0]?.[0]).toBe(
-      `http://127.0.0.1:4000/api/trips/${trip.id}`,
+      `/api/trips/${trip.id}`,
     );
   });
 
@@ -69,7 +69,7 @@ describe("tripsApi", () => {
 
     const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
     const headers = new Headers(options.headers);
-    expect(url).toBe(`http://127.0.0.1:4000${path}`);
+    expect(url).toBe(`${path}`);
     expect(options.method).toBe(method);
     expect(options.credentials).toBe("include");
     expect(headers.get("X-TripForge-Request")).toBe("1");
@@ -99,7 +99,7 @@ describe("tripsApi", () => {
     await tripsApi.listMembers(trip.id);
 
     expect(fetchMock.mock.calls[0]?.[0]).toBe(
-      `http://127.0.0.1:4000/api/trips/${trip.id}/members`,
+      `/api/trips/${trip.id}/members`,
     );
   });
 
@@ -120,7 +120,7 @@ describe("tripsApi", () => {
 
     const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
     const headers = new Headers(options.headers);
-    expect(url).toBe(`http://127.0.0.1:4000${path}`);
+    expect(url).toBe(`${path}`);
     expect(options.method).toBe(method);
     expect(headers.get("X-TripForge-Request")).toBe("1");
     expect(headers.get("Content-Type")).toBe("application/json");
@@ -136,7 +136,7 @@ describe("tripsApi", () => {
     const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
     const headers = new Headers(options.headers);
     expect(url).toBe(
-      `http://127.0.0.1:4000/api/trips/${trip.id}/members/${participant.user.id}`,
+      `/api/trips/${trip.id}/members/${participant.user.id}`,
     );
     expect(options.method).toBe("DELETE");
     expect(headers.get("X-TripForge-Request")).toBe("1");
@@ -153,7 +153,7 @@ describe("tripsApi", () => {
     await tripsApi[operation](trip.id);
 
     expect(fetchMock.mock.calls[0]?.[0]).toBe(
-      `http://127.0.0.1:4000/api/trips/${trip.id}/${resource}`,
+      `/api/trips/${trip.id}/${resource}`,
     );
   });
 
@@ -183,7 +183,7 @@ describe("tripsApi", () => {
       const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
       const suffix = nestedId ? `/${nestedId}` : "";
       expect(url).toBe(
-        `http://127.0.0.1:4000/api/trips/${trip.id}/${resource}${suffix}`,
+        `/api/trips/${trip.id}/${resource}${suffix}`,
       );
       expect(options.method).toBe(method);
       expect(new Headers(options.headers).get("X-TripForge-Request")).toBe("1");
@@ -199,7 +199,7 @@ describe("tripsApi", () => {
 
     const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe(
-      `http://127.0.0.1:4000/api/trips/${trip.id}/destinations/destination-id`,
+      `/api/trips/${trip.id}/destinations/destination-id`,
     );
     expect(options.method).toBe("DELETE");
     expect(new Headers(options.headers).get("X-TripForge-Request")).toBe("1");
@@ -218,7 +218,7 @@ describe("tripsApi", () => {
 
     const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe(
-      `http://127.0.0.1:4000/api/trips/${trip.id}/destinations/destination-id`,
+      `/api/trips/${trip.id}/destinations/destination-id`,
     );
     expect(options.body).toBe(JSON.stringify(body));
   });
@@ -245,7 +245,7 @@ describe("tripsApi", () => {
     }
 
     const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe(`http://127.0.0.1:4000/api/trips/${trip.id}${suffix}`);
+    expect(url).toBe(`/api/trips/${trip.id}${suffix}`);
     expect(options.method).toBe(method);
     expect(new Headers(options.headers).get("X-TripForge-Request")).toBe("1");
     expect(options.body).toBe(JSON.stringify(body));
@@ -259,7 +259,7 @@ describe("tripsApi", () => {
 
     const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe(
-      `http://127.0.0.1:4000/api/trips/${trip.id}/itinerary-items/item-id`,
+      `/api/trips/${trip.id}/itinerary-items/item-id`,
     );
     expect(options.method).toBe("DELETE");
   });
@@ -273,7 +273,7 @@ describe("tripsApi", () => {
     if (operation === "create") await tripsApi.createRoute(trip.id, body);
     else await tripsApi.updateRoute(trip.id, "route-id", body);
     const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe(`http://127.0.0.1:4000/api/trips/${trip.id}/routes${suffix}`);
+    expect(url).toBe(`/api/trips/${trip.id}/routes${suffix}`);
     expect(url).not.toContain("api.heigit.org");
     expect(options.method).toBe(method);
     expect(options.body).toBe(JSON.stringify(body));
@@ -286,8 +286,8 @@ describe("tripsApi", () => {
     vi.stubGlobal("fetch", fetchMock);
     await tripsApi.listRoutes(trip.id);
     await tripsApi.removeRoute(trip.id, "route-id");
-    expect(fetchMock.mock.calls[0]?.[0]).toBe(`http://127.0.0.1:4000/api/trips/${trip.id}/routes`);
-    expect(fetchMock.mock.calls[1]?.[0]).toBe(`http://127.0.0.1:4000/api/trips/${trip.id}/routes/route-id`);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(`/api/trips/${trip.id}/routes`);
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(`/api/trips/${trip.id}/routes/route-id`);
   });
 
   it("lists and gets reservations through scoped Trip URLs", async () => {
@@ -298,10 +298,10 @@ describe("tripsApi", () => {
     await tripsApi.listReservations(trip.id);
     await tripsApi.getReservation(trip.id, "reservation-id");
     expect(fetchMock.mock.calls[0]?.[0]).toBe(
-      `http://127.0.0.1:4000/api/trips/${trip.id}/reservations`,
+      `/api/trips/${trip.id}/reservations`,
     );
     expect(fetchMock.mock.calls[1]?.[0]).toBe(
-      `http://127.0.0.1:4000/api/trips/${trip.id}/reservations/reservation-id`,
+      `/api/trips/${trip.id}/reservations/reservation-id`,
     );
   });
 
@@ -315,7 +315,7 @@ describe("tripsApi", () => {
     else await tripsApi.updateReservation(trip.id, "reservation-id", body);
     const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe(
-      `http://127.0.0.1:4000/api/trips/${trip.id}/reservations${suffix}`,
+      `/api/trips/${trip.id}/reservations${suffix}`,
     );
     expect(options.method).toBe(method);
     expect(options.body).toBe(JSON.stringify(body));
@@ -328,7 +328,7 @@ describe("tripsApi", () => {
     await tripsApi.removeReservation(trip.id, "reservation-id");
     const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe(
-      `http://127.0.0.1:4000/api/trips/${trip.id}/reservations/reservation-id`,
+      `/api/trips/${trip.id}/reservations/reservation-id`,
     );
     expect(options.method).toBe("DELETE");
   });
@@ -342,9 +342,9 @@ describe("tripsApi", () => {
     await tripsApi.getExpense(trip.id, "expense-id");
     await tripsApi.getExpenseBalances(trip.id);
     expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
-      `http://127.0.0.1:4000/api/trips/${trip.id}/expenses`,
-      `http://127.0.0.1:4000/api/trips/${trip.id}/expenses/expense-id`,
-      `http://127.0.0.1:4000/api/trips/${trip.id}/expenses/balances`,
+      `/api/trips/${trip.id}/expenses`,
+      `/api/trips/${trip.id}/expenses/expense-id`,
+      `/api/trips/${trip.id}/expenses/balances`,
     ]);
   });
 
@@ -366,7 +366,7 @@ describe("tripsApi", () => {
     if (operation === "create") await tripsApi.createExpense(trip.id, body);
     else await tripsApi.updateExpense(trip.id, "expense-id", body);
     const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe(`http://127.0.0.1:4000/api/trips/${trip.id}/expenses${suffix}`);
+    expect(url).toBe(`/api/trips/${trip.id}/expenses${suffix}`);
     expect(options.method).toBe(method);
     expect(options.body).toBe(JSON.stringify(body));
   });
@@ -377,7 +377,7 @@ describe("tripsApi", () => {
     await tripsApi.removeExpense(trip.id, "expense-id");
     const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe(
-      `http://127.0.0.1:4000/api/trips/${trip.id}/expenses/expense-id`,
+      `/api/trips/${trip.id}/expenses/expense-id`,
     );
     expect(options.method).toBe("DELETE");
   });
@@ -390,8 +390,8 @@ describe("tripsApi", () => {
     await tripsApi.listDocuments(trip.id);
     await tripsApi.getDocumentDownload(trip.id, "document-id");
     expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
-      `http://127.0.0.1:4000/api/trips/${trip.id}/documents`,
-      `http://127.0.0.1:4000/api/trips/${trip.id}/documents/document-id/download`,
+      `/api/trips/${trip.id}/documents`,
+      `/api/trips/${trip.id}/documents/document-id/download`,
     ]);
   });
 
@@ -410,10 +410,10 @@ describe("tripsApi", () => {
     await tripsApi.createDocumentUpload(trip.id, input);
     await tripsApi.completeDocumentUpload(trip.id, "document-id");
     expect(fetchMock.mock.calls[0]?.[0]).toBe(
-      `http://127.0.0.1:4000/api/trips/${trip.id}/documents/uploads`,
+      `/api/trips/${trip.id}/documents/uploads`,
     );
     expect(fetchMock.mock.calls[1]?.[0]).toBe(
-      `http://127.0.0.1:4000/api/trips/${trip.id}/documents/document-id/complete`,
+      `/api/trips/${trip.id}/documents/document-id/complete`,
     );
     for (const call of fetchMock.mock.calls) {
       const options = call[1] as RequestInit;
@@ -430,8 +430,8 @@ describe("tripsApi", () => {
     await tripsApi.updateDocument(trip.id, "document-id", { title: "New title" });
     await tripsApi.removeDocument(trip.id, "document-id");
     expect(fetchMock.mock.calls.map((call) => [call[0], (call[1] as RequestInit).method])).toEqual([
-      [`http://127.0.0.1:4000/api/trips/${trip.id}/documents/document-id`, "PATCH"],
-      [`http://127.0.0.1:4000/api/trips/${trip.id}/documents/document-id`, "DELETE"],
+      [`/api/trips/${trip.id}/documents/document-id`, "PATCH"],
+      [`/api/trips/${trip.id}/documents/document-id`, "DELETE"],
     ]);
   });
 });

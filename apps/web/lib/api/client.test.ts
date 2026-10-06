@@ -23,7 +23,8 @@ describe("apiFetch", () => {
     });
 
     expect(fetchMock).toHaveBeenCalledOnce();
-    const [, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/api/auth/login");
     expect(options.credentials).toBe("include");
     expect(new Headers(options.headers).get("X-TripForge-Request")).toBe("1");
     expect(new Headers(options.headers).get("Content-Type")).toBe(

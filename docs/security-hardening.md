@@ -124,7 +124,7 @@ dynamic, so static optimization is sacrificed for nonce-backed Next bootstrap.
 | `style-src` | self + `unsafe-inline` for React/MapLibre style attributes; scripts stay nonce-protected |
 | `img-src` | self, data/blob, exact MapTiler API origin |
 | `font-src` | self, data, exact MapTiler API origin |
-| `connect-src` | self, exact API HTTP/WebSocket origins, MapTiler, optional exact S3 upload origin |
+| `connect-src` | self (HTTP/SSE/WebSocket), MapTiler, optional exact S3 upload origin |
 | `worker-src` | self + blob for MapLibre workers |
 | `object-src` | none |
 | `base-uri` / `form-action` | self |
@@ -187,7 +187,7 @@ source table.
 | AWS access/secret/session credentials | server secret | injected runtime/test values; never browser-visible |
 | `LOCALSTACK_AUTH_TOKEN` | local/CI secret | uncommitted runtime value |
 | `NEXT_PUBLIC_MAPTILER_KEY` | browser-visible public API key | origin-restricted, quota-limited, rotatable |
-| `NEXT_PUBLIC_API_URL` | public configuration | exact origin, embedded in web build |
+| `API_ORIGIN`, web `WEB_ORIGIN` | non-secret server runtime configuration | exact origins; same-origin browser API/WebSocket proxy |
 | `S3_UPLOAD_ORIGIN` | non-secret server runtime configuration | exact validated upload origin for CSP; never embedded in the client bundle |
 
 Repository `.env` variants and credentials remain ignored; examples contain

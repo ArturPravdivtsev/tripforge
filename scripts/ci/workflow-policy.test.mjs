@@ -43,19 +43,17 @@ test("formal release is trusted-tag-only and requires Gate, images and manifest"
   }
 });
 
-test("GHCR web identity keeps API config but excludes deployment-time S3 origin", async () => {
+test("GHCR web identity excludes deployment-time API and S3 origins", async () => {
   const source = await readFile(new URL("../../.github/workflows/ci.yml", import.meta.url), "utf8");
   assert.deepEqual(validateWorkflow(source, "ci.yml"), []);
 
-  const withoutApiBuildArg = source.replace(
-    "            NEXT_PUBLIC_API_URL=${{ env.PUBLIC_API_URL }}\n",
-    "",
-  );
-  assert.ok(
-    validateWorkflow(withoutApiBuildArg, "ci.yml").some((error) =>
-      error.includes("publish API build contract"),
-    ),
-  );
+  for (const origin of ["NEXT_PUBLIC_API_URL", "API_ORIGIN"]) {
+    const withApiBuildArg = source.replace(
+      "            NEXT_PUBLIC_MAPTILER_KEY=${{ env.PUBLIC_MAPTILER_KEY }}\n",
+      `            ${origin}=https://api.example\n            NEXT_PUBLIC_MAPTILER_KEY=\${{ env.PUBLIC_MAPTILER_KEY }}\n`,
+    );
+    assert.ok(validateWorkflow(withApiBuildArg, "ci.yml").some((error) => error.includes("server runtime origin")));
+  }
 
   const withS3BuildArg = source.replace(
     "            NEXT_PUBLIC_MAPTILER_KEY=${{ env.PUBLIC_MAPTILER_KEY }}\n",
@@ -63,7 +61,7 @@ test("GHCR web identity keeps API config but excludes deployment-time S3 origin"
   );
   assert.ok(
     validateWorkflow(withS3BuildArg, "ci.yml").some((error) =>
-      error.includes("S3 upload origin must not be a publish build input"),
+      error.includes("server runtime origin must not be a publish build input"),
     ),
   );
 });

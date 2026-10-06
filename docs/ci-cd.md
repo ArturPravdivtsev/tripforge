@@ -205,13 +205,12 @@ migrate; registry compression and target architecture will change those values.
 
 ## Build-time and runtime configuration
 
-The web artifact is not environment-neutral. These browser-visible values are
-baked into its JavaScript by the trusted build:
+The optional `TRIPFORGE_PUBLIC_MAPTILER_KEY` → `NEXT_PUBLIC_MAPTILER_KEY` is baked
+into web JavaScript by the trusted build. API routing instead uses server-runtime
+`API_ORIGIN` and `WEB_ORIGIN`; HTTP and Socket.IO use the web origin in the browser.
+Changing only API routing can reuse one image. See [hosted demo](./hosted-demo.md).
 
-- required `TRIPFORGE_PUBLIC_API_URL` → `NEXT_PUBLIC_API_URL`;
-- optional `TRIPFORGE_PUBLIC_MAPTILER_KEY` → `NEXT_PUBLIC_MAPTILER_KEY`.
-
-They are GitHub repository variables, not secrets. A MapTiler browser key may be
+The MapTiler repository variable is not a secret. A MapTiler browser key may be
 public client configuration, but it must be domain/referer restricted where the
 provider supports that. A different public configuration requires a newly built
 digest; never reuse the same version for different bytes.
@@ -303,8 +302,8 @@ YAML cannot configure repository protection. An administrator must:
 3. Decide whether to require the branch to be up to date. Strict mode reduces
    stale-base risk but causes an additional CI run after main advances.
 4. Enable dependency graph/Dependabot and configure GHCR package visibility.
-5. Set required `TRIPFORGE_PUBLIC_API_URL` and optional
-   `TRIPFORGE_PUBLIC_MAPTILER_KEY` before a trusted publish. The S3 bucket origin
+5. Set optional `TRIPFORGE_PUBLIC_MAPTILER_KEY` before a trusted publish. API
+   routing is deployment-time `API_ORIGIN`/`WEB_ORIGIN`. The S3 bucket origin
    is deployment-time `S3_UPLOAD_ORIGIN`, not a repository build variable. No PAT
    or admin token is needed; publication uses `GITHUB_TOKEN`.
 6. If the plan supports GitHub Code Security, set

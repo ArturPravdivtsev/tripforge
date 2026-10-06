@@ -60,7 +60,7 @@ docker run -d --name "$api" --network "$network" -p 127.0.0.1::4000 \
   -e OTEL_ENABLED=false \
   -e AI_ASSISTANT_ENABLED=false \
   -e DATABASE_URL="postgresql://tripforge:tripforge@${postgres}:5432/tripforge" \
-  -e WEB_ORIGIN=http://127.0.0.1:3000 \
+  -e WEB_ORIGIN="http://${web}:3000" \
   -e REDIS_URL="redis://${redis}:6379" \
   -e S3_BUCKET=tripforge-documents \
   -e S3_REGION=us-east-1 \
@@ -78,11 +78,26 @@ done
 curl --fail --silent "http://127.0.0.1:${api_port}/health" >/dev/null
 curl --fail --silent "http://127.0.0.1:${api_port}/ready" >/dev/null
 
-API_SMOKE_PORT="$api_port" node <<'NODE'
-const base = `http://127.0.0.1:${process.env.API_SMOKE_PORT}`;
+docker run -d --name "$web" --network "$network" -p 127.0.0.1::3000 \
+  -e NODE_ENV=production \
+  -e OTEL_ENABLED=false \
+  -e API_ORIGIN="http://${api}:4000" \
+  -e WEB_ORIGIN="http://${web}:3000" \
+  -e S3_UPLOAD_ORIGIN=http://127.0.0.1:4566 \
+  "$web_image" >/dev/null
+web_port="$(docker port "$web" 3000/tcp | sed 's/.*://')"
+
+for _ in {1..60}; do
+  if curl --fail --silent "http://127.0.0.1:${web_port}/health" >/dev/null; then break; fi
+  sleep 1
+done
+
+docker exec -i "$web" node <<'NODE'
+const base = process.env.WEB_ORIGIN;
 const headers = {
   "Content-Type": "application/json",
-  Origin: "http://127.0.0.1:3000",
+  Origin: base,
+  "Sec-Fetch-Site": "same-origin",
   "X-TripForge-Request": "1",
 };
 
@@ -95,9 +110,31 @@ async function check() {
   if (registered.status !== 201) throw new Error(`Registration failed: ${registered.status}`);
   const cookie = registered.headers.get("set-cookie")?.split(";", 1)[0];
   if (!cookie) throw new Error("Registration did not set a session cookie");
+  if (!registered.headers.get("set-cookie").includes("HttpOnly")) throw new Error("Missing HttpOnly");
 
   const me = await fetch(`${base}/api/auth/me`, { headers: { Cookie: cookie } });
   if (me.status !== 200) throw new Error(`Session check failed: ${me.status}`);
+
+  // Exercise the actual standalone upgrade path, not just a rewritten HTTP GET.
+  const { request } = await import("node:http");
+  await new Promise((resolve, reject) => {
+    const upgrade = request(`${base}/socket.io?EIO=4&transport=websocket`, {
+      headers: {
+        Origin: base, Cookie: cookie, Connection: "Upgrade", Upgrade: "websocket",
+        "Sec-WebSocket-Version": "13", "Sec-WebSocket-Key": "dGhlIHNhbXBsZSBub25jZQ==",
+      },
+    });
+    upgrade.setTimeout(10_000, () => upgrade.destroy(new Error("WebSocket upgrade timed out")));
+    upgrade.on("upgrade", (response, socket) => {
+      socket.destroy();
+      response.statusCode === 101 ? resolve() : reject(new Error("WebSocket upgrade failed"));
+    });
+    upgrade.on("response", (response) => {
+      response.resume(); reject(new Error(`WebSocket returned HTTP ${response.statusCode}`));
+    });
+    upgrade.on("error", reject);
+    upgrade.end();
+  });
 
   const trip = await fetch(`${base}/api/trips`, {
     method: "POST",
@@ -105,17 +142,23 @@ async function check() {
     body: JSON.stringify({ name: "Smoke Trip", startsOn: "2027-04-12", endsOn: "2027-04-13" }),
   });
   if (trip.status !== 201) throw new Error(`Ordinary Trip creation failed: ${trip.status}`);
+
+  const logout = await fetch(`${base}/api/auth/logout`, { method: "POST", headers: { ...headers, Cookie: cookie } });
+  if (logout.status !== 204) throw new Error(`Logout failed: ${logout.status}`);
+  if ((await fetch(`${base}/api/auth/me`, { headers: { Cookie: cookie } })).status !== 401) throw new Error("Logged-out session is still usable");
+  const login = await fetch(`${base}/api/auth/login`, {
+    method: "POST", headers,
+    body: JSON.stringify({ email: "container-smoke@example.com", password: "a sufficiently long password" }),
+  });
+  if (login.status !== 200 || !login.headers.get("set-cookie")) throw new Error("Login failed through web proxy");
+  const crossSite = await fetch(`${base}/api/auth/logout`, {
+    method: "POST", headers: { ...headers, "Sec-Fetch-Site": "cross-site", Cookie: cookie },
+  });
+  if (crossSite.status !== 403 || (await crossSite.json()).code !== "CSRF_PROTECTION_FAILED") throw new Error("Cross-site CSRF guard weakened");
 }
 
 check().catch((error) => { console.error(error); process.exitCode = 1; });
 NODE
-
-docker run -d --name "$web" -p 127.0.0.1::3000 \
-  -e NODE_ENV=production \
-  -e OTEL_ENABLED=false \
-  -e S3_UPLOAD_ORIGIN=http://127.0.0.1:4566 \
-  "$web_image" >/dev/null
-web_port="$(docker port "$web" 3000/tcp | sed 's/.*://')"
 
 for _ in {1..60}; do
   if curl --fail --silent "http://127.0.0.1:${web_port}/" >/dev/null; then
@@ -138,4 +181,4 @@ if (connectSource.includes("*") || connectSource.split(/\s+/u).includes("https:"
 }
 NODE
 
-echo "Container smoke passed: migrate twice, API /health + /ready, auth, Trip creation, web /health, and exact runtime S3 CSP (AI and OTEL disabled)."
+echo "Container smoke passed: migrate twice, API /health + /ready, web-proxied register/session/login/logout/Trip creation + WebSocket upgrade, cross-site CSRF rejection, web /health, and exact runtime S3 CSP (AI and OTEL disabled)."
