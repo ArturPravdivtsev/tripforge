@@ -157,6 +157,8 @@ run "production_boundaries" {
   assert {
     condition = (
       one([for entry in local.web_container.environment : entry.value if entry.name == "S3_UPLOAD_ORIGIN"]) == "https://tripforge-production-documents-test.s3.eu-west-1.amazonaws.com" &&
+      one([for entry in local.web_container.environment : entry.value if entry.name == "API_ORIGIN"]) == "https://api.example.com" &&
+      one([for entry in local.web_container.environment : entry.value if entry.name == "WEB_ORIGIN"]) == local.web_origin &&
       one([for entry in local.api_container.environment : entry.value if entry.name == "S3_BUCKET"]) == "tripforge-production-documents-test" &&
       one([for entry in local.api_container.environment : entry.value if entry.name == "S3_REGION"]) == "eu-west-1" &&
       one([for entry in local.api_container.environment : entry.value if entry.name == "S3_FORCE_PATH_STYLE"]) == "false" &&

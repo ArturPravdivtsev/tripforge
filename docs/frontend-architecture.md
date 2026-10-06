@@ -58,10 +58,16 @@ destination proximity, and the itinerary place contract.
 
 ## Browser API boundary
 
-`lib/api/config.ts` is the only reader of `NEXT_PUBLIC_API_URL` and requires an
-exact HTTP(S) origin. `apiFetch` centralizes JSON decoding, sanitized API errors,
+`lib/api/config.ts` returns an empty origin prefix: browser requests use relative
+`/api/...` URLs. The Next.js HTTP route proxies streams to server-runtime
+`API_ORIGIN`; `WEB_ORIGIN` validates the web host and forwarding context.
+`apiFetch` centralizes JSON decoding, sanitized API errors,
 `credentials: include`, and the mutation marker. `authApi` exposes only the four
 current operations: register, login, current-user discovery, and logout.
+
+Socket.IO also connects to the web origin; the existing Next.js Proxy rewrites
+its `/socket.io` WebSocket upgrade to the upstream `/socket.io/` endpoint. See the
+[hosted demo boundary](./hosted-demo.md) for configuration and security details.
 
 `AuthStatus` owns localized loading, guest, authenticated, and recoverable error
 state. While authenticated it also mounts the single global realtime owner and

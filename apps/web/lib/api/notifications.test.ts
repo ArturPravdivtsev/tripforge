@@ -18,7 +18,7 @@ describe("notificationsApi", () => {
     );
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:4000/api/notifications?limit=12&cursor=opaque+cursor",
+      "/api/notifications?limit=12&cursor=opaque+cursor",
       expect.objectContaining({ credentials: "include", signal: controller.signal }),
     );
   });
@@ -32,7 +32,7 @@ describe("notificationsApi", () => {
     const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
     const headers = new Headers(options.headers);
     expect(url).toBe(
-      "http://127.0.0.1:4000/api/notifications/notification-id",
+      "/api/notifications/notification-id",
     );
     expect(options.method).toBe("PATCH");
     expect(options.body).toBe(JSON.stringify({ read: true }));
@@ -50,10 +50,10 @@ describe("notificationsApi", () => {
     await notificationsApi.markAllRead();
 
     expect(fetchMock.mock.calls[0]?.[0]).toBe(
-      "http://127.0.0.1:4000/api/notifications/unread-count",
+      "/api/notifications/unread-count",
     );
     expect(fetchMock.mock.calls[1]?.[0]).toBe(
-      "http://127.0.0.1:4000/api/notifications/read-all",
+      "/api/notifications/read-all",
     );
     expect(fetchMock.mock.calls[1]?.[1]).toEqual(
       expect.objectContaining({ method: "POST" }),

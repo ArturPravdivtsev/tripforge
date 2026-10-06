@@ -142,7 +142,9 @@ read-only package access and referenced by ARN. ORS is also an external secret.
 No AWS keys, PAT, DB password, Redis password, or ORS key belongs in Git,
 tfvars, task plaintext environment, or `NEXT_PUBLIC_*`.
 
-`NEXT_PUBLIC_API_URL` and the browser-visible MapTiler key are web build inputs.
+The browser-visible MapTiler key is a web build input. Web API routing uses
+server-runtime `API_ORIGIN` and `WEB_ORIGIN` from the existing configured API/web
+domains; browser HTTP and Socket.IO connect to the web origin.
 A web digest is valid only for those build-time public values; changing them
 requires a new digest. The documents bucket is allocated by Terraform, so
 `S3_UPLOAD_ORIGIN` is injected only into the web ECS task at runtime as

@@ -38,6 +38,10 @@ The default Socket.IO namespace uses the fixed `/socket.io` path and only the
 sessions and has less protocol overhead, but networks that block WebSockets get
 no long-polling fallback. REST remains fully usable when realtime is unavailable.
 
+The browser connects to the web origin, sharing its host-only session cookie
+with HTTP. The existing Next.js Proxy rewrites the upgrade using server-runtime
+`API_ORIGIN` and validates `WEB_ORIGIN`; see [hosted demo](./hosted-demo.md).
+
 The server requires the handshake `Origin` to equal `WEB_ORIGIN` through
 Socket.IO `allowRequest`. Credentialed CORS is configured with the same exact
 origin as an additional consistency control; it is not treated as the primary

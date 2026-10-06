@@ -1,20 +1,16 @@
 const MAPTILER_ORIGIN = "https://api.maptiler.com";
 
 type ContentSecurityPolicyOptions = Readonly<{
-  apiOrigin: string;
   development: boolean;
   nonce: string;
   s3UploadOrigin?: string;
 }>;
 
 export function buildContentSecurityPolicy({
-  apiOrigin,
   development,
   nonce,
   s3UploadOrigin,
 }: ContentSecurityPolicyOptions): string {
-  const api = exactHttpOrigin(apiOrigin, "NEXT_PUBLIC_API_URL");
-  const socket = websocketOrigin(api);
   const upload = s3UploadOrigin
     ? exactHttpOrigin(s3UploadOrigin, "S3_UPLOAD_ORIGIN")
     : undefined;
@@ -34,8 +30,6 @@ export function buildContentSecurityPolicy({
     [
       "connect-src",
       "'self'",
-      api,
-      socket,
       MAPTILER_ORIGIN,
       ...(upload ? [upload] : []),
     ],
@@ -65,10 +59,4 @@ function exactHttpOrigin(value: string, name: string): string {
   } catch {
     throw new Error(`${name} must be an exact HTTP origin`);
   }
-}
-
-function websocketOrigin(httpOrigin: string): string {
-  const url = new URL(httpOrigin);
-  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-  return url.origin;
 }

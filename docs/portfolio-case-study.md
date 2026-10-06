@@ -57,7 +57,8 @@ raising retry counts to hide it. Failed qualification attempts remain failures.
 ```mermaid
 flowchart LR
   B["Browser: interactive React leaves"] -->|"pages"| N["Next server shell / routes"]
-  B -->|"REST + SSE + Socket.IO"| A["Nest API"]
+  B -->|"same-origin REST + SSE + Socket.IO"| N
+  N -->|"trusted runtime upstream"| A["Nest API"]
   B -->|"presigned PUT / GET"| S["Private S3"]
   A --> P["PostgreSQL: business truth"]
   A --> R["Redis: freshness, queues, limits"]
@@ -68,8 +69,9 @@ flowchart LR
   W --> S
 ```
 
-Next renders routes and the shell; client leaves call Nest directly. There is no
-extra Next BFF carrying file bytes or a second write API over WebSockets. The
+Next renders routes and the shell; the post-v1 hosted demo also proxies browser
+REST/SSE and Socket.IO to Nest through the web origin. Presigned file bytes still
+go directly to S3; WebSockets remain an invalidation-only transport. The
 worker shares the API artifact but runs a separate entrypoint. Optional providers
 and telemetry can fail without invalidating PostgreSQL readiness.
 

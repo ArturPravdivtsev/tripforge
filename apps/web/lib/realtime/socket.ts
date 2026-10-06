@@ -1,7 +1,5 @@
 import { io, type Socket } from "socket.io-client";
 
-import { getApiBaseUrl } from "@/lib/api/config";
-
 import type {
   ClientToServerEvents,
   ServerToClientEvents,
@@ -17,7 +15,9 @@ export function getRealtimeSocket(): Socket<
     throw new Error("Realtime socket is only available in the browser");
   }
 
-  socket ??= io(getApiBaseUrl(), {
+  socket ??= io(window.location.origin, {
+    // Next redirects trailing slashes before Proxy; upgrades cannot redirect.
+    addTrailingSlash: false,
     autoConnect: false,
     path: "/socket.io",
     transports: ["websocket"],

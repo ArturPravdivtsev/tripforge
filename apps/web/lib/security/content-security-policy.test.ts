@@ -6,7 +6,6 @@ import { getWebSecurityHeaders } from "./web-security-headers";
 describe("production web security policy", () => {
   it("builds a nonce policy with only expected connection origins", () => {
     const policy = buildContentSecurityPolicy({
-      apiOrigin: "https://api.tripforge.example",
       development: false,
       nonce: "fixed-test-nonce",
       s3UploadOrigin: "https://uploads.tripforge.example",
@@ -19,7 +18,7 @@ describe("production web security policy", () => {
     expect(policy).toContain("object-src 'none';");
     expect(policy).toContain("frame-ancestors 'none';");
     expect(policy).toContain(
-      "connect-src 'self' https://api.tripforge.example wss://api.tripforge.example https://api.maptiler.com https://uploads.tripforge.example;",
+      "connect-src 'self' https://api.maptiler.com https://uploads.tripforge.example;",
     );
     expect(policy).not.toContain("unsafe-eval");
     expect(policy).not.toMatch(/default-src[^;]*\*/u);
@@ -29,14 +28,13 @@ describe("production web security policy", () => {
 
   it("limits development relaxation to script evaluation", () => {
     const policy = buildContentSecurityPolicy({
-      apiOrigin: "http://127.0.0.1:4000",
       development: true,
       nonce: "development-nonce",
       s3UploadOrigin: "http://localhost:4566",
     });
 
     expect(policy).toContain("'unsafe-eval'");
-    expect(policy).toContain("ws://127.0.0.1:4000");
+    expect(policy).not.toContain("127.0.0.1:4000");
     expect(policy).toContain("http://localhost:4566");
   });
 
@@ -50,7 +48,6 @@ describe("production web security policy", () => {
     ]) {
       expect(() =>
         buildContentSecurityPolicy({
-          apiOrigin: "https://api.example",
           development: false,
           nonce: "nonce",
           s3UploadOrigin,
@@ -59,7 +56,6 @@ describe("production web security policy", () => {
     }
 
     const withoutUploadOrigin = buildContentSecurityPolicy({
-      apiOrigin: "https://api.example",
       development: false,
       nonce: "nonce",
     });

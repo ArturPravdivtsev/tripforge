@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { test as base, expect, type BrowserContext, type Page } from "@playwright/test";
 
-export const api = "http://127.0.0.1:4410";
+export const api = "http://127.0.0.1:3310";
 export const password = "Stage 31 sufficiently long password";
 export const mutationHeaders = { Origin: "http://127.0.0.1:3310", "X-TripForge-Request": "1" };
 export type Identity = { email: string; id: string };

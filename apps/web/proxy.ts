@@ -2,12 +2,21 @@ import { randomBytes } from "node:crypto";
 
 import { type NextRequest, NextResponse } from "next/server";
 
+import { getProxyConfiguration, proxyRequestHeaders, upstreamUrl } from "./lib/api/proxy";
 import { buildContentSecurityPolicy } from "./lib/security/content-security-policy";
 
 export function proxy(request: NextRequest): NextResponse {
+  if (request.nextUrl.pathname === "/socket.io" || request.nextUrl.pathname.startsWith("/socket.io/")) {
+    try {
+      const configuration = getProxyConfiguration();
+      const headers = proxyRequestHeaders(request, configuration, true);
+      return NextResponse.rewrite(upstreamUrl(request, configuration, true), { request: { headers } });
+    } catch {
+      return new NextResponse(null, { status: 403 });
+    }
+  }
   const nonce = randomBytes(16).toString("base64");
   const policy = buildContentSecurityPolicy({
-    apiOrigin: requiredEnvironment("NEXT_PUBLIC_API_URL"),
     development: process.env.NODE_ENV === "development",
     nonce,
     s3UploadOrigin: process.env.S3_UPLOAD_ORIGIN?.trim() || undefined,
@@ -32,9 +41,3 @@ export const config = {
     },
   ],
 };
-
-function requiredEnvironment(name: string): string {
-  const value = process.env[name]?.trim();
-  if (!value) throw new Error(`${name} is required`);
-  return value;
-}
