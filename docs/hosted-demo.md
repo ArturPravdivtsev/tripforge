@@ -96,9 +96,27 @@ HttpOnly isolation, assistant SSE and two-user realtime/RBAC/live revocation.
 Web/API/migrate Docker builds and container smoke passed, including web-proxied
 auth, an actual WebSocket upgrade and rejection of cross-site mutation metadata.
 
-`security:audit` remains **FAIL** for the newly reviewed HIGH advisory
+At proxy commit `91eea0f4bb379150d5a5c06ad91e0a0a413156ac`, `security:audit`
+failed for the newly reviewed HIGH advisory
 [GHSA-wq5f-xc86-pv6w](https://github.com/advisories/GHSA-wq5f-xc86-pv6w)
-in the existing transitive `sharp@0.35.4` (fixed in `0.35.5`). This proxy change
-does not update dependencies or add a security exception. Full hosted/security
-qualification is not claimed. Render deployment and hosted auth/realtime
-verification remain pending external actions.
+in transitive `sharp@0.35.4`. The follow-up security closure resolves this blocker
+with a lockfile-only update to `sharp@0.35.5` and its matching native packages
+(`@img/sharp-libvips-*` version `1.3.4`). The only chain is the web production
+dependency `next@16.3.6` -> optional runtime dependency `sharp`; Next's existing
+`^0.35.4` range admits the patch. No manifest, override, parent-package upgrade
+or audit exception is needed. Sharp is loaded by Next's production image optimizer,
+not merely by development tooling.
+
+With the patched lockfile, `security:audit`, `test:security`, lint, typecheck,
+`test` (607 tests), `check`, `check:full` (98 integration tests), `release:check`
+and `docs:check` pass. The installed dependency tree contains only `sharp@0.35.5`;
+the advisory is absent from the fresh npm audit.
+Web/API/migrate images were rebuilt and the standard container smoke passed.
+The web image loads `sharp@0.35.5` and processes SVG to PNG successfully. Fresh
+Trivy scans pass the unchanged CI HIGH/CRITICAL, fixable-vulnerability gate for
+all three images, with no sharp findings or secret findings. The raw reports still
+contain existing unfixed Debian HIGH findings; this does not claim zero OS CVEs.
+
+These are local results, not post-v1 hosted qualification. Render deployment and
+hosted auth/realtime verification remain pending external actions. The published
+`v1.0.0` tag and GitHub Release are unchanged.
