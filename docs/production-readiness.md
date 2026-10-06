@@ -7,7 +7,8 @@ production-capacity promise. No new AI/product feature is introduced.
 ## Evidence and status vocabulary
 
 Only these statuses are used: **Verified locally**, **Verified in browser**,
-**Verified in AWS**, **Pending external environment**, **Known limitation**.
+**Verified in GitHub**, **Verified in AWS**, **Pending external environment**,
+**Known limitation**.
 No row currently qualifies as Verified in AWS. A release operator must attach
 environment, source revision, image digests, timestamp and evidence before
 changing a cloud row. Tests run on newly created disposable services, never the
@@ -47,8 +48,8 @@ developer's existing database/Compose project.
 | ElastiCache TestFailover | Pending external environment | Local outage/reconnect | Explicit disposable runbook | Not performed | Never an incident-repair command |
 | ECS circuit-breaker bad-revision rollback | Pending external environment | Workflow policy/drain tests | Dedicated-service rollback runbook | Not performed | Never break live users |
 | Migration failure rollout protection | Verified locally | Actual deploy shell/fake AWS: exit42 => zero updates | — | Pending | No actual deployment claimed |
-| Hosted CI/GHCR/protection | Pending external environment | Local gates/workflow policy | Protection setup pending | Not performed | YAML is not hosted Actions evidence |
-| Base-image vulnerability debt | Known limitation | Trivy0.75:53 HIGH+4 CRITICAL Debian package findings/image; no FixedVersion; fixable HIGH/CRITICAL0 | Named risk decision/re-scan required | — | Not a clean-image/non-exploitability claim |
+| Hosted CI/GHCR/protection | Verified in GitHub | Mandatory `main` Gate + immutable web/API/migrate SHA images for `6603ada...` | `Protect main`, Immutable Releases and private reporting enabled | GitHub-hosted; not AWS | Tag CI has not run; no tag/release exists |
+| Base-image vulnerability debt | Known limitation | Trivy0.74: 49 unfixed HIGH/CRITICAL Debian findings/image; Node findings 0; fixable HIGH/CRITICAL 0 | Named risk decision/re-scan required | — | Not a clean-image/non-exploitability claim |
 | Live OpenAI/MapTiler/ORS browser smoke | Pending external environment | Deterministic boundaries only | Restricted keys/approval required | Not performed | No paid/live provider calls |
 | WAF/CDN/RDS Proxy | Known limitation | Existing app controls/budget tests | Deferral review documented below | Not deployed | Reconsider only with measured need |
 

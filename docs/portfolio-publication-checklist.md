@@ -1,16 +1,16 @@
 # Portfolio publication checklist
 
-Stage 32 packages an unreleased release candidate. Stage 33 will decide publication
-and v1.0; it must not manufacture a live deployment to make the portfolio look complete.
+Stage 33 packages an unreleased v1.0.0 candidate whose hosted `main` Gate and
+candidate GHCR publication passed. The tag ceremony remains separate and must
+not manufacture a live deployment to make the portfolio look complete.
 
 - [x] Owner selected MIT; the root `LICENSE` names only
       `Copyright (c) 2026 Artur Pravdivtsev`.
-- [ ] Confirm public visibility, repository rules, Immutable Releases and GHCR
-      package visibility. Mandatory hosted `main` Gate passed; final GHCR retry
-      remains pending. No guessed release badge or nonexistent live-demo link.
-- [ ] Establish a real private vulnerability reporting channel. SECURITY.md is
-      deferred until that channel and supported release policy exist; do not
-      invent an email or send security reports to public issue comments.
+- [x] Repository visibility is public, `Protect main` is active, Immutable
+      Releases is enabled, and candidate GHCR publication produced immutable
+      web/API/migrate SHA images for `6603ada...`. Trusted-tag CI has not run.
+- [x] GitHub private vulnerability reporting is enabled. Use that real private
+      channel; do not invent an email or send security reports to public issues.
 - [ ] Review curated screenshots for fictional data, readable UI and metadata.
       AI image uses a deterministic provider-only fixture, not live generation.
 - [ ] Run docs/secret checks and review committed files/history for private data.
@@ -37,5 +37,5 @@ and v1.0; it must not manufacture a live deployment to make the portfolio look c
 
 Use the broader [release checklist](./release-checklist.md) and
 [Stage 31 evidence](./stage31-qualification.md) for operational sign-off.
-No Git history rewrite, GitHub profile change, tag, push or release publication
-is part of Stage 32.
+No Git history rewrite, tag, GitHub Release or AWS deployment is part of this
+documentation closure.

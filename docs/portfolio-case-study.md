@@ -381,12 +381,13 @@ not a missing checklist item.
   risk acceptance, not a claim that the advisory was patched.
 - AWS effective IAM/TLS/WSS, deployed role rotation, RDS connection headroom,
   PITR/RPO/RTO, ElastiCache failover and ECS rollback are not verified in cloud.
-- Mandatory hosted `main` Gate passed; GHCR retry, repository protections and a
-  public live demo are not yet claimed.
+- Mandatory hosted `main` Gate and candidate GHCR publication passed; `Protect main`,
+  Immutable Releases and private vulnerability reporting are enabled. Trusted-tag
+  CI, a `v1.0.0` release and a public live demo are not yet claimed.
 - OpenAI/ORS/MapTiler live QA is separate from deterministic test fixtures.
 - VoiceOver/Safari, native 200%/400% zoom, text spacing and forced colors remain
   manual QA; XHR/Blob repeated-upload profiling and field Web Vitals/RUM are absent.
-- Current final image scans report 48 HIGH + 1 CRITICAL unfixed Debian package
+- Current final image scans report 49 unfixed HIGH/CRITICAL Debian package
   findings per image, with no remaining fixable HIGH/CRITICAL; no runtime npm
   HIGH/CRITICAL is present. These are not proof of exploitability,
   or a clean-image claim. Vendor/reachability/mitigation review and a named

@@ -1,5 +1,7 @@
 # Stage 33 — v1.0.0 source-release verification
 
+**V1.0.0 RELEASE CANDIDATE — HOSTED MAIN QUALIFIED, READY FOR TAG CEREMONY**
+
 This record separates local release-candidate evidence from remote publication.
 A local tag is not a release, mutable image tags are not artifact identity, and
 a source release is not evidence of production traffic.
@@ -24,10 +26,12 @@ promise of stable independently published TypeScript package APIs.
 Stage 33 began at security-closure commit
 `d1872352c91c261eec82579def07a90908ad7884`. Mandatory hosted `main`
 qualification ultimately passed at
-`baf80b7a32d2cfc001faffab0a0b8cff5184100b`. The final delivery-boundary
-correction is the commit containing this document; its immutable SHA is recorded
-by the final report and must later pass hosted `main` before becoming a tag target.
-This avoids an impossible self-referential commit hash inside its own contents.
+`baf80b7a32d2cfc001faffab0a0b8cff5184100b`. Delivery-boundary and hosted
+clean-runner blockers were then closed, followed by the targeted npm security
+patches in `6603ada5789a0a533de2f2565f9234e51771b9ba`. That current candidate
+passed the mandatory hosted `main` Gate and GHCR publication; immutable SHA
+images exist for web, API and migrate. It is the qualified source commit for the
+future tag ceremony, but no tag or GitHub Release exists yet.
 
 Release freeze permits only release-blocker, release-note, security-blocker or
 broken-release-automation fixes. No product feature, domain behavior, dependency
@@ -58,19 +62,19 @@ package change is the targeted Debian security revision documented below.
 
 ## Hosted gates
 
-Git access was restored after the initial publication attempt. Hosted defects
-were closed in sequence: clean-runner workspace behavior, Chromium keyboard DnD,
-then fixable Debian container vulnerabilities. The complete mandatory `main`
-qualification at `baf80b7...` passed Quality, Integration, Database, Browser/load,
-Docker, Security, Infrastructure and aggregate Gate.
+Git access and GitHub CLI authentication were restored after the initial blocked
+publication attempt. Hosted defects were closed in sequence: clean-runner
+workspace behavior, Chromium keyboard DnD, fixable Debian container
+vulnerabilities, GHCR delivery configuration, and the subsequently reviewed npm
+advisories. The complete mandatory `main` qualification for
+`6603ada5789a0a533de2f2565f9234e51771b9ba` passed Quality, Integration,
+Database, Browser/load, Docker, Security, Infrastructure and aggregate Gate.
 
-The following GHCR attempt stopped before image build because both public API
-and S3 origins were configured as build preconditions. The API origin is a real
-browser build input and remains required. The S3 hostname depends on Terraform
-`bucket_prefix`, so this delivery correction moves only that value to the web
-ECS runtime. GHCR retry, repository rules, Immutable Releases, private
-vulnerability reporting and trusted-tag publication remain unverified. No tag
-or GitHub Release is inferred from the passing main Gate.
+GHCR publication also passed for that commit, and immutable SHA images exist for
+web, API and migrate. The repository is public; the active ruleset is
+`Protect main`; Immutable Releases and private vulnerability reporting are
+enabled. These resolved items preserve the chronology of earlier blockers but
+do not imply trusted-tag CI, a `v1.0.0` tag or a GitHub Release.
 
 ## Security status
 
@@ -88,9 +92,8 @@ Documentation checks reject absolute developer paths.
 
 The owner selected MIT. The canonical root `LICENSE` records
 `Copyright (c) 2026 Artur Pravdivtsev`; no dual license or additional holder is
-invented. No `SECURITY.md` is fabricated because a real remote private-
-reporting capability cannot be inspected; enable GitHub private vulnerability
-reporting/Security Advisories before public publication.
+invented. GitHub private vulnerability reporting is enabled, so the repository
+has a real private reporting channel without a fabricated security email.
 
 ## Container artifacts
 
@@ -101,16 +104,16 @@ There is no newer digest on that pinned tag, so no cosmetic base churn is made.
 A fresh Trivy 0.74.0 database initially exposed fixable Debian findings in
 `libpcre2-8-0` and later `perl-base`. Both runtime Dockerfiles install the exact
 Bookworm security revisions `10.42-1+deb12u2` and `5.36.0-7+deb12u4`; current
-rescans report the same result for all three images: **48 HIGH, 1 CRITICAL,
-0 fixable HIGH and 0 fixable CRITICAL**. These are unfixed Debian findings, not a clean-image or
-non-exploitability claim. `braces` is absent from web, API/worker, migrate and
-browser runtime artifacts.
+rescans report the same result for all three images: **49 unfixed HIGH/CRITICAL
+OS findings, 0 fixable HIGH/CRITICAL and 0 Node package findings**. These are
+unfixed Debian findings, not a clean-image or non-exploitability claim. `braces`
+is absent from web, API/worker, migrate and browser runtime artifacts.
 
-| Local image | Image ID | Size (bytes) |
-| --- | --- | ---: |
-| `tripforge-ci-web:local` | `sha256:c47045dda2bdec965e69529e20daaa6b7af9349aafe9c62e29098422d0dfd7e5` | 329846008 |
-| `tripforge-ci-api:local` | `sha256:2bf2a8c51e0f9f59dcb45afd673dfdcea3813630bfef10209b5081707b4d5501` | 393066028 |
-| `tripforge-ci-migrate:local` | `sha256:2e43bdb9cccd021decff0b2ec798953903e443b9c1b630692e4291a0994f9e31` | 393736108 |
+| Local image | Image ID |
+| --- | --- |
+| `tripforge-ci-web:local` | `sha256:26ed88904ed1c7e5e52eca9396c84d57b05536ae62cbd19511885b6c0556631d` |
+| `tripforge-ci-api:local` | `sha256:44dec55a75b484411a0914a9ae7e79b3c7f93c7418ac0b828aadf43d70d7cc81` |
+| `tripforge-ci-migrate:local` | `sha256:2636d55a85250b9f49d4a3e6d1c569eba0a9c252219db6702fbc57f81b3d5cc8` |
 
 All three expose `TRIPFORGE_VERSION=1.0.0`; the worker uses the API image. The
 local Compose API/worker use `NODE_ENV=development` with their intentionally
@@ -141,9 +144,10 @@ CI / Gate → GHCR publish → manifest + SHA256SUMS → complete draft → veri
 
 Only the tag-only release job gets `contents: write`; it uses the built-in token,
 refuses an existing release, validates exact assets/schema/checksum and never
-moves a tag or overwrites an asset. Immutable Releases, branch protection, GHCR
-visibility and private reporting remain owner/admin settings pending verification.
-No final tag, draft or release currently exists; GHCR publication retry remains pending.
+moves a tag or overwrites an asset. Immutable Releases is enabled, `Protect main`
+is active, and private vulnerability reporting is enabled. Candidate GHCR
+publication passed; no final tag, draft or release currently exists, and tag CI
+has not run.
 
 ## Known limitations
 
@@ -167,8 +171,11 @@ three `@sha256` references from the release manifest and migrate before rollout.
 
 ## Go/no-go decision
 
-- Local release candidate: **GO — LOCALLY QUALIFIED**.
-- Remote release: **NOT PUBLISHED** — mandatory main Gate passed, but final GHCR/
-  trusted-tag publication has not run successfully.
-- Public repository publication: **PENDING EXTERNAL** — MIT is resolved; visibility,
-  repository rules, Immutable Releases and private reporting remain to verify.
+- Release candidate: **GO — LOCALLY AND HOSTED-MAIN QUALIFIED**.
+- Candidate artifacts: **PASS** — immutable GHCR SHA images exist for web, API
+  and migrate at `6603ada5789a0a533de2f2565f9234e51771b9ba`.
+- Remote release: **NOT PUBLISHED** — trusted-tag CI has not run; `v1.0.0` and its
+  GitHub Release do not exist.
+- Repository publication controls: **PASS** — public visibility, MIT, active
+  `Protect main`, Immutable Releases and private vulnerability reporting verified.
+- Final status: **V1.0.0 RELEASE CANDIDATE — HOSTED MAIN QUALIFIED, READY FOR TAG CEREMONY**.
