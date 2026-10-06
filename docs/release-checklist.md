@@ -11,13 +11,15 @@ Status vocabulary: **PASS**, **PENDING EXTERNAL**, **NOT APPLICABLE**, or
   release-policy and whitespace checks pass.
 - **PASS** — the complete mandatory hosted `main` qualification passed: Quality,
   Integration, Database, Browser/load, Docker, Security, Infrastructure and Gate.
-- **PENDING EXTERNAL** — repository rules, CodeQL/Dependency Review enforcement
-  and immutable-release settings still require explicit verification.
+- **PASS** — repository visibility is public, the active `Protect main` ruleset
+  protects the release branch, and Immutable Releases is enabled. Optional
+  CodeQL/Dependency Review enforcement remains capability-dependent.
 - **PASS** — policy tests require full-SHA actions and deny PR credentials,
   publishing permissions and privileged artifact bridges.
-- **PASS** — web/API/migrate images are rebuilt and scanned; all expose `1.0.0`,
-  worker uses the API image, and runtime artifacts exclude browser/load tooling
-  and `braces`. Published registry digests/revisions remain pending hosted CI.
+- **PASS** — web/API/migrate images are rebuilt, scanned and published to GHCR
+  for commit `6603ada5789a0a533de2f2565f9234e51771b9ba`; immutable SHA images
+  exist for all three, the worker uses the API image, and runtime artifacts
+  exclude browser/load tooling and `braces`. Trusted-tag publication has not run.
 - **PASS** — separate `apps/web/next-env.d.ts` remains unstaged at SHA-256
   `0f70629890b72a0a82e91972cc032c04b658b26c265373cb711cf576bfbf8fcc`.
 
@@ -37,7 +39,7 @@ Status vocabulary: **PASS**, **PENDING EXTERNAL**, **NOT APPLICABLE**, or
 
 - **PASS** — dependency policy permits only the exact unexpired, dev-only
   `braces@3.0.3` HIGH exception through 2026-11-01.
-- **PASS** — fresh image scans: each image has 48 HIGH/1 CRITICAL unfixed Debian
+- **PASS** — fresh image scans: each image has 49 unfixed HIGH/CRITICAL Debian
   findings and zero fixable HIGH/CRITICAL after the targeted `libpcre2-8-0` and
   `perl-base` security revisions.
   Production risk acceptance remains an operator decision.
@@ -81,12 +83,13 @@ Status vocabulary: **PASS**, **PENDING EXTERNAL**, **NOT APPLICABLE**, or
 
 - **PASS** — Git remote and GitHub CLI authentication are restored.
 - **PASS** — owner license decision is MIT; canonical root `LICENSE` is present.
-- **PASS** — mandatory hosted `main` Gate passed on the security-fixed candidate.
-- **PENDING EXTERNAL** — GHCR publication awaits the final delivery-configuration
-  commit and hosted retry. `TRIPFORGE_PUBLIC_API_URL` remains required; the
-  Terraform-allocated S3 hostname is now web runtime configuration.
-- **PENDING EXTERNAL** — verify repository rules and actual Immutable Releases state.
-- **PENDING EXTERNAL** — enable private vulnerability reporting before public visibility.
+- **PASS** — repository visibility is public.
+- **PASS** — mandatory hosted `main` Gate passed on security-fixed commit
+  `6603ada5789a0a533de2f2565f9234e51771b9ba`.
+- **PASS** — GHCR publication passed for that commit; immutable web/API/migrate
+  SHA images exist. This is candidate publication, not trusted-tag CI.
+- **PASS** — the active repository ruleset is `Protect main`; Immutable Releases
+  and private vulnerability reporting are enabled.
 - **PENDING EXTERNAL** — live AWS qualification; no Terraform apply or deployment occurred.
 - **PENDING EXTERNAL** — trusted `v1.0.0` tag and GitHub Release; neither exists yet.
 - **NOT APPLICABLE** — npm publication; every workspace package is private.

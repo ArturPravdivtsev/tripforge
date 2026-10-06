@@ -8,9 +8,10 @@ It demonstrates frontend-focused software engineering with end-to-end system
 ownership: from accessible React interactions to transactional data, recovery
 testing and an AWS deployment architecture.
 
-**Status: v1.0.0 release candidate / portfolio project; not yet published.**
-The complete mandatory hosted `main` Gate passed for the current security-fixed
-candidate. Stage 32 dependency closure accepts one time-bounded HIGH advisory
+**Status: V1.0.0 RELEASE CANDIDATE — HOSTED MAIN QUALIFIED, READY FOR TAG CEREMONY.**
+The mandatory hosted `main` Gate and GHCR candidate publication passed for the
+current security-fixed commit; immutable SHA images exist for web, API and
+migrate. Stage 32 dependency closure accepts one time-bounded HIGH advisory
 in development-only ESLint tooling after proving it absent from deployable artifacts;
 the machine-checkable audit remains blocking for every unexpected HIGH/CRITICAL
 (see the [current verification report](docs/stage33-release-verification.md)). Terraform is locally
@@ -148,10 +149,10 @@ Start with the [case study](docs/portfolio-case-study.md) and
 
 ## Project status and next step
 
-Stage 33 has passed the mandatory hosted `main` qualification. The owner selected
-the MIT License. GHCR publication remains pending final delivery-configuration
-qualification/retry; repository rules, immutable-release settings and private
-vulnerability reporting still require verification. Actual AWS deploy/PITR/
+Stage 33 has passed the mandatory hosted `main` qualification and candidate GHCR
+publication. The repository is public under MIT, `Protect main` is active, and
+Immutable Releases plus private vulnerability reporting are enabled. The
+`v1.0.0` tag, GitHub Release and tag CI do not exist yet. Actual AWS deploy/PITR/
 failover/rollback/IAM QA remains pending, as do live OpenAI/ORS/MapTiler;
 VoiceOver/Safari and native zoom; image-risk review and longer client heap profiling.
 Known unfixed base-OS findings are not a proven exploitable TripForge bug, but
