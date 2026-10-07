@@ -77,6 +77,31 @@ before its cascade. Pending rows older than one hour are locked, revalidated,
 and moved into the same cleanup path in bounded batches. See
 [Background jobs](./background-jobs.md).
 
+## Hosted demo storage qualification (2026-10-07)
+
+The operator confirms live Render + Supabase Storage upload/read qualification
+for commit `ba8c682d58168389275dd3bebc4d47bd8efde5c1`
+(`test: qualify S3-compatible hosted storage`). The bucket
+`tripforge-demo-documents` is private; the S3-compatible endpoint is
+`https://escgigaitmycmhkcsjny.storage.supabase.co/storage/v1/s3`, region
+`eu-west-2`, with `forcePathStyle=true`.
+
+Direct browser presigned PUT, browser CORS, HEAD/finalization, transition to
+`ready`, persistence after reload and presigned GET/download all passed live.
+The operator also confirms no browser exposure of the S3 secret key or reusable
+credentials (the SigV4 identifier caveat above still applies), and PASS for exact
+web CSP configuration:
+`S3_UPLOAD_ORIGIN=https://escgigaitmycmhkcsjny.storage.supabase.co`.
+See [Hosted demo storage evidence and regression checklist](./hosted-demo.md#hosted-storage-qualification-2026-10-07).
+
+**Known hosted-demo limitation: physical object deletion is NOT QUALIFIED because
+the current Render deployment does not run the TripForge storage-cleanup worker.**
+Metadata removal or absence from the UI does not prove physical object deletion;
+private bytes may remain awaiting cleanup. The existing DB-first, worker-driven
+architecture is unchanged: no cleanup is moved into the API and no
+free-hosting-specific workaround is introduced. This hosted upload/read PASS
+does not qualify physical deletion or AWS production operations.
+
 ## Local and production storage
 
 Compose runs `localstack/localstack:2026.08.3` with only S3 enabled and a named

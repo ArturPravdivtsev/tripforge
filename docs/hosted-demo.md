@@ -75,8 +75,10 @@ capacity/rate-limit behavior before promoting a shared public demo to production
 ## Hosted-demo Documents storage: Supabase S3
 
 As of 2026-10-07, the operator reports hosted same-origin register, session,
-reload, logout/login and realtime qualification PASS. Storage qualification is
-separate and has not yet been performed against the configured hosted provider.
+reload, logout/login and realtime qualification PASS. The operator also confirms
+live Render + Supabase storage upload/read qualification PASS, as recorded below.
+Physical object deletion remains **NOT QUALIFIED** because the current Render
+deployment does not run the storage-cleanup worker.
 
 Supabase Storage is used only for hosted-demo object storage through its
 S3-compatible API. The existing AWS SDK and provider-neutral Documents contracts
@@ -160,8 +162,9 @@ Do not run LocalStack/AWS bucket initialization scripts against this endpoint.
 The browser's OPTIONS must permit the web origin, PUT and Content-Type; progress
 events may require preflight even for an otherwise simple content type. Do not
 add speculative CSP/CORS wildcards or proxy file bytes. Live Supabase upload,
-download and browser CORS remain **PENDING EXTERNAL** until a separately
-authorized configured hosted run; local signing is not a live provider PASS.
+download and browser CORS were initially **PENDING EXTERNAL** at local
+qualification; that blocker is now resolved by the operator-confirmed hosted
+run below. Local signing alone was not evidence of a live provider PASS.
 See [Supabase S3 compatibility](https://supabase.com/docs/guides/storage/s3/compatibility).
 
 ### Deletion prerequisite and hosted limitations
@@ -172,12 +175,15 @@ completes the intent. Supabase deletion is permanent; no version recovery is
 available. A worker failure can leave a private object awaiting cleanup even
 after it disappears from TripForge's UI.
 
-The hosted worker topology is **PENDING EXTERNAL**. The current API entrypoint
-does not run the worker. Under the requirement that Supabase credentials exist
-only in the Render API service, a separate worker cannot silently receive those
-credentials. Confirm the existing deployment topology or obtain separate approval
-before changing process deployment or secret distribution. Do not claim physical
-deletion verified until the worker actually processes the cleanup intent.
+The operator confirms that the current Render deployment does **not** run the
+TripForge worker responsible for storage cleanup. Physical object deletion is
+therefore **NOT QUALIFIED**: private object bytes may remain after metadata
+removal, and absence from the UI does not prove storage deletion. The existing
+DB-first, worker-driven cleanup architecture remains unchanged; cleanup is not
+moved into the API and no free-hosting-specific workaround is introduced.
+Any worker deployment or secret distribution changes require separate approval.
+Do not claim physical deletion verified until the worker processes the cleanup
+intent and object absence is confirmed.
 
 Render Free cold starts remain a known hosted-demo limitation; an initial API
 request may wait for startup. This does not change storage authorization or justify
@@ -194,13 +200,44 @@ Existing native AWS and split LocalStack configurations remain valid.
 The standard container smoke passed using application-code-equivalent images.
 Additional production-image checks exercised actual storage module factories,
 PUT/GET signing with synthetic credentials, offline HEAD/DELETE serialization,
-and runtime web CSP for the exact Supabase origin. No live Supabase operations
-or hosted browser CORS were exercised; no new audit exception was added.
+and runtime web CSP for the exact Supabase origin. This local run did not exercise
+live Supabase operations or hosted browser CORS; no new audit exception was added.
+The subsequent hosted evidence is recorded separately below.
 
-### Manual hosted Documents verification
+### Hosted storage qualification (2026-10-07)
+
+The operator confirms the following live results on
+`https://tripforge-web.onrender.com` with storage qualification commit
+`ba8c682d58168389275dd3bebc4d47bd8efde5c1`
+(`test: qualify S3-compatible hosted storage`). These are operator-provided
+hosted results, not a rerun of the local checks or a new deployment.
+
+The verified bucket is private `tripforge-demo-documents`, with endpoint
+`https://escgigaitmycmhkcsjny.storage.supabase.co/storage/v1/s3`, region
+`eu-west-2` and `forcePathStyle=true`.
+
+| Live evidence | Result |
+| --- | --- |
+| Direct browser presigned PUT | PASS |
+| Browser CORS | PASS |
+| HEAD verification and finalization | PASS |
+| Document reaches `ready` state | PASS |
+| Document remains after reload | PASS |
+| Presigned GET/download | PASS |
+| S3 secret key/reusable credentials not exposed to browser | PASS; SigV4 identifier caveat above still applies |
+| Exact `S3_UPLOAD_ORIGIN` CSP configuration | PASS: `https://escgigaitmycmhkcsjny.storage.supabase.co` |
+
+This closes hosted upload/read, browser CORS and exact-origin CSP qualification.
+Physical object deletion is **NOT QUALIFIED** because the current Render
+deployment does not run the cleanup worker; it is excluded from this PASS.
+
+### Manual hosted Documents regression checklist
 
 Use disposable accounts, a disposable Trip and a small allowed file after the
-configuration and any deployment are separately authorized:
+configuration and any deployment are separately authorized. Retain this checklist
+for regression checks; the evidence above does not establish additional live RBAC
+results or deletion qualification. Physical deletion checks require a running
+cleanup worker, which the current Render deployment lacks:
 
 1. Login through the web origin.
 2. Open or create the disposable Trip as owner/editor.
