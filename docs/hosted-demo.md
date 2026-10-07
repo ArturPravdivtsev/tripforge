@@ -72,6 +72,159 @@ The API's existing address-based rate limits observe the web proxy connection.
 Do not enable arbitrary trust-proxy/IP forwarding to bypass that limit; review
 capacity/rate-limit behavior before promoting a shared public demo to production.
 
+## Hosted-demo Documents storage: Supabase S3
+
+As of 2026-10-07, the operator reports hosted same-origin register, session,
+reload, logout/login and realtime qualification PASS. Storage qualification is
+separate and has not yet been performed against the configured hosted provider.
+
+Supabase Storage is used only for hosted-demo object storage through its
+S3-compatible API. The existing AWS SDK and provider-neutral Documents contracts
+remain authoritative. Local development remains LocalStack; AWS production
+remains native Amazon S3 with IAM roles and unchanged Terraform defaults.
+No Supabase Auth, database integration or client SDK is involved.
+
+Keep the `tripforge-demo-documents` bucket **private**. Enable the project's S3
+connection and use generated server S3 credentials, not an anon/service-role JWT.
+Those credentials bypass Supabase Storage RLS; TripForge authentication, Trip
+membership, RBAC, scope and metadata validation authorize every capability.
+Do not create RLS policies for this server credential flow or make the bucket public.
+See [Supabase S3 authentication](https://supabase.com/docs/guides/storage/s3/authentication).
+
+### Render API configuration
+
+Set the following runtime values on `tripforge-api`, not on the web service or
+a shared web/API environment group. Never put secret values in Docker build args,
+source, diagnostics or `NEXT_PUBLIC_*` variables.
+
+| Existing variable | Classification | Value |
+| --- | --- | --- |
+| `S3_BUCKET` | Non-secret | `tripforge-demo-documents` |
+| `S3_REGION` | Non-secret | `eu-west-2` |
+| `S3_ENDPOINT` | Non-secret | `https://escgigaitmycmhkcsjny.storage.supabase.co/storage/v1/s3` |
+| `S3_FORCE_PATH_STYLE` | Non-secret | `true` |
+| `AWS_ACCESS_KEY_ID` | Secret | Supply the generated Supabase S3 credential only in Render API environment |
+| `AWS_SECRET_ACCESS_KEY` | Secret | Supply the generated Supabase S3 credential only in Render API environment |
+| `AWS_REQUEST_CHECKSUM_CALCULATION` | Non-secret, standard AWS SDK setting | `WHEN_REQUIRED` |
+| `AWS_RESPONSE_CHECKSUM_VALIDATION` | Non-secret, standard AWS SDK setting | `WHEN_REQUIRED` |
+
+Leave `S3_PUBLIC_ENDPOINT` unset (or empty): the signing client falls back to
+`S3_ENDPOINT`. Do not retain a LocalStack public endpoint. Leave
+`AWS_SESSION_TOKEN` unset for generated S3 key credentials. The existing SDK
+credential-provider chain consumes the two AWS credential variables; no new
+TripForge aliases or credential-returning endpoint is needed.
+
+The two standard checksum settings are read directly by AWS SDK v3. Offline
+presigning with SDK defaults adds an empty-body CRC32 to PUT and checksum-mode
+to GET. `WHEN_REQUIRED` omits these optional parameters for the direct-browser
+flow, whose payload is not available to the API at signing time. These settings
+apply only to the hosted-demo service; do not change native AWS or LocalStack
+defaults. See [AWS checksum settings](https://docs.aws.amazon.com/sdkref/latest/guide/feature-dataintegrity.html).
+
+### Render Web CSP and request flow
+
+On `tripforge-web` set the non-secret runtime value:
+
+```dotenv
+S3_UPLOAD_ORIGIN=https://escgigaitmycmhkcsjny.storage.supabase.co
+```
+
+This exact origin was verified from a real AWS SDK-generated, path-style
+presigned URL using synthetic credentials and the configured endpoint. It is not
+the endpoint path: do not include `/storage/v1/s3`, a trailing slash, credentials,
+query or wildcard. Existing `connect-src` adds exactly this origin. The web
+receives no S3 credentials, and this variable is not a web build input.
+
+The browser requests a capability through the existing same-origin `/api` flow,
+then PUTs bytes directly to storage with the API-returned `Content-Type` header.
+The upload is raw file bytes, not multipart/form-data; do not add API cookies,
+Authorization, `apikey` or `X-TripForge-Request` to the storage request. Keep the
+entire presigned query intact. PUT expires in 600 seconds; authorized GET expires
+in 300 seconds and retains the sanitized attachment filename.
+
+Current AWS SDK SignedHeaders contains `host`, not `content-type`. The API sets
+the upload content type, and mandatory HEAD verification checks exact MIME and
+size before a pending document can become ready. Allowed types remain PDF,
+JPEG, PNG and WebP; size remains 1 byte through 25 MiB. The existing PUT capability
+does not itself enforce a maximum upload size; configure an appropriate private
+bucket limit separately if desired, without removing TripForge's validation.
+
+SigV4 necessarily includes the access-key identifier and credential scope in
+`X-Amz-Credential`, plus a temporary signature; it never includes the secret key
+or a reusable credentials object. This is not exposure of the secret signing key.
+Treat the entire URL as a bearer capability: never log it, paste it into reports,
+persist it or include it in analytics/HAR exports without redaction.
+
+Supabase does not support S3 `PutBucketCors`/`GetBucketCors` or object versioning.
+Do not run LocalStack/AWS bucket initialization scripts against this endpoint.
+The browser's OPTIONS must permit the web origin, PUT and Content-Type; progress
+events may require preflight even for an otherwise simple content type. Do not
+add speculative CSP/CORS wildcards or proxy file bytes. Live Supabase upload,
+download and browser CORS remain **PENDING EXTERNAL** until a separately
+authorized configured hosted run; local signing is not a live provider PASS.
+See [Supabase S3 compatibility](https://supabase.com/docs/guides/storage/s3/compatibility).
+
+### Deletion prerequisite and hosted limitations
+
+Deletion is DB-first: API removes metadata and records a durable cleanup intent;
+the existing worker performs HEAD-independent, idempotent `DeleteObject` and
+completes the intent. Supabase deletion is permanent; no version recovery is
+available. A worker failure can leave a private object awaiting cleanup even
+after it disappears from TripForge's UI.
+
+The hosted worker topology is **PENDING EXTERNAL**. The current API entrypoint
+does not run the worker. Under the requirement that Supabase credentials exist
+only in the Render API service, a separate worker cannot silently receive those
+credentials. Confirm the existing deployment topology or obtain separate approval
+before changing process deployment or secret distribution. Do not claim physical
+deletion verified until the worker actually processes the cleanup intent.
+
+Render Free cold starts remain a known hosted-demo limitation; an initial API
+request may wait for startup. This does not change storage authorization or justify
+publishing the bucket. See [Render Free limitations](https://render.com/docs/free).
+
+### Local storage configuration qualification (2026-10-07)
+
+Only tests and documentation changed; product code, SDK versions, Documents
+contracts, Compose, Terraform and Dockerfiles are unchanged. Lint, typecheck,
+unit tests (615), integration tests (98), `check`, `check:full`, `security:audit`,
+`test:security`, `docs:check`, `release:check` and whitespace checks passed.
+Existing native AWS and split LocalStack configurations remain valid.
+
+The standard container smoke passed using application-code-equivalent images.
+Additional production-image checks exercised actual storage module factories,
+PUT/GET signing with synthetic credentials, offline HEAD/DELETE serialization,
+and runtime web CSP for the exact Supabase origin. No live Supabase operations
+or hosted browser CORS were exercised; no new audit exception was added.
+
+### Manual hosted Documents verification
+
+Use disposable accounts, a disposable Trip and a small allowed file after the
+configuration and any deployment are separately authorized:
+
+1. Login through the web origin.
+2. Open or create the disposable Trip as owner/editor.
+3. Upload a document and inspect the same-origin upload-intent request.
+4. Verify direct storage PUT succeeds with the returned Content-Type and intact
+   signed query. Inspect OPTIONS if present; verify required origin/method/header
+   allowances. On failure record status and CORS header names/values only, with
+   signed URL, signature and credential identifier redacted.
+5. Verify completion/HEAD succeeds and the ready document appears in the UI.
+6. Reload the workspace.
+7. Verify the document remains listed.
+8. Download through an authorized API capability and verify file bytes/name.
+9. Inspect requests: API metadata through web `/api`, file bytes directly to the
+   exact storage origin; no API cookies or credentials object sent to storage.
+10. Verify no secret key, reusable credential object or S3 credentials in public
+    configuration/bundles/logs. The SigV4 key identifier is the documented exception.
+11. Verify an outsider cannot presign/read another Trip's document; viewer may
+    download ready files but cannot upload or delete. Unauthenticated requests fail.
+12. Delete the disposable document as owner/editor.
+13. Wait for worker completion; confirm the object is absent in the private bucket
+    or via authorized HEAD, not merely absent from the UI.
+14. Reload and confirm deletion persists. Do not claim this step passed if cleanup
+    is still awaiting a worker.
+
 ## Local configuration and verification
 
 Native development defaults to web `http://127.0.0.1:3000` and API
@@ -117,6 +270,8 @@ Trivy scans pass the unchanged CI HIGH/CRITICAL, fixable-vulnerability gate for
 all three images, with no sharp findings or secret findings. The raw reports still
 contain existing unfixed Debian HIGH findings; this does not claim zero OS CVEs.
 
-These are local results, not post-v1 hosted qualification. Render deployment and
-hosted auth/realtime verification remain pending external actions. The published
+These are local results, not post-v1 hosted qualification. At the time of this
+local run, Render deployment and hosted auth/realtime verification were pending
+external actions; see the later hosted-storage section for operator-reported status.
+The published
 `v1.0.0` tag and GitHub Release are unchanged.

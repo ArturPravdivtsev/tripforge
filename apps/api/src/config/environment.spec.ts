@@ -81,6 +81,29 @@ describe("validateEnvironment", () => {
     );
   });
 
+  it("accepts a path-prefixed S3-compatible endpoint and the hosted region", () => {
+    const endpoint = "https://escgigaitmycmhkcsjny.storage.supabase.co/storage/v1/s3";
+    const environment = validateEnvironment({
+      S3_BUCKET: "tripforge-demo-documents",
+      S3_ENDPOINT: endpoint,
+      S3_FORCE_PATH_STYLE: "true",
+      S3_REGION: "eu-west-2",
+    });
+    expect(environment).toMatchObject({
+      S3_BUCKET: "tripforge-demo-documents", S3_ENDPOINT: endpoint,
+      S3_FORCE_PATH_STYLE: true, S3_REGION: "eu-west-2",
+    });
+    expect(environment).not.toHaveProperty("S3_PUBLIC_ENDPOINT");
+  });
+
+  it.each(["S3_ENDPOINT", "S3_PUBLIC_ENDPOINT"])("rejects malformed %s configurations", name => {
+    for (const endpoint of ["not a URL", "ftp://storage.example.test", "https://", "https://bad host/storage/v1/s3"]) {
+      expect(() => validateEnvironment({ [name]: endpoint })).toThrow(new RegExp(name));
+    }
+    expect(() => validateEnvironment({ S3_FORCE_PATH_STYLE: "sometimes" }))
+      .toThrow(/S3_FORCE_PATH_STYLE/u);
+  });
+
   it("rejects an invalid TCP port", () => {
     expect(() =>
       validateEnvironment({ NODE_ENV: "test", PORT: "not-a-port" }),

@@ -20,10 +20,14 @@ Nest HEAD verifies Content-Length and Content-Type
 ready
 ```
 
-Nest never proxies normal file contents and the browser never receives AWS
-credentials. Presigned URLs are temporary bearer capabilities: they are not
+Nest never proxies normal file contents and the browser never receives reusable
+AWS credentials or the secret signing key. SigV4 does include the access-key
+identifier and scope in `X-Amz-Credential`; redact the entire URL in diagnostics.
+Presigned URLs are temporary bearer capabilities: they are not
 persisted, logged, added to analytics, or cached as server state. Upload signing
-uses the declared Content-Type. Download capabilities expire after five minutes
+uses the declared Content-Type in the PUT command and browser headers. With the
+current SDK options, SignedHeaders contains `host`, not `content-type`; exact MIME
+and size are enforced by HEAD before finalization. Download capabilities expire after five minutes
 and are generated only after an authorized click.
 
 The browser uses XHR only for the direct PUT boundary because it exposes real
