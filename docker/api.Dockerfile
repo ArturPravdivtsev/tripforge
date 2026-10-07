@@ -1,4 +1,4 @@
-FROM node:24.21.0-bookworm-slim@sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6 AS base
+FROM node:26.9.0-bookworm-slim@sha256:582460f614631b59b824ac6020533b9bf339c7fdf3a6d7db31abb6b4065f0212 AS base
 
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
@@ -40,7 +40,7 @@ COPY packages/ui/package.json ./packages/ui/package.json
 RUN --mount=type=cache,id=tripforge-pnpm,target=/pnpm/store \
   pnpm install --frozen-lockfile --prod --filter @tripforge/api
 
-FROM node:24.21.0-bookworm-slim@sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6 AS runtime
+FROM node:26.9.0-bookworm-slim@sha256:582460f614631b59b824ac6020533b9bf339c7fdf3a6d7db31abb6b4065f0212 AS runtime
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
