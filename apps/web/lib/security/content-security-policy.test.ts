@@ -4,6 +4,12 @@ import { buildContentSecurityPolicy } from "./content-security-policy";
 import { getWebSecurityHeaders } from "./web-security-headers";
 
 describe("production web security policy", () => {
+  it.each([false, true])("permits only self and blob workers (development=%s)", (development) => {
+    const policy = buildContentSecurityPolicy({ development, nonce: "worker-test" });
+    const workers = policy.split(";").map((part) => part.trim()).find((part) => part.startsWith("worker-src "));
+    expect(workers).toBe("worker-src 'self' blob:");
+  });
+
   it("builds a nonce policy with only expected connection origins", () => {
     const policy = buildContentSecurityPolicy({
       development: false,

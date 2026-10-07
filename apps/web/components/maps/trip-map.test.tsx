@@ -10,11 +10,28 @@ const mapMethods = vi.hoisted(() => ({
   getZoom: vi.fn(() => 4),
 }));
 
-vi.mock("maplibre-gl", () => ({ setWorkerUrl: vi.fn() }));
+const workerSetup = vi.hoisted(() => ({
+  events: [] as string[],
+  urls: [] as string[],
+}));
+
+vi.mock("maplibre-gl", () => ({
+  getVersion: () => "6.10.0",
+  setWorkerUrl: (url: string) => {
+    workerSetup.events.push("worker configured");
+    workerSetup.urls.push(url);
+  },
+}));
 
 vi.mock("react-map-gl/maplibre", async () => {
   const React = await import("react");
   type FakeMapProps = PropsWithChildren<{
+    cooperativeGestures: boolean;
+    dragRotate: boolean;
+    initialViewState: unknown;
+    mapStyle: string;
+    pitchWithRotate: boolean;
+    touchPitch: boolean;
     onClick?: (event: { features?: Array<{ properties: { routeId: string } }>; lngLat: { lat: number; lng: number } }) => void;
     onError?: () => void;
     onLoad?: () => void;
@@ -22,13 +39,15 @@ vi.mock("react-map-gl/maplibre", async () => {
 
   return {
     default: React.forwardRef<unknown, FakeMapProps>(function FakeMap(
-      { children, onClick, onError, onLoad },
+      { children, onClick, onError, onLoad, ...configuration },
       ref,
     ) {
+      workerSetup.events.push("map initialized");
+      expect(workerSetup.urls).toEqual(["/maplibre/6.10.0/maplibre-gl-worker.mjs"]);
       React.useImperativeHandle(ref, () => mapMethods);
       React.useEffect(() => onLoad?.(), [onLoad]);
       return (
-        <div data-testid="map">
+        <div data-testid="map" data-configuration={JSON.stringify(configuration)}>
           <button
             onClick={() => onClick?.({ lngLat: { lat: 35.7, lng: 139.7 } })}
             type="button"
@@ -102,6 +121,23 @@ const route: TripRouteSegment = {
 describe("TripMap", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it("configures the same-origin worker once before maps and preserves configuration", () => {
+    const { rerender } = render(<TripMap {...baseProps} />);
+    rerender(<TripMap {...baseProps} />);
+    expect(workerSetup.events[0]).toBe("worker configured");
+    expect(workerSetup.events).toContain("map initialized");
+    expect(workerSetup.events.filter((event) => event === "worker configured")).toHaveLength(1);
+    expect(workerSetup.urls).toEqual(["/maplibre/6.10.0/maplibre-gl-worker.mjs"]);
+    expect(JSON.parse(screen.getByTestId("map").getAttribute("data-configuration")!)).toMatchObject({
+      cooperativeGestures: true,
+      dragRotate: false,
+      initialViewState: { latitude: 20, longitude: 0, zoom: 1.5 },
+      mapStyle: baseProps.mapStyle,
+      pitchWithRotate: false,
+      touchPitch: false,
+    });
   });
 
   it("derives named markers, fits bounds, and selects a marker", async () => {

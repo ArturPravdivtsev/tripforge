@@ -177,6 +177,7 @@ export async function startStack({ web = true, replicas = 1, worker = true } = {
     if (web) {
       const webDirectory = join(directory, "apps/web");
       await cp(join(webDirectory, ".next/static"), join(webDirectory, ".next/standalone/apps/web/.next/static"), { recursive: true });
+      await cp(join(webDirectory, "public"), join(webDirectory, ".next/standalone/apps/web/public"), { recursive: true });
       const child = spawn("node", [join(webDirectory, ".next/standalone/apps/web/server.js")], {
         cwd: webDirectory, env: { ...env, NODE_ENV: "production", PORT: "3310", HOSTNAME: "127.0.0.1" }, stdio: ["ignore", "pipe", "pipe"],
       });

@@ -56,6 +56,7 @@ ENV TRIPFORGE_VERSION=$TRIPFORGE_VERSION
 
 COPY --from=builder --chown=node:node /workspace/apps/web/.next/standalone ./
 COPY --from=builder --chown=node:node /workspace/apps/web/.next/static ./apps/web/.next/static
+COPY --from=builder --chown=node:node /workspace/apps/web/public ./apps/web/public
 
 USER node
 
