@@ -20,10 +20,14 @@ Nest HEAD verifies Content-Length and Content-Type
 ready
 ```
 
-Nest never proxies normal file contents and the browser never receives AWS
-credentials. Presigned URLs are temporary bearer capabilities: they are not
+Nest never proxies normal file contents and the browser never receives reusable
+AWS credentials or the secret signing key. SigV4 does include the access-key
+identifier and scope in `X-Amz-Credential`; redact the entire URL in diagnostics.
+Presigned URLs are temporary bearer capabilities: they are not
 persisted, logged, added to analytics, or cached as server state. Upload signing
-uses the declared Content-Type. Download capabilities expire after five minutes
+uses the declared Content-Type in the PUT command and browser headers. With the
+current SDK options, SignedHeaders contains `host`, not `content-type`; exact MIME
+and size are enforced by HEAD before finalization. Download capabilities expire after five minutes
 and are generated only after an authorized click.
 
 The browser uses XHR only for the direct PUT boundary because it exposes real
@@ -72,6 +76,31 @@ capability until its short expiry. Trip deletion captures every document key
 before its cascade. Pending rows older than one hour are locked, revalidated,
 and moved into the same cleanup path in bounded batches. See
 [Background jobs](./background-jobs.md).
+
+## Hosted demo storage qualification (2026-10-07)
+
+The operator confirms live Render + Supabase Storage upload/read qualification
+for commit `ba8c682d58168389275dd3bebc4d47bd8efde5c1`
+(`test: qualify S3-compatible hosted storage`). The bucket
+`tripforge-demo-documents` is private; the S3-compatible endpoint is
+`https://escgigaitmycmhkcsjny.storage.supabase.co/storage/v1/s3`, region
+`eu-west-2`, with `forcePathStyle=true`.
+
+Direct browser presigned PUT, browser CORS, HEAD/finalization, transition to
+`ready`, persistence after reload and presigned GET/download all passed live.
+The operator also confirms no browser exposure of the S3 secret key or reusable
+credentials (the SigV4 identifier caveat above still applies), and PASS for exact
+web CSP configuration:
+`S3_UPLOAD_ORIGIN=https://escgigaitmycmhkcsjny.storage.supabase.co`.
+See [Hosted demo storage evidence and regression checklist](./hosted-demo.md#hosted-storage-qualification-2026-10-07).
+
+**Known hosted-demo limitation: physical object deletion is NOT QUALIFIED because
+the current Render deployment does not run the TripForge storage-cleanup worker.**
+Metadata removal or absence from the UI does not prove physical object deletion;
+private bytes may remain awaiting cleanup. The existing DB-first, worker-driven
+architecture is unchanged: no cleanup is moved into the API and no
+free-hosting-specific workaround is introduced. This hosted upload/read PASS
+does not qualify physical deletion or AWS production operations.
 
 ## Local and production storage
 

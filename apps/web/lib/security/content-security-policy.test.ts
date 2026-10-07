@@ -38,6 +38,18 @@ describe("production web security policy", () => {
     expect(policy).toContain("http://localhost:4566");
   });
 
+  it("permits only the hosted storage URL origin, not its S3 path or credentials", () => {
+    const origin = "https://escgigaitmycmhkcsjny.storage.supabase.co";
+    const policy = buildContentSecurityPolicy({ development: false, nonce: "nonce", s3UploadOrigin: origin });
+    expect(policy).toContain(`connect-src 'self' https://api.maptiler.com ${origin};`);
+    expect(policy).not.toContain("/storage/v1/s3");
+    expect(policy).not.toMatch(/AWS_|X-Amz-|\*/u);
+    for (const s3UploadOrigin of [`${origin}/storage/v1/s3`, "https://*.supabase.co", "https://*.storage.supabase.co"]) {
+      expect(() => buildContentSecurityPolicy({ development: false, nonce: "nonce", s3UploadOrigin }))
+        .toThrow(/S3_UPLOAD_ORIGIN must be an exact HTTP origin/u);
+    }
+  });
+
   it("rejects broad or malformed configured origins", () => {
     for (const s3UploadOrigin of [
       "https:",
