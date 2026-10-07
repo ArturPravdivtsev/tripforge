@@ -1,3 +1,5 @@
 import nextConfig from "@tripforge/eslint-config/nextjs";
 
-export default nextConfig;
+const config = [...nextConfig, { ignores: ["public/maplibre/**"] }];
+
+export default config;

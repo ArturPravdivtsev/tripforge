@@ -3,9 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "analyze": "ANALYZE=true next build --webpack",
-    "dev": "next dev --port 3000",
-    "build": "next build --webpack",
+    "analyze": "node scripts/copy-maplibre-worker.mjs && ANALYZE=true next build --webpack",
+    "dev": "node scripts/copy-maplibre-worker.mjs && next dev --port 3000",
+    "build": "node scripts/copy-maplibre-worker.mjs && next build --webpack",
     "start": "next start --port 3000",
     "lint": "eslint .",
     "test": "vitest run",

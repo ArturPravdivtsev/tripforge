@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { setWorkerUrl } from "maplibre-gl";
+import { getVersion, setWorkerUrl } from "maplibre-gl";
 import Map, {
   Layer,
   Marker,
@@ -29,9 +29,9 @@ import type {
 
 import "maplibre-gl/dist/maplibre-gl.css";
 
-setWorkerUrl(
-  new URL("maplibre-gl/dist/maplibre-gl-worker.mjs", import.meta.url).toString(),
-);
+// This module is loaded with ssr: false. Configure once before any Map renders.
+// Next's URL asset handling omits the worker's shared module; build/dev copy both.
+setWorkerUrl(`/maplibre/${getVersion()}/maplibre-gl-worker.mjs`);
 
 const SINGLE_DESTINATION_ZOOM = 10;
 
