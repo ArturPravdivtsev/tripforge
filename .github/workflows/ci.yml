@@ -354,14 +354,14 @@ jobs:
           pnpm perf:load smoke
       - name: Upload browser failures only
         if: ${{ failure() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: chromium-failure-${{ github.sha }}
           path: test-results/
           retention-days: 7
       - name: Upload compact load summary without fixture/session data
         if: ${{ always() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: load-smoke-${{ github.sha }}
           path: readiness-results/k6-smoke.json
@@ -617,7 +617,7 @@ jobs:
             done
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Upload delivery manifest
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: delivery-manifest-${{ github.sha }}
           path: delivery-manifest.json
@@ -662,7 +662,7 @@ jobs:
           TRIPFORGE_RELEASE_MANIFEST="release-assets/tripforge-v${RELEASE_VERSION}-release-manifest.json" \
             GITHUB_REF="$GITHUB_REF" node scripts/release/check.mjs
       - name: Upload release assets for the trusted release job
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-assets-${{ github.sha }}
           path: release-assets/
